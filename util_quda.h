@@ -3,6 +3,7 @@
 
 #include <quda.h>
 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -17,8 +18,10 @@ extern "C" {
   void printSpinorElement(void *spinor, int X, Precision precision);
   void printGaugeElement(void *gauge, int X, Precision precision);
   
-  int fullLatticeIndex(int i, int oddBit);
-  int getOddBit(int X);
+  int fullLatticeIndex_4d(int i, int oddBit);
+  int fullLatticeIndex_5d(int i, int oddBit);
+  int getOddBit_4d(int X);
+  int getOddBit_5d(int X);
   
   void construct_gauge_field(void **gauge, int type, Precision precision);
   void construct_spinor_field(void *spinor, int type, int i0, int s0, int c0, Precision precision);

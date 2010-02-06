@@ -37,7 +37,7 @@ void invertCgCuda(ParitySpinor x, ParitySpinor b, FullGauge gauge,
   printf("%d iterations, r2 = %e\n", k, r2);
   stopwatchStart();
   while (r2 > stop && k<perf->maxiter) {
-    MatPCDagMatPCCuda(Ap, gauge, p, perf->kappa, tmp, perf->matpc_type);
+    MatPCDagMatPC_dwf_Cuda(Ap, gauge, p, perf->kappa, tmp, perf->matpc_type, perf->mferm);
 
     pAp = reDotProductCuda(p, Ap);
 
@@ -57,7 +57,7 @@ void invertCgCuda(ParitySpinor x, ParitySpinor b, FullGauge gauge,
   //if (k==maxiters)
   //printf("Exceeded maximum iterations %d\n", maxiters);
 
-  float gflops = k*(1.0e-9*Nh)*(2*(2*1320+48) + 10*spinorSiteSize);
+  float gflops = k*(1.0e-9*Nh_5d)*(2*(2*1320+48) + 10*spinorSiteSize);
   //printf("%f gflops\n", k*gflops / stopwatchReadSeconds());
   perf->gflops = gflops;
   perf->iter = k;

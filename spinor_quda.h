@@ -10,14 +10,14 @@ extern "C" {
 
   ParitySpinor allocateParitySpinor(int length, Precision precision);
   FullSpinor allocateSpinorField(int length, Precision precision);
-  ParityClover allocateParityClover();
-  FullClover allocateCloverField();
+  //ParityClover allocateParityClover();
+  //FullClover allocateCloverField();
   
   void freeParitySpinor(ParitySpinor spinor);
   void freeSpinorField(FullSpinor spinor);
   void freeSpinorBuffer();
-  void freeParityClover(ParityClover clover);
-  void freeCloverField(FullClover clover);
+  //void freeParityClover(ParityClover clover);
+  //void freeCloverField(FullClover clover);
 
   void loadParitySpinor(ParitySpinor, void *spinor, Precision cpu_prec, DiracFieldOrder dirac_order);
   void loadSpinorField(FullSpinor, void *spinor, Precision cpu_prec, DiracFieldOrder dirac_order);

@@ -89,7 +89,8 @@ void invertBiCGstabCuda(ParitySpinor x, ParitySpinor src, FullGauge gaugeSloppy,
       cxpaypbzCuda(r_sloppy, beta_omega, v, beta, p); // 8
     }
 
-    MatPCCuda(v, gaugeSloppy, p, invert_param->kappa, tmp_sloppy, invert_param->matpc_type, dag_type);
+    MatPC_dwf_Cuda(v, gaugeSloppy, p, invert_param->kappa, tmp_sloppy, invert_param->matpc_type, dag_type,
+      invert_param->mferm  );
     
     // rv = (r0,v)
     rv = cDotProductCuda(src_sloppy, v);
@@ -101,7 +102,8 @@ void invertBiCGstabCuda(ParitySpinor x, ParitySpinor src, FullGauge gaugeSloppy,
     caxpyCuda(alpha, v, r_sloppy); // 4
     alpha.x *= -1.0; alpha.y *= -1.0;
 
-    MatPCCuda(t, gaugeSloppy, r_sloppy, invert_param->kappa, tmp_sloppy, invert_param->matpc_type, dag_type);
+    MatPC_dwf_Cuda(t, gaugeSloppy, r_sloppy, invert_param->kappa, tmp_sloppy,
+      invert_param->matpc_type, dag_type, invert_param->mferm);
 
     // omega = (t, r) / (t, t)
     omega_t2 = cDotProductNormACuda(t, r_sloppy); // 6
@@ -121,7 +123,8 @@ void invertBiCGstabCuda(ParitySpinor x, ParitySpinor src, FullGauge gaugeSloppy,
     if (updateR) {
       if (x.precision != x_sloppy.precision) copyCuda(x, x_sloppy);
 
-      MatPCCuda(r, gaugePrecise, x, invert_param->kappa, tmp, invert_param->matpc_type, dag_type);
+      MatPC_dwf_Cuda(r, gaugePrecise, x, invert_param->kappa, tmp, invert_param->matpc_type, dag_type,
+        invert_param->mferm);
 
       r2 = xmyNormCuda(b, r);
       if (x.precision != r_sloppy.precision) copyCuda(r_sloppy, r);
@@ -155,9 +158,9 @@ void invertBiCGstabCuda(ParitySpinor x, ParitySpinor src, FullGauge gaugeSloppy,
 
   printf("Residual updates = %d, Solution updates = %d\n", rUpdate, xUpdate);
 
-  float gflops = (1.0e-9*Nh)*(2*(2*1320+48)*k + (32*k + 8*(k-1))*spinorSiteSize);
-  gflops += 1.0e-9*Nh*rUpdate*((2*1320+48) + 3*spinorSiteSize);
-  gflops += 1.0e-9*Nh*xUpdate*spinorSiteSize;
+  float gflops = (1.0e-9*Nh_5d)*(2*(2*1320+48)*k + (32*k + 8*(k-1))*spinorSiteSize);
+  gflops += 1.0e-9*Nh_5d*rUpdate*((2*1320+48) + 3*spinorSiteSize);
+  gflops += 1.0e-9*Nh_5d*xUpdate*spinorSiteSize;
   //printf("%f gflops\n", k*gflops / stopwatchReadSeconds());
   invert_param->gflops += gflops;
   invert_param->iter += k;

@@ -18,7 +18,7 @@ extern "C" {
 
     QudaGaugeFieldOrder gauge_order;
 
-    QudaPrecision cpu_prec;
+    QudaPrecision cpu_prec;  // enum_quda.h
 
     QudaPrecision cuda_prec;
     QudaReconstructType reconstruct;
@@ -38,6 +38,8 @@ extern "C" {
   typedef struct QudaInvertParam_s {
     
     double kappa;  
+    double mferm;
+
     QudaMassNormalization mass_normalization;
 
     QudaDslashType dslash_type;
@@ -69,10 +71,11 @@ extern "C" {
   void loadGaugeQuda(void *h_gauge, QudaGaugeParam *param);
   void invertQuda(void *h_x, void *h_b, QudaInvertParam *param);
 
-  void dslashQuda(void *h_out, void *h_in, QudaInvertParam *inv_param, int parity, int dagger);
+  void dslash_dwf_Quda(void *h_out, void *h_in, QudaInvertParam *inv_param, int parity, int dagger,
+    double mferm);
+  
   void MatPCQuda(void *h_out, void *h_in, QudaInvertParam *inv_param, int dagger);
   void MatPCDagMatPCQuda(void *h_out, void *h_in, QudaInvertParam *inv_param);
-
   void MatQuda(void *h_out, void *h_in, QudaInvertParam *inv_param, int dagger);
 
   void endQuda(void);

@@ -1,3 +1,9 @@
+// util_quda.cpp
+// Ver. 09.10.c
+
+// 10/19/09:  Most recent is now on memstick.
+// 10/22/09:  Changed getOddBit back to 4d parity.
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/time.h>
@@ -5,22 +11,28 @@
 #include <quda.h>
 #include <util_quda.h>
 #include <dslash_reference.h>
+#include <myerror.h>
 
 #include <complex>
 
 using namespace std;
 
+//#define DBUG
+
 struct timeval startTime;
 
+//ok
 void stopwatchStart() {
   gettimeofday(&startTime, NULL);
 }
 
+//ok
 double stopwatchReadSeconds() {
   struct timeval endTime;
   gettimeofday( &endTime, 0);
     
   long ds = endTime.tv_sec - startTime.tv_sec;
+  //J  Pretty clear that usec is microseconds.
   long dus = endTime.tv_usec - startTime.tv_usec;
   return ds + 0.000001*dus;
 }
@@ -49,22 +61,22 @@ void printVector(Float *v) {
 
 // X indexes the full lattice
 void printSpinorElement(void *spinor, int X, Precision precision) {
-  if (getOddBit(X) == 0) {
+  if (getOddBit_5d(X) == 0) {
     if (precision == QUDA_DOUBLE_PRECISION)
       for (int s=0; s<4; s++) printVector((double*)spinor+(X/2)*4*3*2+s*(3*2));
     else
       for (int s=0; s<4; s++) printVector((float*)spinor+(X/2)*4*3*2+s*(3*2));
   } else {
     if (precision == QUDA_DOUBLE_PRECISION)
-      for (int s=0; s<4; s++) printVector((double*)spinor+(X/2)*(4*3*2)+Nh*spinorSiteSize+s*(3*2));
+      for (int s=0; s<4; s++) printVector((double*)spinor+(X/2)*(4*3*2)+Nh_5d*spinorSiteSize+s*(3*2));
     else
-      for (int s=0; s<4; s++) printVector((float*)spinor+(X/2)*(4*3*2)+Nh*spinorSiteSize+s*(3*2));
+      for (int s=0; s<4; s++) printVector((float*)spinor+(X/2)*(4*3*2)+Nh_5d*spinorSiteSize+s*(3*2));
   }
 }
 
 // X indexes the full lattice
 void printGaugeElement(void *gauge, int X, Precision precision) {
-  if (getOddBit(X) == 0) {
+  if (getOddBit_4d(X) == 0) {
     if (precision == QUDA_DOUBLE_PRECISION)
       for (int m=0; m<3; m++) printVector((double*)gauge +(X/2)*gaugeSiteSize + m*3*2);
     else
@@ -72,19 +84,35 @@ void printGaugeElement(void *gauge, int X, Precision precision) {
       
   } else {
     if (precision == QUDA_DOUBLE_PRECISION)
-      for (int m = 0; m < 3; m++) printVector((double*)gauge + (X/2+Nh)*gaugeSiteSize + m*3*2);
+      for (int m = 0; m < 3; m++) printVector((double*)gauge + (X/2+Nh_4d)*gaugeSiteSize + m*3*2);
     else
-      for (int m = 0; m < 3; m++) printVector((float*)gauge + (X/2+Nh)*gaugeSiteSize + m*3*2);
+      for (int m = 0; m < 3; m++) printVector((float*)gauge + (X/2+Nh_4d)*gaugeSiteSize + m*3*2);
   }
 }
 
 // returns 0 or 1 if the full lattice index X is even or odd
-int getOddBit(int X) {
-  int x4 = X/(L3*L2*L1);
+// 4d parity is determined here.
+int getOddBit_4d(int X) {
+
+  int x4 = (X/(L3*L2*L1)) % L4;
   int x3 = (X/(L2*L1)) % L3;
   int x2 = (X/L1) % L2;
   int x1 = X % L1;
+
   return (x4+x3+x2+x1) % 2;
+}
+
+// returns 0 or 1 if the full lattice index X is even or odd
+// 5d parity is determined here.
+int getOddBit_5d(int X) {
+
+  int xs = X/(L4*L3*L2*L1);
+  int x4 = (X/(L3*L2*L1)) % L4;
+  int x3 = (X/(L2*L1)) % L3;
+  int x2 = (X/L1) % L2;
+  int x1 = X % L1;
+
+  return (xs+x4+x3+x2+x1) % 2;
 }
 
 // a+=b
@@ -290,12 +318,26 @@ int compare_floats(void *a, void *b, int len, double epsilon, Precision precisio
   else return compareFloats((float*)a, (float*)b, len, epsilon);
 }
 
-
-
+// 4d checkerboard.
 // given a "half index" i into either an even or odd half lattice (corresponding
 // to oddBit = {0, 1}), returns the corresponding full lattice index.
-int fullLatticeIndex(int i, int oddBit) {
+// Cf. GPGPU code in dslash_core_ante.h.
+// There, i is the thread index.
+int fullLatticeIndex_4d(int i, int oddBit) {
+  if (i >= Nh_4d || i < 0) myerror("i out of range in fullLatticeIndex_4d");
   int boundaryCrossings = i/L1h + i/(L2*L1h) + i/(L3*L2*L1h);
+  return 2*i + (boundaryCrossings + oddBit) % 2;
+}
+
+// 5d checkerboard.
+// given a "half index" i into either an even or odd half lattice (corresponding
+// to oddBit = {0, 1}), returns the corresponding full lattice index.
+// Cf. GPGPU code in dslash_core_ante.h.
+// There, i is the thread index sid.
+// This function is used by neighborIndex_5d in dslash_reference.cpp.
+//ok
+int fullLatticeIndex_5d(int i, int oddBit) {
+  int boundaryCrossings = i/L1h + i/(L2*L1h) + i/(L3*L2*L1h)+ i/(L4*L3*L2*L1h);
   return 2*i + (boundaryCrossings + oddBit) % 2;
 }
 
@@ -303,17 +345,17 @@ template <typename Float>
 void applyGaugeFieldScaling(Float **gauge) {
   // Apply spatial scaling factor (u0) to spatial links
   for (int d = 0; d < 3; d++) {
-    for (int i = 0; i < gaugeSiteSize*N; i++) {
+    for (int i = 0; i < gaugeSiteSize*N_4d; i++) {
       gauge[d][i] /= gauge_param->anisotropy;
     }
   }
     
   // Apply boundary conditions to temporal links
   if (gauge_param->t_boundary == QUDA_ANTI_PERIODIC_T) {
-    for (int j = L1h*L2*L3*(L4-1); j < Nh; j++) {
+    for (int j = L1h*L2*L3*(L4-1); j < Nh_4d; j++) {
       for (int i = 0; i < gaugeSiteSize; i++) {
 	gauge[3][j*gaugeSiteSize+i] *= -1.0;
-	gauge[3][(Nh+j)*gaugeSiteSize+i] *= -1.0;
+	gauge[3][(Nh_4d+j)*gaugeSiteSize+i] *= -1.0;
       }
     }
   }
@@ -323,8 +365,8 @@ void applyGaugeFieldScaling(Float **gauge) {
     // to simulate fixing to the temporal gauge.
     int dir = 3; // time direction only
     Float *even = gauge[dir];
-    Float *odd  = gauge[dir]+Nh*gaugeSiteSize;
-    for (int i = L1h*L2*L3; i < Nh; i++) {
+    Float *odd  = gauge[dir]+Nh_4d*gaugeSiteSize;
+    for (int i = L1h*L2*L3; i < Nh_4d; i++) {
       for (int m = 0; m < 3; m++) {
 	for (int n = 0; n < 3; n++) {
 	  even[i*(3*3*2) + m*(3*2) + n*(2) + 0] = (m==n) ? 1 : 0;
@@ -342,11 +384,11 @@ void constructUnitGaugeField(Float **res) {
   Float *resOdd[4], *resEven[4];
   for (int dir = 0; dir < 4; dir++) {  
     resEven[dir] = res[dir];
-    resOdd[dir]  = res[dir]+Nh*gaugeSiteSize;
+    resOdd[dir]  = res[dir]+Nh_4d*gaugeSiteSize;
   }
     
   for (int dir = 0; dir < 4; dir++) {
-    for (int i = 0; i < Nh; i++) {
+    for (int i = 0; i < Nh_4d; i++) {
       for (int m = 0; m < 3; m++) {
 	for (int n = 0; n < 3; n++) {
 	  resEven[dir][i*(3*3*2) + m*(3*2) + n*(2) + 0] = (m==n) ? 1 : 0;
@@ -382,11 +424,11 @@ void constructGaugeField(Float **res) {
   Float *resOdd[4], *resEven[4];
   for (int dir = 0; dir < 4; dir++) {  
     resEven[dir] = res[dir];
-    resOdd[dir]  = res[dir]+Nh*gaugeSiteSize;
+    resOdd[dir]  = res[dir]+Nh_4d*gaugeSiteSize;
   }
     
   for (int dir = 0; dir < 4; dir++) {
-    for (int i = 0; i < Nh; i++) {
+    for (int i = 0; i < Nh_4d; i++) {
       for (int m = 1; m < 3; m++) { // last 2 rows
 	for (int n = 0; n < 3; n++) { // 3 columns
 	  resEven[dir][i*(3*3*2) + m*(3*2) + n*(2) + 0] = rand() / (Float)RAND_MAX;
@@ -450,9 +492,9 @@ void construct_gauge_field(void **gauge, int type, Precision precision) {
 template <typename Float>
 void constructPointSpinorField(Float *res, int i0, int s0, int c0) {
   Float *resEven = res;
-  Float *resOdd = res + Nh*spinorSiteSize;
+  Float *resOdd = res + Nh_5d*spinorSiteSize;
     
-  for(int i = 0; i < Nh; i++) {
+  for(int i = 0; i < Nh_5d; i++) {
     for (int s = 0; s < 4; s++) {
       for (int m = 0; m < 3; m++) {
 	resEven[i*(4*3*2) + s*(3*2) + m*(2) + 0] = 0;
@@ -460,9 +502,9 @@ void constructPointSpinorField(Float *res, int i0, int s0, int c0) {
 	resOdd[i*(4*3*2) + s*(3*2) + m*(2) + 0] = 0;
 	resOdd[i*(4*3*2) + s*(3*2) + m*(2) + 1] = 0;
 	if (s == s0 && m == c0) {
-	  if (fullLatticeIndex(i, 0) == i0)
+	  if (fullLatticeIndex_5d(i, 0) == i0)
 	    resEven[i*(4*3*2) + s*(3*2) + m*(2) + 0] = 1;
-	  if (fullLatticeIndex(i, 1) == i0)
+	  if (fullLatticeIndex_5d(i, 1) == i0)
 	    resOdd[i*(4*3*2) + s*(3*2) + m*(2) + 0] = 1;
 	}
       }
@@ -472,7 +514,7 @@ void constructPointSpinorField(Float *res, int i0, int s0, int c0) {
 
 template <typename Float>
 void constructSpinorField(Float *res) {
-  for(int i = 0; i < N; i++) {
+  for(int i = 0; i < N_5d; i++) {
     for (int s = 0; s < 4; s++) {
       for (int m = 0; m < 3; m++) {
 	res[i*(4*3*2) + s*(3*2) + m*(2) + 0] = rand() / (Float)RAND_MAX;
@@ -482,6 +524,7 @@ void constructSpinorField(Float *res) {
   }
 }
 
+// Presently, dslash_test_dwf.c calls this with type=1 for initialization of the input spinor.
 void construct_spinor_field(void *spinor, int type, int i0, int s0, int c0, Precision precision) {
   if (type == 0) {
     if (precision == QUDA_DOUBLE_PRECISION) constructPointSpinorField((double*)spinor, i0, s0, c0);
@@ -489,6 +532,14 @@ void construct_spinor_field(void *spinor, int type, int i0, int s0, int c0, Prec
   } else {
     if (precision == QUDA_DOUBLE_PRECISION) constructSpinorField((double*)spinor);
     else constructSpinorField((float*)spinor);
+    // debugging code...
+#ifdef DBUG
+    printf("Input spinor:\n");
+    printSpinorElement(spinor, 0, precision); printf("\n");
+    printSpinorElement(spinor, Nh_5d-1, precision); printf("\n");    
+    printSpinorElement(spinor, Nh_5d, precision); printf("\n");    
+    printSpinorElement(spinor, N_5d-1, precision); printf("\n");    
+#endif    
   }
 }
 
@@ -540,6 +591,7 @@ void compare_spinor(void *spinor_ref, void *spinor_gpu, int len, Precision preci
   else compareSpinor((float*)spinor_ref, (float*)spinor_gpu, len);
 }
 
+// Prints 1st and last.
 void strong_check(void *spinorRef, void *spinorGPU, int len, Precision prec) {
   printf("Reference:\n");
   printSpinorElement(spinorRef, 0, prec); printf("...\n");

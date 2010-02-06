@@ -1,21 +1,26 @@
-#ifndef _QUDA_DSLASH_H
-#define _QUDA_DSLASH_H
+// Ver. 09.12.a
+
+#ifndef DSLASH_DWF_QUDA_H
+#define DSLASH_DWF_QUDA_H
 
 #include <cuComplex.h>
 
 #include <quda.h>
 
+
 #define gaugeSiteSize 18 // real numbers per link
 #define spinorSiteSize 24 // real numbers per spinor
-#define cloverSiteSize 72 // real numbers per block-diagonal clover matrix
+
+// Got rid of clover.
 
 #define BLOCK_DIM (64) // threads per block
-#define GRID_DIM (Nh/BLOCK_DIM) // there are Nh threads in total
+#define GRID_DIM (Nh_5d/BLOCK_DIM) // there are Nh_5d threads in total.
 
-#define PACKED12_GAUGE_BYTES (4*Nh*12*sizeof(float))
-#define PACKED8_GAUGE_BYTES (4*Nh*8*sizeof(float))
+//J  Gauge doesn't care if it's dwf.  Use Nh_4d.
+#define PACKED12_GAUGE_BYTES (4*Nh_4d*12*sizeof(float))
+#define PACKED8_GAUGE_BYTES (4*Nh_4d*8*sizeof(float))
 
-#define CLOVER_BYTES (Nh*cloverSiteSize*sizeof(float))
+// Got rid of clover.
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,7 +32,6 @@ extern "C" {
   extern QudaGaugeParam *gauge_param;
   extern QudaInvertParam *invert_param;
 
-  extern FullClover cudaClover;
 
 // ---------- dslash_quda.cu ----------
 
@@ -36,47 +40,52 @@ extern "C" {
   void bindGaugeTex(FullGauge gauge, int oddBit);
 
   // Double precision routines
-  void dslashDCuda(ParitySpinor res, FullGauge gauge, ParitySpinor spinor,
-		   int oddBit, int daggerBit);
-  void dslashXpayDCuda(ParitySpinor res, FullGauge gauge, ParitySpinor spinor, 
-		       int oddBit, int daggerBit, ParitySpinor x, double a);
+  void dslashD_dwf_Cuda(ParitySpinor res, FullGauge gauge, ParitySpinor spinor,
+		   int oddBit, int daggerBit, double mferm);
+  //ok
+  void dslashXpayD_dwf_Cuda(ParitySpinor res, FullGauge gauge, ParitySpinor spinor, 
+		       int oddBit, int daggerBit, ParitySpinor x, double mferm, double a);
 
   // Single precision routines
-  void dslashSCuda(ParitySpinor res, FullGauge gauge, ParitySpinor spinor,
-		   int oddBit, int daggerBit);
-  void dslashXpaySCuda(ParitySpinor res, FullGauge gauge, ParitySpinor spinor, 
-		       int oddBit, int daggerBit, ParitySpinor x, double a);
+  void dslashS_dwf_Cuda(ParitySpinor res, FullGauge gauge, ParitySpinor spinor,
+		   int oddBit, int daggerBit, double mferm);
+  //ok
+  void dslashXpayS_dwf_Cuda(ParitySpinor res, FullGauge gauge, ParitySpinor spinor, 
+		       int oddBit, int daggerBit, ParitySpinor x, double mferm, double a);
 
   // Half precision dslash routines
-  void dslashHCuda(ParitySpinor res, FullGauge gauge, ParitySpinor spinor,
-		   int oddBit, int daggerBit);
-  void dslashXpayHCuda(ParitySpinor res, FullGauge gauge, ParitySpinor spinor, 
-		       int oddBit, int daggerBit, ParitySpinor x, double a);
+  void dslashH_dwf_Cuda(ParitySpinor res, FullGauge gauge, ParitySpinor spinor,
+		   int oddBit, int daggerBit, double mferm);
+  void dslashXpayH_dwf_Cuda(ParitySpinor res, FullGauge gauge, ParitySpinor spinor, 
+		       int oddBit, int daggerBit, ParitySpinor x, double mferm, double a);
 
   // wrapper to above
-  void dslashCuda(ParitySpinor out, FullGauge gauge, ParitySpinor in, int parity, int dagger);
-  void dslashXpayCuda(ParitySpinor out, FullGauge gauge, ParitySpinor in, int parity, int dagger,
-		      ParitySpinor x, double a);
+  void dslash_dwf_Cuda(ParitySpinor out, FullGauge gauge, ParitySpinor in,
+    int parity, int dagger, double mferm);
+  //ok
+  void dslashXpay_dwf_Cuda(ParitySpinor out, FullGauge gauge, ParitySpinor in, int parity, int dagger,
+		      ParitySpinor x, double mferm, double a);
 
-  // Full Wilson matrix
-  void MatCuda(FullSpinor out, FullGauge gauge, FullSpinor in, double kappa, int daggerBit);
+  // Full DWF matrix.  See dslash_quda.cu.
+  // ok
+  void Mat_dwf_Cuda(FullSpinor out, FullGauge gauge, FullSpinor in, 
+                  double kappa, int daggerBit, double mferm);
 
-  void MatPCCuda(ParitySpinor outEven, FullGauge gauge, ParitySpinor inEven, 
-		 double kappa, ParitySpinor tmp, MatPCType matpc_type, int daggerBit);
+  //ok
+  void MatPC_dwf_Cuda(ParitySpinor outEven, FullGauge gauge, ParitySpinor inEven, 
+		 double kappa, ParitySpinor tmp, MatPCType matpc_type, int daggerBit,
+     double mferm);
 
-  void MatPCDagMatPCCuda(ParitySpinor outEven, FullGauge gauge, ParitySpinor inEven,
-			 double kappa, ParitySpinor tmp, MatPCType matpc_type);
+  //ok
+  void MatPCDagMatPC_dwf_Cuda(ParitySpinor outEven, FullGauge gauge, ParitySpinor inEven,
+			 double kappa, ParitySpinor tmp, MatPCType matpc_type, double mferm);
   
-  /*QudaSumComplex MatPCcDotWXCuda(ParitySpinor outEven, FullGauge gauge, ParitySpinor inEven, 
-				 float kappa, ParitySpinor tmp, ParitySpinor d, MatPCType matpc_type);
-  QudaSumComplex MatPCDagcDotWXCuda(ParitySpinor outEven, FullGauge gauge, ParitySpinor inEven, 
-  float kappa, ParitySpinor tmp, ParitySpinor d, MatPCType matpc_type);*/
   
-  // -- inv_cg_cuda.cpp
+  // -- inv_cg_quda.cpp
   void invertCgCuda(ParitySpinor x, ParitySpinor b, FullGauge gauge, 
 		    ParitySpinor tmp, QudaInvertParam *param);
   
-  // -- inv_bicgstab_cuda.cpp
+  // -- inv_bicgstab_quda.cpp
   void invertBiCGstabCuda(ParitySpinor x, ParitySpinor b, FullGauge gaugeSloppy, 
 			  FullGauge gaugePrecise, ParitySpinor tmp, 
 			  QudaInvertParam *param, DagType dag_type);
@@ -85,4 +94,5 @@ extern "C" {
 }
 #endif
 
-#endif // _QUDA_DLASH_H
+#endif
+

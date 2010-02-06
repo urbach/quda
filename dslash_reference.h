@@ -9,14 +9,22 @@ extern "C" {
 
   // -- dslash_reference.cpp
   
-  void dslash_reference(void *res, void **gauge, void *spinorField, 
-			int oddBit, int daggerBit, Precision sPrecision, Precision gPrecision);
+  void dslash_reference_5d(void *res, void **gauge, void *spinorField, 
+			int oddBit, int daggerBit, Precision sPrecision, Precision gPrecision, double mferm);
   
-  void mat(void *out, void **gauge, void *in, double kappa, int daggerBit, Precision sPrecision, Precision gPrecision);
+  void mat(void *out, void **gauge, void *in, double kappa, int daggerBit, Precision sPrecision, Precision gPrecision,
+                  double mferm);
 
   void matpc(void *out, void **gauge, void *in, double kappa, MatPCType matpc_type, 
-	     int daggerBit, Precision sPrecision, Precision gPrecision);
+	     int daggerBit, Precision sPrecision, Precision gPrecision, double mferm);
 
+// Wrapper to templates that handles different precisions.
+void matdagmat(void *out, void **gauge, void *in, double kappa,
+	 Precision sPrecision, Precision gPrecision, double mferm);
+
+// Wrapper to templates that handles different precisions.
+void matpcdagmatpc(void *out, void **gauge, void *in, double kappa,
+	 Precision sPrecision, Precision gPrecision, double mferm, MatPCType matpc_type);
   
 #ifdef __cplusplus
 }
