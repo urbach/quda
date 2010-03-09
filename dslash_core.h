@@ -260,8 +260,15 @@ o32_re = o32_im = 0;
     int ga_idx = (sid % Nh);
     
     // read gauge matrix from device memory
-    //J  Q. Where is GAUGE0TEX defined?  A. In dslash_dwf_def.h.
+    // GAUGE0TEX is defined in dslash_dwf_def.h.
     //
+    //J  *** Note:  The two options of this if statement are
+    //J  not put into if {} else {} prior to all the computation
+    //J  code that follows because READ_GAUGE_MATRIX declares
+    //J  G0, G1 and they would only have scope inside the {}
+    //J  if we did that.  Then they would be invisible to the
+    //J  calculation code that follows.  That is why I did this
+    //J  ugly code repetition. ***
     if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
       // gauge field same parity.
       READ_GAUGE_MATRIX(GAUGE0TEX, 0);
