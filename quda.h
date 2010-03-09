@@ -21,14 +21,9 @@
 #define L1h (L1/2) // half of the full "x" dimension, useful for even/odd lattice indexing
 
 //J  Important:  the gauge fields and spinor fields see a different
-//J  number of lattice sites, due to A_\mu indep. of s.  Had to make
-//J  a decision how to handle this.  Decided to not define N or Nh,
-//J  so that we are forced to look at each instance
-//J  where those things were used in Wilson code,
-//J  and to contemplate how to modify.
-//J  Thus I define N_4d, Nh_4d, N_5d, Nh_5d instead.
-#define N_4d (L1*L2*L3*L4) // total number of lattice points
-#define Nh_4d (L1h*L2*L3*L4) // total number of even/odd lattice points
+//J  number of lattice sites, due to A_\mu indep. of s.
+#define N (L1*L2*L3*L4) // total number of lattice points
+#define Nh (L1h*L2*L3*L4) // total number of even/odd lattice points
 #define N_5d (L1*L2*L3*L4*Ls) // total number of lattice points
 // Nh_5d is the total number of threads.
 #define Nh_5d (L1h*L2*L3*L4*Ls) // total number of even/odd lattice points

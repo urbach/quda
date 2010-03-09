@@ -84,9 +84,9 @@ void printGaugeElement(void *gauge, int X, Precision precision) {
       
   } else {
     if (precision == QUDA_DOUBLE_PRECISION)
-      for (int m = 0; m < 3; m++) printVector((double*)gauge + (X/2+Nh_4d)*gaugeSiteSize + m*3*2);
+      for (int m = 0; m < 3; m++) printVector((double*)gauge + (X/2+Nh)*gaugeSiteSize + m*3*2);
     else
-      for (int m = 0; m < 3; m++) printVector((float*)gauge + (X/2+Nh_4d)*gaugeSiteSize + m*3*2);
+      for (int m = 0; m < 3; m++) printVector((float*)gauge + (X/2+Nh)*gaugeSiteSize + m*3*2);
   }
 }
 
@@ -324,7 +324,7 @@ int compare_floats(void *a, void *b, int len, double epsilon, Precision precisio
 // Cf. GPGPU code in dslash_core_ante.h.
 // There, i is the thread index.
 int fullLatticeIndex_4d(int i, int oddBit) {
-  if (i >= Nh_4d || i < 0) myerror("i out of range in fullLatticeIndex_4d");
+  if (i >= Nh || i < 0) myerror("i out of range in fullLatticeIndex_4d");
   int boundaryCrossings = i/L1h + i/(L2*L1h) + i/(L3*L2*L1h);
   return 2*i + (boundaryCrossings + oddBit) % 2;
 }
@@ -345,17 +345,17 @@ template <typename Float>
 void applyGaugeFieldScaling(Float **gauge) {
   // Apply spatial scaling factor (u0) to spatial links
   for (int d = 0; d < 3; d++) {
-    for (int i = 0; i < gaugeSiteSize*N_4d; i++) {
+    for (int i = 0; i < gaugeSiteSize*N; i++) {
       gauge[d][i] /= gauge_param->anisotropy;
     }
   }
     
   // Apply boundary conditions to temporal links
   if (gauge_param->t_boundary == QUDA_ANTI_PERIODIC_T) {
-    for (int j = L1h*L2*L3*(L4-1); j < Nh_4d; j++) {
+    for (int j = L1h*L2*L3*(L4-1); j < Nh; j++) {
       for (int i = 0; i < gaugeSiteSize; i++) {
 	gauge[3][j*gaugeSiteSize+i] *= -1.0;
-	gauge[3][(Nh_4d+j)*gaugeSiteSize+i] *= -1.0;
+	gauge[3][(Nh+j)*gaugeSiteSize+i] *= -1.0;
       }
     }
   }
@@ -365,8 +365,8 @@ void applyGaugeFieldScaling(Float **gauge) {
     // to simulate fixing to the temporal gauge.
     int dir = 3; // time direction only
     Float *even = gauge[dir];
-    Float *odd  = gauge[dir]+Nh_4d*gaugeSiteSize;
-    for (int i = L1h*L2*L3; i < Nh_4d; i++) {
+    Float *odd  = gauge[dir]+Nh*gaugeSiteSize;
+    for (int i = L1h*L2*L3; i < Nh; i++) {
       for (int m = 0; m < 3; m++) {
 	for (int n = 0; n < 3; n++) {
 	  even[i*(3*3*2) + m*(3*2) + n*(2) + 0] = (m==n) ? 1 : 0;
@@ -384,11 +384,11 @@ void constructUnitGaugeField(Float **res) {
   Float *resOdd[4], *resEven[4];
   for (int dir = 0; dir < 4; dir++) {  
     resEven[dir] = res[dir];
-    resOdd[dir]  = res[dir]+Nh_4d*gaugeSiteSize;
+    resOdd[dir]  = res[dir]+Nh*gaugeSiteSize;
   }
     
   for (int dir = 0; dir < 4; dir++) {
-    for (int i = 0; i < Nh_4d; i++) {
+    for (int i = 0; i < Nh; i++) {
       for (int m = 0; m < 3; m++) {
 	for (int n = 0; n < 3; n++) {
 	  resEven[dir][i*(3*3*2) + m*(3*2) + n*(2) + 0] = (m==n) ? 1 : 0;
@@ -424,11 +424,11 @@ void constructGaugeField(Float **res) {
   Float *resOdd[4], *resEven[4];
   for (int dir = 0; dir < 4; dir++) {  
     resEven[dir] = res[dir];
-    resOdd[dir]  = res[dir]+Nh_4d*gaugeSiteSize;
+    resOdd[dir]  = res[dir]+Nh*gaugeSiteSize;
   }
     
   for (int dir = 0; dir < 4; dir++) {
-    for (int i = 0; i < Nh_4d; i++) {
+    for (int i = 0; i < Nh; i++) {
       for (int m = 1; m < 3; m++) { // last 2 rows
 	for (int n = 0; n < 3; n++) { // 3 columns
 	  resEven[dir][i*(3*3*2) + m*(3*2) + n*(2) + 0] = rand() / (Float)RAND_MAX;

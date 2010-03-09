@@ -19,71 +19,71 @@ inline short FloatToShort(Float a) {
 
 template <typename Float>
 inline void pack8(double2 *res, Float *g, int dir) {
-  double2 *r = res + dir*2*Nh_4d;
+  double2 *r = res + dir*2*Nh;
   r[0].x = atan2(g[1], g[0]);
   r[0].y = atan2(g[13], g[12]);
-  r[Nh_4d].x = g[2];
-  r[Nh_4d].y = g[3];
-  r[2*Nh_4d].x = g[4];
-  r[2*Nh_4d].y = g[5];
-  r[3*Nh_4d].x = g[6];
-  r[3*Nh_4d].y = g[7];
+  r[Nh].x = g[2];
+  r[Nh].y = g[3];
+  r[2*Nh].x = g[4];
+  r[2*Nh].y = g[5];
+  r[3*Nh].x = g[6];
+  r[3*Nh].y = g[7];
 }
 
 template <typename Float>
 inline void pack8(float4 *res, Float *g, int dir) {
-  float4 *r = res + dir*4*Nh_4d;
+  float4 *r = res + dir*4*Nh;
   r[0].x = atan2(g[1], g[0]);
   r[0].y = atan2(g[13], g[12]);
   r[0].z = g[2];
   r[0].w = g[3];
-  r[Nh_4d].x = g[4];
-  r[Nh_4d].y = g[5];
-  r[Nh_4d].z = g[6];
-  r[Nh_4d].w = g[7];
+  r[Nh].x = g[4];
+  r[Nh].y = g[5];
+  r[Nh].z = g[6];
+  r[Nh].w = g[7];
 }
 
 template <typename Float>
 inline void pack8(short4 *res, Float *g, int dir) {
-  short4 *r = res + dir*4*Nh_4d;
+  short4 *r = res + dir*4*Nh;
   r[0].x = FloatToShort(atan2(g[1], g[0])/ M_PI);
   r[0].y = FloatToShort(atan2(g[13], g[12])/ M_PI);
   r[0].z = FloatToShort(g[2]);
   r[0].w = FloatToShort(g[3]);
-  r[Nh_4d].x = FloatToShort(g[4]);
-  r[Nh_4d].y = FloatToShort(g[5]);
-  r[Nh_4d].z = FloatToShort(g[6]);
-  r[Nh_4d].w = FloatToShort(g[7]);
+  r[Nh].x = FloatToShort(g[4]);
+  r[Nh].y = FloatToShort(g[5]);
+  r[Nh].z = FloatToShort(g[6]);
+  r[Nh].w = FloatToShort(g[7]);
 }
 
 template <typename Float>
 inline void pack12(double2 *res, Float *g, int dir) {
-  double2 *r = res + dir*6*Nh_4d;
+  double2 *r = res + dir*6*Nh;
   for (int j=0; j<6; j++) {
-    r[j*Nh_4d].x = g[j*2+0]; 
-    r[j*Nh_4d].y = g[j*2+1]; 
+    r[j*Nh].x = g[j*2+0]; 
+    r[j*Nh].y = g[j*2+1]; 
   }
 }
 
 template <typename Float>
 inline void pack12(float4 *res, Float *g, int dir) {
-  float4 *r = res + dir*3*Nh_4d;
+  float4 *r = res + dir*3*Nh;
   for (int j=0; j<3; j++) {
-    r[j*Nh_4d].x = (float)g[j*4+0]; 
-    r[j*Nh_4d].y = (float)g[j*4+1]; 
-    r[j*Nh_4d].z = (float)g[j*4+2]; 
-    r[j*Nh_4d].w = (float)g[j*4+3];
+    r[j*Nh].x = (float)g[j*4+0]; 
+    r[j*Nh].y = (float)g[j*4+1]; 
+    r[j*Nh].z = (float)g[j*4+2]; 
+    r[j*Nh].w = (float)g[j*4+3];
   }
 }
 
 template <typename Float>
 inline void pack12(short4 *res, Float *g, int dir) {
-  short4 *r = res + dir*3*Nh_4d;
+  short4 *r = res + dir*3*Nh;
   for (int j=0; j<3; j++) {
-    r[j*Nh_4d].x = FloatToShort(g[j*4+0]);
-    r[j*Nh_4d].y = FloatToShort(g[j*4+1]);
-    r[j*Nh_4d].z = FloatToShort(g[j*4+2]);
-    r[j*Nh_4d].w = FloatToShort(g[j*4+3]);
+    r[j*Nh].x = FloatToShort(g[j*4+0]);
+    r[j*Nh].y = FloatToShort(g[j*4+1]);
+    r[j*Nh].z = FloatToShort(g[j*4+2]);
+    r[j*Nh].w = FloatToShort(g[j*4+3]);
   }
 }
 
@@ -93,13 +93,13 @@ template <typename Float, typename FloatN>
 void packQDPGaugeField(FloatN *res, Float **gauge, int oddBit, ReconstructType reconstruct) {
   if (reconstruct == QUDA_RECONSTRUCT_12) {
     for (int dir = 0; dir < 4; dir++) {
-      Float *g = gauge[dir] + oddBit*Nh_4d*gaugeSiteSize;
-      for (int i = 0; i < Nh_4d; i++) pack12(res+i, g+i*18, dir);
+      Float *g = gauge[dir] + oddBit*Nh*gaugeSiteSize;
+      for (int i = 0; i < Nh; i++) pack12(res+i, g+i*18, dir);
     }
   } else {
     for (int dir = 0; dir < 4; dir++) {
-      Float *g = gauge[dir] + oddBit*Nh_4d*gaugeSiteSize;
-      for (int i = 0; i < Nh_4d; i++) pack8(res+i, g+i*18, dir);
+      Float *g = gauge[dir] + oddBit*Nh*gaugeSiteSize;
+      for (int i = 0; i < Nh; i++) pack8(res+i, g+i*18, dir);
     }
   }
 }
@@ -111,8 +111,8 @@ void packCPSGaugeField(FloatN *res, Float *gauge, int oddBit, ReconstructType re
   Float gT[18];
   if (reconstruct == QUDA_RECONSTRUCT_12) {
     for (int dir = 0; dir < 4; dir++) {
-      Float *g = gauge + (oddBit*Nh_4d*4+dir)*gaugeSiteSize;
-      for (int i = 0; i < Nh_4d; i++) {
+      Float *g = gauge + (oddBit*Nh*4+dir)*gaugeSiteSize;
+      for (int i = 0; i < Nh; i++) {
 	// Must reorder rows-columns
 	for (int ic=0; ic<2; ic++) for (int jc=0; jc<3; jc++) for (int r=0; r<2; r++)
 	  gT[(ic*3+jc)*2+r] = g[4*i*18 + (jc*3+ic)*2+r];      
@@ -121,8 +121,8 @@ void packCPSGaugeField(FloatN *res, Float *gauge, int oddBit, ReconstructType re
     } 
   } else {
     for (int dir = 0; dir < 4; dir++) {
-      Float *g = gauge + (oddBit*Nh_4d*4+dir)*gaugeSiteSize;
-      for (int i = 0; i < Nh_4d; i++) {
+      Float *g = gauge + (oddBit*Nh*4+dir)*gaugeSiteSize;
+      for (int i = 0; i < Nh; i++) {
 	// Must reorder rows-columns
 	for (int ic=0; ic<3; ic++) for (int jc=0; jc<3; jc++) for (int r=0; r<2; r++)
 	  gT[(ic*3+jc)*2+r] = g[4*i*18 + (jc*3+ic)*2+r];      
@@ -144,7 +144,7 @@ void allocateGaugeField(FullGauge *cudaGauge, ReconstructType reconstruct, Preci
   else floatSize = sizeof(float)/2;
 
   int elements = (reconstruct == QUDA_RECONSTRUCT_8) ? 8 : 12;
-  cudaGauge->packedGaugeBytes = 4*Nh_4d*elements*floatSize;
+  cudaGauge->packedGaugeBytes = 4*Nh*elements*floatSize;
 
   if (!cudaGauge->even) {
     if (cudaMalloc((void **)&cudaGauge->even, cudaGauge->packedGaugeBytes) == cudaErrorMemoryAllocation) {

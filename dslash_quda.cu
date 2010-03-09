@@ -104,7 +104,7 @@ void setCudaGaugeParam() {
 //ok
 void bindGaugeTex(FullGauge gauge, int oddBit) {
   int reconstruct = (gauge.reconstruct == QUDA_RECONSTRUCT_12) ? 12 : 8;
-  int packed_gauge_bytes = 4*Nh_4d*reconstruct;
+  int packed_gauge_bytes = 4*Nh*reconstruct;
 
   if (gauge.precision == QUDA_DOUBLE_PRECISION) {
     packed_gauge_bytes *= sizeof(double);

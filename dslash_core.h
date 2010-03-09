@@ -257,7 +257,7 @@ o32_re = o32_im = 0;
     //J  Hop forward?  Yes, and this is for the input spinor.
     int sp_idx = ((x1==L1-1) ? X-(L1-1) : X+1) / 2;
     //J  Link not hopped.  But need to project to 4d lattice.
-    int ga_idx = (sid % Nh_4d);
+    int ga_idx = (sid % Nh);
     
     // read gauge matrix from device memory
     //J  Q. Where is GAUGE0TEX defined?  A. In dslash_dwf_def.h.
@@ -435,7 +435,7 @@ o32_re = o32_im = 0;
     int sp_idx = ((x1==0)    ? X+(L1-1) : X-1) / 2;
     //J  Link also hops.
     // ** HERE : need gymnastics because xs=0 for gauge parity. **
-    int ga_idx = sp_idx % Nh_4d;
+    int ga_idx = sp_idx % Nh;
     
     // read gauge matrix from device memory
     // NB:  Here GAUGE1TEX is used, which is different from in P0- above!
@@ -595,7 +595,7 @@ o32_re = o32_im = 0;
     // -1 0 0 1 
     
     int sp_idx = ((x2==L2-1) ? X-(L2-1)*L1 : X+L1) / 2;
-    int ga_idx = sid  % Nh_4d;
+    int ga_idx = sid  % Nh;
     
     // read gauge matrix from device memory
     if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
@@ -748,7 +748,7 @@ o32_re = o32_im = 0;
     // 1 0 0 1 
     
     int sp_idx = ((x2==0)    ? X+(L2-1)*L1 : X-L1) / 2;
-    int ga_idx = sp_idx % Nh_4d;
+    int ga_idx = sp_idx % Nh;
     
     // read gauge matrix from device memory
     if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
@@ -902,7 +902,7 @@ o32_re = o32_im = 0;
     // 0 -i 0 1 
     
     int sp_idx = ((x3==L3-1) ? X-(L3-1)*L2*L1 : X+L2*L1) / 2;
-    int ga_idx = sid % Nh_4d;
+    int ga_idx = sid % Nh;
     
     // read gauge matrix from device memory
     if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
@@ -1055,7 +1055,7 @@ o32_re = o32_im = 0;
     // 0 i 0 1 
     
     int sp_idx = ((x3==0)    ? X+(L3-1)*L2*L1 : X-L2*L1) / 2;
-    int ga_idx = sp_idx % Nh_4d;
+    int ga_idx = sp_idx % Nh;
     
     // read gauge matrix from device memory
     if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
@@ -1209,7 +1209,7 @@ o32_re = o32_im = 0;
     // 0 0 0 2 
     
     int sp_idx = ((x4==L4-1) ? X-(L4-1)*L3*L2*L1 : X+L3*L2*L1) / 2;
-    int ga_idx = sid % Nh_4d;
+    int ga_idx = sid % Nh;
     
     if (gauge_fixed && ga_idx < (L4-1)*L1h*L2*L3) {
         // read spinor from device memory
@@ -1384,7 +1384,7 @@ o32_re = o32_im = 0;
     // 0 0 0 0 
     
     int sp_idx = ((x4==0)    ? X+(L4-1)*L3*L2*L1 : X-L3*L2*L1) / 2;
-    int ga_idx = sp_idx % Nh_4d;
+    int ga_idx = sp_idx % Nh;
     
     if (gauge_fixed && ga_idx < (L4-1)*L1h*L2*L3) {
         // read spinor from device memory
@@ -1569,12 +1569,12 @@ o32_re = o32_im = 0;
       //J  We are left-handed, so hop backwards.  If we are at 
       //J  boundary in s-direction, special
       //J  things will need to be done.  xs is defined in dslash_core_ante.h.
-      //J  See near Line 328.  N_4d is the 4d volume; cf. quda.h. 
+      //J  See near Line 328.  N is the 4d volume; cf. quda.h. 
       //J  Cf. hand-written notes 8/6/09 for check of logic.
       //J  The logic sets xs to the s-coordinate of the output
       //J  spinor, which is accumulated by this thread.
       //J  I.e., it uses the thread index to determine xs.
-      int sp_idx = ((xs==0) ? X+(Ls-1)*N_4d : X-N_4d) / 2;
+      int sp_idx = ((xs==0) ? X+(Ls-1)*N : X-N) / 2;
       // --- Read spinor from device memory. ---
       //
       READ_SPINOR(SPINORTEX);
@@ -1704,7 +1704,7 @@ o32_re = o32_im = 0;
       //J  
       //J  TODO  Check logic w/ case examples.
       //J  Cf. hand-written notes 8/6/09 for check of logic.
-      int sp_idx = ((xs==(Ls-1)) ? X-(Ls-1)*N_4d : X+N_4d) / 2;
+      int sp_idx = ((xs==(Ls-1)) ? X-(Ls-1)*N : X+N) / 2;
          
       //J  Read spinor from device memory.
       //

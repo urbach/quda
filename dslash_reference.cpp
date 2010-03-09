@@ -305,15 +305,15 @@ void dslashReference_4d(sFloat *res, gFloat **gaugeFull, sFloat *spinorField,
   // gauge array.
   for (int dir = 0; dir < 4; dir++) {  
     gaugeEven[dir] = gaugeFull[dir];
-    // Note the use of Nh_4d here, since the gauge fields
+    // Note the use of Nh here, since the gauge fields
     // are 4-dim'l.
-    gaugeOdd[dir]  = gaugeFull[dir]+Nh_4d*gaugeSiteSize;
+    gaugeOdd[dir]  = gaugeFull[dir]+Nh*gaugeSiteSize;
   }
   int sp_idx,oddBit_gge;
   for (int xs=0;xs<Ls;xs++) {
-    for (int gge_idx = 0; gge_idx < Nh_4d; gge_idx++) {
+    for (int gge_idx = 0; gge_idx < Nh; gge_idx++) {
       for (int dir = 0; dir < 8; dir++) {
-        sp_idx=gge_idx+Nh_4d*xs;
+        sp_idx=gge_idx+Nh*xs;
         // Here is a function call to study.  It is defined near
         // Line 90 of this file.
         // Here we have to switch oddBit depending on the value of xs.  E.g., suppose

@@ -30,21 +30,21 @@
     a##_im -= b##_re * c##_im + b##_im * c##_re
 
 #define READ_GAUGE_MATRIX_12_DOUBLE(gauge, dir) \
-  double2 G0 = fetch_double2((gauge), ga_idx + ((dir/2)*6+0)*Nh_4d);	\
-  double2 G1 = fetch_double2((gauge), ga_idx + ((dir/2)*6+1)*Nh_4d);	\
-  double2 G2 = fetch_double2((gauge), ga_idx + ((dir/2)*6+2)*Nh_4d);	\
-  double2 G3 = fetch_double2((gauge), ga_idx + ((dir/2)*6+3)*Nh_4d);	\
-  double2 G4 = fetch_double2((gauge), ga_idx + ((dir/2)*6+4)*Nh_4d);	\
-  double2 G5 = fetch_double2((gauge), ga_idx + ((dir/2)*6+5)*Nh_4d);	\
+  double2 G0 = fetch_double2((gauge), ga_idx + ((dir/2)*6+0)*Nh);	\
+  double2 G1 = fetch_double2((gauge), ga_idx + ((dir/2)*6+1)*Nh);	\
+  double2 G2 = fetch_double2((gauge), ga_idx + ((dir/2)*6+2)*Nh);	\
+  double2 G3 = fetch_double2((gauge), ga_idx + ((dir/2)*6+3)*Nh);	\
+  double2 G4 = fetch_double2((gauge), ga_idx + ((dir/2)*6+4)*Nh);	\
+  double2 G5 = fetch_double2((gauge), ga_idx + ((dir/2)*6+5)*Nh);	\
   double2 G6 = make_double2(0,0);					\
   double2 G7 = make_double2(0,0);					\
   double2 G8 = make_double2(0,0);					\
   double2 G9 = make_double2(0,0);				
 
 #define READ_GAUGE_MATRIX_12_SINGLE(gauge, dir) \
-  float4 G0 = tex1Dfetch((gauge), ga_idx + ((dir/2)*3+0)*Nh_4d);	\
-  float4 G1 = tex1Dfetch((gauge), ga_idx + ((dir/2)*3+1)*Nh_4d);	\
-  float4 G2 = tex1Dfetch((gauge), ga_idx + ((dir/2)*3+2)*Nh_4d);	\
+  float4 G0 = tex1Dfetch((gauge), ga_idx + ((dir/2)*3+0)*Nh);	\
+  float4 G1 = tex1Dfetch((gauge), ga_idx + ((dir/2)*3+1)*Nh);	\
+  float4 G2 = tex1Dfetch((gauge), ga_idx + ((dir/2)*3+2)*Nh);	\
   float4 G3 = make_float4(0,0,0,0);				\
   float4 G4 = make_float4(0,0,0,0);				
 
@@ -70,10 +70,10 @@
 
 // set A to be last components of G4 (otherwise unused)
 #define READ_GAUGE_MATRIX_8_DOUBLE(gauge, dir)				\
-  double2 G0 = fetch_double2((gauge), ga_idx + ((dir/2)*4+0)*Nh_4d);	\
-  double2 G1 = fetch_double2((gauge), ga_idx + ((dir/2)*4+1)*Nh_4d);	\
-  double2 G2 = fetch_double2((gauge), ga_idx + ((dir/2)*4+2)*Nh_4d);	\
-  double2 G3 = fetch_double2((gauge), ga_idx + ((dir/2)*4+3)*Nh_4d);	\
+  double2 G0 = fetch_double2((gauge), ga_idx + ((dir/2)*4+0)*Nh);	\
+  double2 G1 = fetch_double2((gauge), ga_idx + ((dir/2)*4+1)*Nh);	\
+  double2 G2 = fetch_double2((gauge), ga_idx + ((dir/2)*4+2)*Nh);	\
+  double2 G3 = fetch_double2((gauge), ga_idx + ((dir/2)*4+3)*Nh);	\
   double2 G4 = make_double2(0,0);					\
   double2 G5 = make_double2(0,0);					\
   double2 G6 = make_double2(0,0);					\
@@ -85,8 +85,8 @@
 
 // set A to be last components of G4 (otherwise unused)
 #define READ_GAUGE_MATRIX_8_SINGLE(gauge, dir)			\
-  float4 G0 = tex1Dfetch((gauge), ga_idx + ((dir/2)*2+0)*Nh_4d);	\
-  float4 G1 = tex1Dfetch((gauge), ga_idx + ((dir/2)*2+1)*Nh_4d);	\
+  float4 G0 = tex1Dfetch((gauge), ga_idx + ((dir/2)*2+0)*Nh);	\
+  float4 G1 = tex1Dfetch((gauge), ga_idx + ((dir/2)*2+1)*Nh);	\
   float4 G2 = make_float4(0,0,0,0);				\
   float4 G3 = make_float4(0,0,0,0);				\
   float4 G4 = make_float4(0,0,0,0);				\
@@ -94,8 +94,8 @@
   g21_im = g00_im;
 
 #define READ_GAUGE_MATRIX_8_HALF(gauge, dir)			\
-  float4 G0 = tex1Dfetch((gauge), ga_idx + ((dir/2)*2+0)*Nh_4d);	\
-  float4 G1 = tex1Dfetch((gauge), ga_idx + ((dir/2)*2+1)*Nh_4d);	\
+  float4 G0 = tex1Dfetch((gauge), ga_idx + ((dir/2)*2+0)*Nh);	\
+  float4 G1 = tex1Dfetch((gauge), ga_idx + ((dir/2)*2+1)*Nh);	\
   float4 G2 = make_float4(0,0,0,0);				\
   float4 G3 = make_float4(0,0,0,0);				\
   float4 G4 = make_float4(0,0,0,0);				\

@@ -217,7 +217,7 @@ o32_re = o32_im = 0;
   // -i 0 0 1 
     
   int sp_idx = ((x1==L1-1) ? X-(L1-1) : X+1) / 2;
-  int ga_idx = sid % Nh_4d;
+  int ga_idx = sid % Nh;
   if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {    
     // read gauge matrix from device memory
     READ_GAUGE_MATRIX(GAUGE0TEX, 0);
@@ -369,7 +369,7 @@ o32_re = o32_im = 0;
   // i 0 0 1 
     
   int sp_idx = ((x1==0)    ? X+(L1-1) : X-1) / 2;
-  int ga_idx = sp_idx % Nh_4d;
+  int ga_idx = sp_idx % Nh;
 
   if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {    
     // read gauge matrix from device memory
@@ -520,7 +520,7 @@ o32_re = o32_im = 0;
   // 1 0 0 1 
     
   int sp_idx = ((x2==L2-1) ? X-(L2-1)*L1 : X+L1) / 2;
-  int ga_idx = sid % Nh_4d;
+  int ga_idx = sid % Nh;
   
   if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
     
@@ -675,7 +675,7 @@ o32_re = o32_im = 0;
     // -1 0 0 1 
     
     int sp_idx = ((x2==0)    ? X+(L2-1)*L1 : X-L1) / 2;
-    int ga_idx = sp_idx % Nh_4d;
+    int ga_idx = sp_idx % Nh;
   
   if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
     
@@ -827,7 +827,7 @@ o32_re = o32_im = 0;
     // 0 i 0 1 
     
     int sp_idx = ((x3==L3-1) ? X-(L3-1)*L2*L1 : X+L2*L1) / 2;
-    int ga_idx = sid % Nh_4d;
+    int ga_idx = sid % Nh;
   
   if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
     
@@ -981,7 +981,7 @@ o32_re = o32_im = 0;
     // 0 -i 0 1 
     
     int sp_idx = ((x3==0)    ? X+(L3-1)*L2*L1 : X-L2*L1) / 2;
-    int ga_idx = sp_idx % Nh_4d;
+    int ga_idx = sp_idx % Nh;
     
   if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
     
@@ -1136,7 +1136,7 @@ o32_re = o32_im = 0;
     // 0 0 0 0 
     
     int sp_idx = ((x4==L4-1) ? X-(L4-1)*L3*L2*L1 : X+L3*L2*L1) / 2;
-    int ga_idx = sid % Nh_4d;
+    int ga_idx = sid % Nh;
     
     if (gauge_fixed && ga_idx < (L4-1)*L1h*L2*L3) {
         // read spinor from device memory
@@ -1311,7 +1311,7 @@ o32_re = o32_im = 0;
     // 0 0 0 2 
     
     int sp_idx = ((x4==0)    ? X+(L4-1)*L3*L2*L1 : X-L3*L2*L1) / 2;
-    int ga_idx = sp_idx % Nh_4d;
+    int ga_idx = sp_idx % Nh;
     
     if (gauge_fixed && ga_idx < (L4-1)*L1h*L2*L3) {
         // read spinor from device memory
@@ -1498,12 +1498,12 @@ o32_re = o32_im = 0;
       //J  We are right-handed, so for the dslash_dagger we hop backwards.  If we are at 
       //J  boundary in s-direction, special
       //J  things will need to be done.  xs is defined in dslash_dagger_core_ante.h.
-      //J  See near Line 328.  N_4d is the 4d volume; cf. quda.h. 
+      //J  See near Line 328.  N is the 4d volume; cf. quda.h. 
       //J  Cf. hand-written notes 8/6/09 for check of logic.
       //J  The logic sets xs to the s-coordinate of the output
       //J  spinor, which is accumulated by this thread.
       //J  I.e., it uses the thread index to determine xs.
-      int sp_idx = ((xs==0) ? X+(Ls-1)*N_4d : X-N_4d) / 2;
+      int sp_idx = ((xs==0) ? X+(Ls-1)*N : X-N) / 2;
       // --- Read spinor from device memory. ---
       //J  Q.  Where is this macro?  
       //J  A.  io_spinor.h
@@ -1643,7 +1643,7 @@ o32_re = o32_im = 0;
       //J  
       //J  Checked logic w/ case examples.
       //J  Cf. hand-written notes 8/6/09 for check of logic.
-      int sp_idx = ((xs==(Ls-1)) ? X-(Ls-1)*N_4d : X+N_4d) / 2;
+      int sp_idx = ((xs==(Ls-1)) ? X-(Ls-1)*N : X+N) / 2;
          
       //J  Read spinor from device memory.
       //

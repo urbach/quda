@@ -16,9 +16,9 @@
 #define BLOCK_DIM (64) // threads per block
 #define GRID_DIM (Nh_5d/BLOCK_DIM) // there are Nh_5d threads in total.
 
-//J  Gauge doesn't care if it's dwf.  Use Nh_4d.
-#define PACKED12_GAUGE_BYTES (4*Nh_4d*12*sizeof(float))
-#define PACKED8_GAUGE_BYTES (4*Nh_4d*8*sizeof(float))
+//J  Gauge doesn't care if it's dwf.  Use Nh.
+#define PACKED12_GAUGE_BYTES (4*Nh*12*sizeof(float))
+#define PACKED8_GAUGE_BYTES (4*Nh*8*sizeof(float))
 
 // Got rid of clover.
 

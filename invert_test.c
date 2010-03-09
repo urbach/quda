@@ -63,7 +63,7 @@ int main(int argc, char **argv)
   size_t sSize = (inv_param.cpu_prec == QUDA_DOUBLE_PRECISION) ? sizeof(double) : sizeof(float);
 
   for (int dir = 0; dir < 4; dir++) {
-    gauge[dir] = malloc(N_4d*gaugeSiteSize*gSize);
+    gauge[dir] = malloc(N*gaugeSiteSize*gSize);
   }
   construct_gauge_field(gauge, 1, Gauge_param.cpu_prec);
 

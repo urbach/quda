@@ -96,7 +96,7 @@ void init() {
 
   // construct input fields
   // Here we are allocating in CPU ("host") mem resource
-  for (int dir = 0; dir < 4; dir++) hostGauge[dir] = malloc(N_4d*gaugeSiteSize*gSize);
+  for (int dir = 0; dir < 4; dir++) hostGauge[dir] = malloc(N*gaugeSiteSize*gSize);
   // Here we are allocating in CPU ("host") mem resource
   spinor = malloc(N_5d*spinorSiteSize*sSize);
   spinorRef = malloc(N_5d*spinorSiteSize*sSize);
