@@ -53,8 +53,8 @@ void init() {
 
   // -- Here we initialize the global QudaGaugeParam object. --
   // The precision types are defined in enum_quda.h.
-  gaugeParam.cpu_prec = QUDA_SINGLE_PRECISION;
-  gaugeParam.cuda_prec = QUDA_SINGLE_PRECISION;
+  gaugeParam.cpu_prec = QUDA_DOUBLE_PRECISION;
+  gaugeParam.cuda_prec = QUDA_DOUBLE_PRECISION;
 
   gaugeParam.reconstruct = QUDA_RECONSTRUCT_12;
   gaugeParam.reconstruct_sloppy = gaugeParam.reconstruct;
@@ -79,8 +79,8 @@ void init() {
   gauge_param = &gaugeParam;
 
   // Need these because they're used even when we don't do an inversion.
-  inv_param.cpu_prec = QUDA_SINGLE_PRECISION;
-  inv_param.cuda_prec = QUDA_SINGLE_PRECISION;
+  inv_param.cpu_prec = QUDA_DOUBLE_PRECISION;
+  inv_param.cuda_prec = QUDA_DOUBLE_PRECISION;
   if (test_type == 2) inv_param.dirac_order = QUDA_DIRAC_ORDER;
   else inv_param.dirac_order = QUDA_DIRAC_ORDER;
   inv_param.kappa = kappa;
