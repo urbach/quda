@@ -438,12 +438,6 @@ invertCgCuda_milc_multi_mass_parity(ParitySpinor* x, ParitySpinor source, FullGa
     
     double pAp;
     
-    double rNorm = sqrt(r2);
-    double r0Norm = rNorm;
-    double maxrx = rNorm;
-    double maxrr = rNorm;
-    double delta = invert_param->reliable_delta;
-    
     int k=0;
     int xUpdate = 0, rUpdate = 0;
     
@@ -498,104 +492,28 @@ invertCgCuda_milc_multi_mass_parity(ParitySpinor* x, ParitySpinor source, FullGa
 
 	r2 = axpyNormCuda(-beta_i[j_low], Ap, r_sloppy);
 
-	// reliable update conditions
-	rNorm = sqrt(r2);
-	if (rNorm > maxrx) maxrx = rNorm;
-	if (rNorm > maxrr) maxrr = rNorm;
-	int updateX = (rNorm < delta*r0Norm && r0Norm <= maxrx) ? 1 : 0;
-	int updateR = ((rNorm < delta*maxrr && r0Norm <= maxrr) || updateX) ? 1 : 0;
+	    
+	alpha[0] = r2 / r2_old;
 	
-	if (!updateR) {
-	    
-	    alpha[0] = r2 / r2_old;
-
-	    for(j=1;j<num_offsets_now;j++){
-		/*THISBLOWSUP
-		  alpha[j] = alpha[j_low] * zeta_ip1[j] * beta_i[j] /
-		  (zeta_i[j] * beta_i[j_low]);
-		*/
-		/*TRYTHIS*/
-		if( zeta_i[j] * beta_i[j_low] != 0.0)
-		    alpha[j] = alpha[j_low] * zeta_ip1[j] * beta_i[j] /
-			(zeta_i[j] * beta_i[j_low]);
-		else {
-		    alpha[j] = 0.0;
-		    finished[j] = 1;
-		}
+	for(j=1;j<num_offsets_now;j++){
+	    /*THISBLOWSUP
+	      alpha[j] = alpha[j_low] * zeta_ip1[j] * beta_i[j] /
+	      (zeta_i[j] * beta_i[j_low]);
+	    */
+	    /*TRYTHIS*/
+	    if( zeta_i[j] * beta_i[j_low] != 0.0)
+		alpha[j] = alpha[j_low] * zeta_ip1[j] * beta_i[j] /
+		    (zeta_i[j] * beta_i[j_low]);
+	    else {
+		alpha[j] = 0.0;
+		finished[j] = 1;
 	    }
-	    
-	    
-	    axpyZpbxCuda(beta_i[0], p[0], x_sloppy[0], r_sloppy, alpha[0]);	
-	    for(j=1;j < num_offsets_now; j++){
-		axpyBzpcxCuda(beta_i[j], p[j], x_sloppy[j], zeta_ip1[j], r_sloppy, alpha[j]);
-	    }
-	} else {
-	    
-	    axpyCuda(beta_i[0], p[0], x_sloppy[0]);
-	    
-	    if (x[0].precision != x_sloppy[0].precision) {
-		copyCuda(x[0], x_sloppy[0]);
-	    }
-	    
-	    //MatPCDagMatPCCuda(r, fatlinkPrecise, longlinkPrecise, x, invert_param->kappa, tmp, invert_param->matpc_type);	    
-	    dslashCuda_st(tmp, fatlinkPrecise, longlinkPrecise, x[0], 1 - oddBit, 0);
-	    dslashAxpyCuda(r, fatlinkPrecise, longlinkPrecise, tmp, oddBit, 0, x[0], msq_x4);
-	    
-	    
-	    r2 = xmyNormCuda(b, r);
-	    if (x[0].precision != r_sloppy.precision) copyCuda(r_sloppy, r);
-	    rNorm = sqrt(r2);
-
-	    maxrr = rNorm;
-	    rUpdate++;
-	    k++;
-	    
-	    beta_i[0] = r2_old / pAp;        
-
-	    //update solutions for other masses
-	    for(j=1;j < num_offsets_now;j++){
-		axpyCuda(beta_i[j], p[j], x_sloppy[j]);
-	    }	    
-
-	    if (x[0].precision != x_sloppy[0].precision) {
-		for(j=1;j< num_offsets_now;j++){
-		    copyCuda(x[j], x_sloppy[j]);
-		}
-	    }
-
-	    if (updateX) {
-		for(j=0;j< num_offsets_now;j++){
-		    xpyCuda(x[j], y[j]);
-		    zeroCuda(x_sloppy[j]);
-		}
-		copyCuda(b, r);
-		r0Norm = rNorm;
-		
-		maxrx = rNorm;
-		xUpdate++;
-	    }
-	    
-	    alpha[0] = r2 / r2_old;
-	    for(j=1;j<num_offsets_now;j++){
-		/*THISBLOWSUP
-		  alpha[j] = alpha[j_low] * zeta_ip1[j] * beta_i[j] /
-		  (zeta_i[j] * beta_i[j_low]);
-		*/
-		/*TRYTHIS*/
-		if( zeta_i[j] * beta_i[j_low] != 0.0)
-		    alpha[j] = alpha[j_low] * zeta_ip1[j] * beta_i[j] /
-			(zeta_i[j] * beta_i[j_low]);
-		else {
-		    alpha[j] = 0.0;
-		    finished[j] = 1;
-		}
-	    }
-	    
-	    
-	    xpayCuda(r_sloppy, alpha[0], p[0]);
-	    for(j=1; j < num_offsets_now;j++){
-		axpbyCuda(zeta_ip1[j],r_sloppy, alpha[j], p[j]);
-	    }
+	}
+	
+	
+	axpyZpbxCuda(beta_i[0], p[0], x_sloppy[0], r_sloppy, alpha[0]);	
+	for(j=1;j < num_offsets_now; j++){
+	    axpyBzpcxCuda(beta_i[j], p[j], x_sloppy[j], zeta_ip1[j], r_sloppy, alpha[j]);
 	}
 	
 	gettimeofday(&t1, NULL);
