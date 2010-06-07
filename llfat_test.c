@@ -42,9 +42,9 @@ typedef struct { dcomplex e[3][3]; } dsu3_matrix;
 static void
 llfat_init(void* act_path_coeff)
 { 
-    int dev = 0;
-   
-    cudaSetDevice(dev); CUERR;
+    int dev = 1;
+    initQuda(dev);
+    //cudaSetDevice(dev); CUERR;
     
     gaugeParam.X[0] = sdim;
     gaugeParam.X[1] = sdim;
@@ -149,6 +149,7 @@ llfat_test(void)
     struct timeval t0, t1;
     gettimeofday(&t0, NULL);
     llfat_cuda(fatLink, siteLink, cudaFatLink, cudaSiteLink, cudaStaple, cudaStaple1, &gaugeParam, act_path_coeff);
+    cudaThreadSynchronize();
     gettimeofday(&t1, NULL);
     double secs = t1.tv_sec - t0.tv_sec + 0.000001*(t1.tv_usec - t0.tv_usec);
     

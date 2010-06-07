@@ -43,9 +43,10 @@ typedef struct { dcomplex e[3][3]; } dsu3_matrix;
 static void
 gauge_force_init()
 { 
-    int dev = 0;
+    int dev = 1;
     
-    cudaSetDevice(dev); CUERR;
+    initQuda(dev);
+    //cudaSetDevice(dev); CUERR;
     
     gaugeParam.X[0] = sdim;
     gaugeParam.X[1] = sdim;

@@ -85,7 +85,7 @@ void initQuda(int dev)
 	//dev = deviceCount - 1;
 	dev = 0;
     }
-    dev = deviceCount-1;
+    //dev = deviceCount-1;
     cudaDeviceProp deviceProp;
     cudaGetDeviceProperties(&deviceProp, dev);
     if (deviceProp.major < 1) {

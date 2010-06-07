@@ -198,7 +198,7 @@
 //#if (DD_RECON ==2)
 //#if (DD_GPREC ==1 && DD_SPREC==1)
 //#if (DD_SPREC==1 && DD_GPREC == 1 && DD_RECON == 1 &&DD_CPREC == 3) ||(DD_RECON ==2  && DD_GPREC == 1) 
-#if 1
+#if 0
 __global__ void
 DD_FUNC(DD_GPREC_F, DD_SPREC_F, DD_CPREC_F, DD_RECON_F, DD_DAG_F, DD_XPAY_F)(DD_PARAM1, DD_PARAM2) {
 #define SHARED_FLOATS_PER_THREAD 0
