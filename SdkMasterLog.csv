@@ -1,0 +1,4 @@
+deviceQuery, CUDA Driver = CUDART, CUDA Driver Version = 4247807, CUDA Runtime Version = 3.0, NumDevs = 1, Device = GeForce GTX 280
+deviceQuery, CUDA Driver = CUDART, CUDA Driver Version = 4247807, CUDA Runtime Version = 3.0, NumDevs = 4, Device = Tesla T10 Processor, Device = Tesla T10 Processor
+deviceQuery, CUDA Driver = CUDART, CUDA Driver Version = 4247807, CUDA Runtime Version = 3.0, NumDevs = 2, Device = GeForce GTX 280, Device = GeForce GTX 280
+deviceQuery, CUDA Driver = CUDART, CUDA Driver Version = 4247807, CUDA Runtime Version = 3.0, NumDevs = 2, Device = GeForce GTX 480, Device = GeForce GTX 280

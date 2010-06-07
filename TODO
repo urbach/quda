@@ -1,0 +1,27 @@
+Features
+========
+
+Staggered operator.
+Domain wall operator.
+
+
+Structure
+=========
+
+The use of QUDA_REFERENCE_CREATE to create ColorSpinorFields that
+refer to others is far from perfect.  In particular, a
+ColorSpinorField should know when it is a reference, and this should
+be a distinct case from when a ColorSpinorField is not initialized.
+
+Optimizations
+=============
+
+Reductions are accelerated if registers are used while local (see
+reduce_core and reduce_complex_core).  However, this causes register
+spillage for half precision caxpbypzYmbwcDotProductWYNormY slowing it
+down, so this isn't implemented in the reduce_triple_core.  Perhaps
+use shared memory for this kernel to reduce registers?  This speed up
+is likely because double precision reductions actually result in bank
+conflicts, though this doesn't seem to affect performance for the
+actual tree reduction (1% level).
+
