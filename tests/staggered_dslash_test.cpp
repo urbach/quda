@@ -18,7 +18,7 @@
 #include <iostream>
 #include <mpicomm.h>
 #include "exchange_face.h"
-
+#include <mpi.h>
 
 #define mySpinorSiteSize 6
 // What test are we doing (0 = dslash, 1 = MatPC, 2 = Mat)
@@ -26,6 +26,7 @@
 extern int verbose;
 
 int test_type = 0;
+int device = 0;
 
 QudaGaugeParam gaugeParam;
 QudaInvertParam inv_param;
@@ -36,8 +37,7 @@ FullGauge cudaLongLink;
 
 cpuColorSpinorField*spinor, *spinorOut, *spinorRef;
 cudaColorSpinorField *cudaSpinor, *cudaSpinorOut;
-void *fwd_nbr_spinor, *back_nbr_spinor;
-void* f_norm, *b_norm;
+void *cpu_fwd_nbr_spinor, *cpu_back_nbr_spinor;
 
 cudaColorSpinorField* tmp;
 
@@ -61,6 +61,9 @@ int X[4];
 static void
 init(void)
 {    
+
+  initQuda(device);
+
   int Vs = sdim*sdim*sdim;
   int Vsh = Vs/2;
   gaugeParam = newQudaGaugeParam();
@@ -131,17 +134,10 @@ init(void)
   spinor->Source(QUDA_RANDOM_SOURCE);
     
   //create ghost spinors
-  fwd_nbr_spinor = malloc(Vsh* mySpinorSiteSize *3*sizeof(double));
-  back_nbr_spinor = malloc(Vsh*mySpinorSiteSize *3*sizeof(double));
-  if (fwd_nbr_spinor == NULL || back_nbr_spinor == NULL){
-    PRINTF("ERROR: malloc failed for fwd_nbr_spinor/back_nbr_spinor\n");
-    exit(1);
-  }
-  
-  f_norm = malloc(Vsh*3*sizeof(float));
-  b_norm = malloc(Vsh*3*sizeof(float));
-  if (f_norm == NULL || b_norm == NULL){
-    PRINTF("ERROR: malloc failed for f_norm/b_norm\n");
+  cpu_fwd_nbr_spinor = malloc(Vsh* mySpinorSiteSize *3*sizeof(double));
+  cpu_back_nbr_spinor = malloc(Vsh*mySpinorSiteSize *3*sizeof(double));
+  if (cpu_fwd_nbr_spinor == NULL || cpu_back_nbr_spinor == NULL){
+    PRINTF("ERROR: malloc failed for cpu_fwd_nbr_spinor/cpu_back_nbr_spinor\n");
     exit(1);
   }
   
@@ -186,8 +182,6 @@ init(void)
   //display_spinor(spinor, 10, inv_param.cpu_prec);
 #endif
 
-  int dev = 0;
-  initQuda(dev);
 
   int num_faces =1;
   gaugeParam.ga_pad = sdim*sdim*sdim/2;    
@@ -230,7 +224,6 @@ init(void)
     cudaThreadSynchronize();
     checkCudaError();
     
-    //cudaSpinor->loadGhostSpinor(fwd_nbr_spinor, back_nbr_spinor);
     PRINTF("Source CPU = %f, CUDA=%f\n", norm2(*spinor), norm2(*cudaSpinor));
     
     if(test_type == 2){
@@ -342,7 +335,7 @@ staggeredDslashRef()
     */
       
     staggered_dslash_mg(spinorRef->v, fatlink, longlink, ghost_fatlink, ghost_longlink, 
-			spinor->v, fwd_nbr_spinor, back_nbr_spinor, parity, dagger, 
+			spinor->v, cpu_fwd_nbr_spinor, cpu_back_nbr_spinor, parity, dagger, 
 			inv_param.cpu_prec, gaugeParam.cpu_prec);
     break;
   case 1:    
@@ -441,8 +434,8 @@ usage(char** argv )
 int 
 main(int argc, char **argv) 
 {
-  
-  comm_init(argc, argv);
+
+  MPI_Init (&argc, &argv);
   
   int i;
   for (i =1;i < argc; i++){
@@ -450,7 +443,19 @@ main(int argc, char **argv)
     if( strcmp(argv[i], "--help")== 0){
       usage(argv);
     }
-	
+    if( strcmp(argv[i], "--device") == 0){
+      if (i+1 >= argc){
+        usage(argv);
+      }
+      device =  atoi(argv[i+1]);
+      if (device < 0){
+        fprintf(stderr, "Error: invalid device number(%d)\n", device);
+        exit(1);
+      }
+      i++;
+      continue;
+    }	
+
     if( strcmp(argv[i], "--prec") == 0){
       if (i+1 >= argc){
 	usage(argv);

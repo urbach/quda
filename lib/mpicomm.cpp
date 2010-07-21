@@ -12,11 +12,15 @@ int verbose = 0;
 static int num_nodes;
 
 void 
-comm_init(int argc, char** argv)
+comm_init()
 {
-  int gpu_per_node = 4;
+  static int firsttime=1;
+  if (!firsttime){ 
+    return;
+  }
+  firsttime = 0;
   
-  MPI_Init (&argc, &argv);
+  int gpu_per_node = 4;
   
   MPI_Comm_size(MPI_COMM_WORLD, &size);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);

@@ -11,6 +11,9 @@
 #include "misc.h"
 #include "mpicomm.h"
 #include "exchange_face.h"
+#include <mpi.h>
+
+int device = 0;
 
 extern FullGauge cudaFatLinkPrecise;
 extern FullGauge cudaFatLinkSloppy;
@@ -19,10 +22,7 @@ extern FullGauge cudaLongLinkSloppy;
 
 #define mySpinorSiteSize 6
 
-void *fwd_nbr_spinor, *back_nbr_spinor;
 void *cpu_fwd_nbr_spinor, *cpu_back_nbr_spinor;
-void* f_norm, *b_norm;
-
 
 extern void loadGaugeQuda_general(void *h_gauge, QudaGaugeParam *param,
 				  void* _cudaLinkPrecise, void* _cudaLinkSloppy);
@@ -58,7 +58,6 @@ void constructSpinorField(Float *res) {
 static int
 invert_milc_test(void)
 {
-  int device = 0;
   
   void *fatlink[4];
   void *longlink[4];
@@ -171,25 +170,11 @@ invert_milc_test(void)
   //create ghost spinors
   cpu_fwd_nbr_spinor = malloc(Vsh* mySpinorSiteSize *3*sizeof(double));
   cpu_back_nbr_spinor = malloc(Vsh*mySpinorSiteSize *3*sizeof(double));
-  CUERR;
-  cudaMallocHost((void**)&fwd_nbr_spinor, Vsh* mySpinorSiteSize *3*sizeof(double)); CUERR;
-  cudaMallocHost((void**)&back_nbr_spinor, Vsh* mySpinorSiteSize *3*sizeof(double)); CUERR;
-  if (fwd_nbr_spinor == NULL || back_nbr_spinor == NULL){
-    PRINTF("ERROR: malloc failed for fwd_nbr_spinor/back_nbr_spinor\n");
+  if (cpu_fwd_nbr_spinor == NULL || cpu_back_nbr_spinor == NULL){
+    PRINTF("ERROR: malloc failed for cpu_fwd_nbr_spinor/cpu_back_nbr_spinor\n");
     exit(1);
   }
 
-  //f_norm = malloc(Vsh*3*sizeof(float));
-  //b_norm = malloc(Vsh*3*sizeof(float));
-  cudaMallocHost((void**)&f_norm, Vsh*3*sizeof(float));
-  cudaMallocHost((void**)&b_norm, Vsh*3*sizeof(float));  
-  if (f_norm == NULL || b_norm == NULL){
-    PRINTF("ERROR: malloc failed for f_norm/b_norm\n");
-    exit(1);
-  }  
-  
-  
-  
   int num_faces =1;
   gaugeParam.ga_pad = sdim*sdim*sdim/2;
   gaugeParam.reconstruct= gaugeParam.reconstruct_sloppy = QUDA_RECONSTRUCT_NO;
@@ -233,7 +218,8 @@ invert_milc_test(void)
     time0 /= CLOCKS_PER_SEC;
     
     
-    matdagmat_milc(spinorCheckOdd, fatlink, longlink, spinorOutOdd, mass, 0, inv_param.cpu_prec, gaugeParam.cpu_prec, tmp, QUDA_ODD);	
+    matdagmat_milc_mg(spinorCheckOdd, fatlink, ghost_fatlink, longlink, ghost_longlink,
+		      spinorOutOdd, cpu_fwd_nbr_spinor, cpu_back_nbr_spinor, mass, 0, inv_param.cpu_prec, gaugeParam.cpu_prec, tmp, QUDA_ODD);	
     mxpy(spinorInOdd, spinorCheckOdd, Vh*mySpinorSiteSize, inv_param.cpu_prec);
     nrm2 = norm_2(spinorCheckOdd, Vh*mySpinorSiteSize, inv_param.cpu_prec);
     src2 = norm_2(spinorInOdd, Vh*mySpinorSiteSize, inv_param.cpu_prec);
@@ -333,7 +319,7 @@ invert_milc_test(void)
     
     for(int i=0;i < num_offsets;i++){
       matdagmat_milc_mg(spinorCheck, fatlink, ghost_fatlink, longlink, ghost_longlink,
-			spinorOutArray[i], fwd_nbr_spinor, back_nbr_spinor, masses[i], 0, inv_param.cpu_prec, gaugeParam.cpu_prec, tmp, parity);
+			spinorOutArray[i], cpu_fwd_nbr_spinor, cpu_back_nbr_spinor, masses[i], 0, inv_param.cpu_prec, gaugeParam.cpu_prec, tmp, parity);
       mxpy(in, spinorCheck, len*mySpinorSiteSize, inv_param.cpu_prec);
       double nrm2 = norm_2(spinorCheck, len*mySpinorSiteSize, inv_param.cpu_prec);
       double src2 = norm_2(in, len*mySpinorSiteSize, inv_param.cpu_prec);
@@ -406,14 +392,27 @@ usage(char** argv )
 
 int main(int argc, char** argv)
 {
-
-  comm_init(argc, argv);
+  MPI_Init(&argc, &argv);
   int i;
   for (i =1;i < argc; i++){
 	
     if( strcmp(argv[i], "--help")== 0){
       usage(argv);
     }
+
+    if( strcmp(argv[i], "--device") == 0){
+      if (i+1 >= argc){
+        usage(argv);
+      }
+      device =  atoi(argv[i+1]);
+      if (device < 0){
+        fprintf(stderr, "Error: invalid device number(%d)\n", device);
+        exit(1);
+      }
+      i++;
+      continue;
+    }
+    
 	
     if( strcmp(argv[i], "--prec") == 0){
       if (i+1 >= argc){

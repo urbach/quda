@@ -14,9 +14,12 @@ all: $(TESTS)
 
 staggered_dslash_test: staggered_dslash_test.o test_util.o staggered_dslash_reference.o misc.o $(QUDA)
 	$(MPICXX) $(LDFLAGS) $^ -o $@
-
+staggered_dslash_test.o: staggered_dslash_test.cpp
+	$(MPICXX)  -DMPICH_IGNORE_CXX_SEEK $(CXXFLAGS) $< -c -o $@
 staggered_invert_test: staggered_invert_test.o test_util.o staggered_dslash_reference.o misc.o blas_reference.o $(QUDA)
 	$(MPICXX) $(LDFLAGS) $^ -o $@
+staggered_invert_test.o: staggered_invert_test.cpp
+	$(MPICXX)  -DMPICH_IGNORE_CXX_SEEK $(CXXFLAGS) $< -c -o $@
 
 dslash_test: dslash_test.o test_util.o dslash_reference.o $(QUDA)
 	$(CXX) $(LDFLAGS) $^ -o $@

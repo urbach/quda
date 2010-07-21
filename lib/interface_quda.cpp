@@ -56,6 +56,8 @@ void initQuda(int dev)
   }
   initialized = 1;
 
+  comm_init();
+  
   int deviceCount;
   cudaGetDeviceCount(&deviceCount);
   if (deviceCount == 0) {
@@ -73,6 +75,7 @@ void initQuda(int dev)
   }
 
   dev = comm_gpuid();
+  //dev =1;
 
   cudaDeviceProp deviceProp;
   cudaGetDeviceProperties(&deviceProp, dev);

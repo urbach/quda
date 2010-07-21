@@ -5,7 +5,7 @@
 #define FWD_NBR 2
 
 
-void		comm_init(int, char**);
+void		comm_init(void);
 int		comm_rank(void);
 int		comm_size(void);
 unsigned long	comm_send(void*, int, int);

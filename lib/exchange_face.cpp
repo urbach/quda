@@ -8,6 +8,7 @@
 #include "exchange_face.h"
 #include "mpicomm.h"
 #include <sys/time.h>
+#include <color_spinor_field.h>
 
 static int V;
 static int Vh;
@@ -17,6 +18,12 @@ void* fwd_nbr_spinor_sendbuf = NULL;
 void* back_nbr_spinor_sendbuf = NULL;
 void* f_norm_sendbuf = NULL;
 void* b_norm_sendbuf = NULL;
+
+void* fwd_nbr_spinor = NULL;
+void* back_nbr_spinor = NULL;
+void* f_norm = NULL;
+void* b_norm = NULL;
+
 #define gaugeSiteSize 18
 #define mySpinorSiteSize 6
 
@@ -46,6 +53,22 @@ void exchange_init(cudaColorSpinorField* cudaSpinor)
       comm_exit(1);
     }    
   }
+
+  cudaMallocHost((void**)&fwd_nbr_spinor, len); CUERR;
+  cudaMallocHost((void**)&back_nbr_spinor, len); CUERR;
+  if (fwd_nbr_spinor == NULL || back_nbr_spinor == NULL){
+    printf("ERROR: malloc failed for fwd_nbr_spinor/back_nbr_spinor\n"); 
+    comm_exit(1);
+  }
+  
+  if (cudaSpinor->Precision() == QUDA_HALF_PRECISION){
+    cudaMallocHost(&f_norm, normlen);CUERR;
+    cudaMallocHost(&b_norm, normlen);CUERR;
+    if (f_norm== NULL || b_norm== NULL){
+      printf("ERROR: malloc failed for b_norm/f_norm\n");
+      comm_exit(1);
+    }    
+  }
   
   return;
 }
@@ -61,6 +84,17 @@ void exchange_cleanup()
   if (b_norm_sendbuf){
     cudaFreeHost(b_norm_sendbuf);
   }
+
+  cudaFreeHost(fwd_nbr_spinor);
+  cudaFreeHost(back_nbr_spinor);
+  
+  if (f_norm){
+    cudaFreeHost(f_norm);
+  }
+  if (b_norm){
+    cudaFreeHost(b_norm);
+  }
+
 }
 
 template<typename Float>
@@ -125,10 +159,10 @@ exchange_cpu_spinor(Float* spinorField, Float* fwd_nbr_spinor, Float* back_nbr_s
 }
 
 void
-exchange_gpu_spinor(cudaColorSpinorField* cudaSpinor, void* fwd_nbr_spinor, void* back_nbr_spinor, 
-		    void* f_norm, void* b_norm, cudaStream_t* mystream)
+exchange_gpu_spinor(void* _cudaSpinor, cudaStream_t* mystream)
 {
- 
+  
+  cudaColorSpinorField* cudaSpinor = (cudaColorSpinorField*) _cudaSpinor;
   exchange_init(cudaSpinor);
   struct timeval t0, t1, t2, t3;
   
@@ -193,9 +227,9 @@ exchange_gpu_spinor(cudaColorSpinorField* cudaSpinor, void* fwd_nbr_spinor, void
 
 
 void
-exchange_gpu_spinor_start(cudaColorSpinorField* cudaSpinor, void* fwd_nbr_spinor, void* back_nbr_spinor, 
-			  void* f_norm, void* b_norm, cudaStream_t* mystream)
+exchange_gpu_spinor_start(void* _cudaSpinor,cudaStream_t* mystream)
 {
+  cudaColorSpinorField* cudaSpinor = (cudaColorSpinorField*) _cudaSpinor;
  
   exchange_init(cudaSpinor);
   cudaSpinor->packGhostSpinor(fwd_nbr_spinor_sendbuf, back_nbr_spinor_sendbuf, f_norm_sendbuf, b_norm_sendbuf, mystream);
@@ -203,9 +237,9 @@ exchange_gpu_spinor_start(cudaColorSpinorField* cudaSpinor, void* fwd_nbr_spinor
 }
 
 void
-exchange_gpu_spinor_wait(cudaColorSpinorField* cudaSpinor, void* fwd_nbr_spinor, void* back_nbr_spinor, 
-			 void* f_norm, void* b_norm, cudaStream_t* mystream)
+exchange_gpu_spinor_wait(void* _cudaSpinor, cudaStream_t* mystream)
 {
+  cudaColorSpinorField* cudaSpinor = (cudaColorSpinorField*) _cudaSpinor;
  
   int len = 3*Vsh*mySpinorSiteSize*cudaSpinor->Precision();
   int normlen = 3*Vsh*sizeof(float);

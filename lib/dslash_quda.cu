@@ -37,8 +37,6 @@
 #include "mpicomm.h"
 #include "exchange_face.h"
 
-extern void *fwd_nbr_spinor, *back_nbr_spinor;
-extern void* f_norm, *b_norm;
 cudaStream_t stream[2];
 
 int dslashCudaSharedBytes(QudaPrecision precision) {
@@ -341,12 +339,12 @@ template <int spinorN, typename spinorFloat, typename fatGaugeFloat, typename lo
   }
 
 
-  exchange_gpu_spinor_start(inSpinor, fwd_nbr_spinor, back_nbr_spinor, f_norm, b_norm, &stream[1]);
+  exchange_gpu_spinor_start(inSpinor, &stream[1]);
 
 
   cudaEventRecord(stop1, stream[0]);  
   gettimeofday(&t01, NULL);
-  exchange_gpu_spinor_wait(inSpinor, fwd_nbr_spinor, back_nbr_spinor, f_norm, b_norm, &stream[1]);
+  exchange_gpu_spinor_wait(inSpinor, &stream[1]);
   gettimeofday(&t02, NULL);    
   cudaEventRecord(start2, stream[0]);
 
@@ -441,7 +439,7 @@ template <int spinorN, typename spinorFloat, typename fatGaugeFloat, typename lo
   cudaThreadSynchronize();
   
   gettimeofday(&t0, NULL);
-  exchange_gpu_spinor(inSpinor, fwd_nbr_spinor, back_nbr_spinor, f_norm, b_norm, &stream[0]);
+  exchange_gpu_spinor(inSpinor, &stream[0]);
   cudaThreadSynchronize();
   gettimeofday(&t1, NULL);
   //cudaEventRecord(start1, stream[0]);
@@ -551,8 +549,8 @@ template <int spinorN, typename spinorFloat, typename fatGaugeFloat, typename lo
 												longGauge0, longGauge1, in, inNorm, parity, x, xNorm, a); CUERR;
     }          
   }
-  exchange_gpu_spinor_start(inSpinor, fwd_nbr_spinor, back_nbr_spinor, f_norm, b_norm, &stream[1]);   
-  exchange_gpu_spinor_wait(inSpinor, fwd_nbr_spinor, back_nbr_spinor, f_norm, b_norm, &stream[1]); 
+  exchange_gpu_spinor_start(inSpinor, &stream[1]);   
+  exchange_gpu_spinor_wait(inSpinor, &stream[1]); 
   
   if (x==0) { // not doing xpay
     if (!dagger) {
