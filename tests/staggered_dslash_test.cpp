@@ -436,7 +436,7 @@ main(int argc, char **argv)
 {
 
   MPI_Init (&argc, &argv);
-  
+  comm_init();
   int i;
   for (i =1;i < argc; i++){
 	

@@ -204,6 +204,9 @@ invert_milc_test(void)
     time0 /= CLOCKS_PER_SEC;
     matdagmat_milc_mg(spinorCheck, fatlink, ghost_fatlink, longlink, ghost_longlink,
 		      spinorOut, cpu_fwd_nbr_spinor, cpu_back_nbr_spinor, mass, 0, inv_param.cpu_prec, gaugeParam.cpu_prec, tmp, QUDA_EVEN);
+    //matdagmat_milc(spinorCheck, fatlink, longlink,
+                   //spinorOut, mass, 0, inv_param.cpu_prec, gaugeParam.cpu_prec, tmp, QUDA_EVEN);
+
     mxpy(spinorIn, spinorCheck, Vh*mySpinorSiteSize, inv_param.cpu_prec);
     nrm2 = norm_2(spinorCheck, Vh*mySpinorSiteSize, inv_param.cpu_prec);
     src2 = norm_2(spinorIn, Vh*mySpinorSiteSize, inv_param.cpu_prec);
@@ -393,6 +396,7 @@ usage(char** argv )
 int main(int argc, char** argv)
 {
   MPI_Init(&argc, &argv);
+  comm_init();
   int i;
   for (i =1;i < argc; i++){
 	
