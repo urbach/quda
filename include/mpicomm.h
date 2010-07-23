@@ -4,6 +4,10 @@
 #define BACK_NBR 1
 #define FWD_NBR 2
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 void		comm_init(void);
 int		comm_rank(void);
@@ -16,6 +20,10 @@ void		comm_barrier(void);
 void		comm_exit(int);
 void		comm_cleanup(void);
 int		comm_gpuid();
+
+#ifdef __cplusplus
+}
+#endif
 
 extern int verbose;
 

@@ -49,6 +49,7 @@ void invertCgCuda(Dirac &dirac, Dirac &diracSloppy, cudaColorSpinorField &x, cud
 
   double r2_old;
   double src_norm = norm2(b);;
+  comm_allreduce(&src_norm);
   double stop = src_norm*invert_param->tol*invert_param->tol; // stopping condition of solver
   
   double alpha, beta;
@@ -67,6 +68,7 @@ void invertCgCuda(Dirac &dirac, Dirac &diracSloppy, cudaColorSpinorField &x, cud
   blas_quda_flops = 0;
 
   stopwatchStart();
+
   while (r2 > stop && k<invert_param->maxiter) {
     
     diracSloppy.MdagM(Ap, p);
@@ -113,6 +115,8 @@ void invertCgCuda(Dirac &dirac, Dirac &diracSloppy, cudaColorSpinorField &x, cud
       PRINTF("CG: %d iterations, r2 = %e\n", k, r2);
     }
   }
+  
+
   if (x.Precision() != xSloppy.Precision()) copyCuda(x, xSloppy);
   xpyCuda(y, x);
   
