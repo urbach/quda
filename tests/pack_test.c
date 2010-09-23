@@ -72,8 +72,8 @@ void init() {
   cudaSetDevice(dev);
 
   param.X[0] /= 2;
-  cudaFullSpinor = allocateSpinorField(param.X, param.cuda_prec, sp_pad);
-  cudaParitySpinor = allocateParitySpinor(param.X, param.cuda_prec, sp_pad);
+  cudaFullSpinor = allocateSpinorField(param.X, param.cuda_prec, sp_pad, QUDA_TWIST_NO);
+  cudaParitySpinor = allocateParitySpinor(param.X, param.cuda_prec, sp_pad, QUDA_TWIST_NO);
   param.X[0] *= 2;
 
 }

@@ -7,8 +7,8 @@
 extern "C" {
 #endif
 
-  ParitySpinor allocateParitySpinor(int *X, Precision precision, int stride);
-  FullSpinor allocateSpinorField(int *X, Precision precision, int stride);
+  ParitySpinor allocateParitySpinor(int *X, Precision precision, int stride, FlavorType flavor);
+  FullSpinor allocateSpinorField(int *X, Precision precision, int stride, FlavorType flavor);
   
   void freeParitySpinor(ParitySpinor spinor);
   void freeSpinorField(FullSpinor spinor);

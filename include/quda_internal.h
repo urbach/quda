@@ -33,6 +33,7 @@
 #define GaugeFixed QudaGaugeFixed
 #define DagType QudaDagType
 #define Tboundary QudaTboundary
+#define FlavorType QudaTwistFlavorType
 
 #include <enum_quda.h>
 #include <util_quda.h>
@@ -80,7 +81,7 @@ extern "C" {
     ParityClover odd;
     ParityClover even;
   } FullClover;
-
+///warning: extra parameter is introduced
   typedef struct {
     size_t bytes;
     Precision precision;
@@ -94,6 +95,7 @@ extern "C" {
     int Ns; // length of spin dimension
     void *spinor; // either (double2*), (float4 *) or (short4 *), depending on precision
     float *spinorNorm; // used only when precision is QUDA_HALF_PRECISION
+    FlavorType twist_flavor; //may be +1 or -1, valid for twisted dslash only
   } ParitySpinor;
 
   typedef struct {

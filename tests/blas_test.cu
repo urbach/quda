@@ -51,12 +51,12 @@ void init()
   // need single parity dimensions
   X[0] /= 2;
 
-  v = allocateParitySpinor(X, cuda_prec, sp_pad);
-  w = allocateParitySpinor(X, cuda_prec, sp_pad);
-  x = allocateParitySpinor(X, cuda_prec, sp_pad);
-  y = allocateParitySpinor(X, cuda_prec, sp_pad);
-  z = allocateParitySpinor(X, cuda_prec, sp_pad);
-  p = allocateParitySpinor(X, other_prec, sp_pad);
+  v = allocateParitySpinor(X, cuda_prec, sp_pad, QUDA_TWIST_NO);
+  w = allocateParitySpinor(X, cuda_prec, sp_pad, QUDA_TWIST_NO);
+  x = allocateParitySpinor(X, cuda_prec, sp_pad, QUDA_TWIST_NO);
+  y = allocateParitySpinor(X, cuda_prec, sp_pad, QUDA_TWIST_NO);
+  z = allocateParitySpinor(X, cuda_prec, sp_pad, QUDA_TWIST_NO);
+  p = allocateParitySpinor(X, other_prec, sp_pad, QUDA_TWIST_NO);
 
   // check for successful allocation
   checkCudaError();

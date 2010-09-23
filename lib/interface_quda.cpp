@@ -9,6 +9,7 @@
 #include <clover_quda.h>
 #include <blas_quda.h>
 #include <dslash_quda.h>
+#include <twist_dslash_quda.h>//twisted mass dslash 
 #include <invert_quda.h>
 
 #define spinorSiteSize 24 // real numbers per spinor
@@ -218,8 +219,8 @@ void dslashQuda(void *h_out, void *h_in, QudaInvertParam *inv_param, int parity,
 {
   checkPrecision(inv_param->cpu_prec);
 
-  ParitySpinor in = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad);
-  ParitySpinor out = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad);
+  ParitySpinor in = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad, QUDA_TWIST_NO);
+  ParitySpinor out = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad, QUDA_TWIST_NO);
 
   loadParitySpinor(in, h_in, inv_param->cpu_prec, inv_param->dirac_order);
 
@@ -245,8 +246,8 @@ void dslash3DQuda(void *h_out, void *h_in, QudaInvertParam *inv_param, int parit
 {
   checkPrecision(inv_param->cpu_prec);
 
-  ParitySpinor in = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad);
-  ParitySpinor out = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad);
+  ParitySpinor in = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad, QUDA_TWIST_NO);
+  ParitySpinor out = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad, QUDA_TWIST_NO);
 
   loadParitySpinor(in, h_in, inv_param->cpu_prec, inv_param->dirac_order);
 
@@ -283,9 +284,9 @@ void MatPCQuda(void *h_out, void *h_in, QudaInvertParam *inv_param, int dagger)
 {
   checkPrecision(inv_param->cpu_prec);
 
-  ParitySpinor in = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad);
-  ParitySpinor out = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad);
-  ParitySpinor tmp = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad);
+  ParitySpinor in = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad, QUDA_TWIST_NO);
+  ParitySpinor out = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad, QUDA_TWIST_NO);
+  ParitySpinor tmp = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad, QUDA_TWIST_NO);
 
   loadParitySpinor(in, h_in, inv_param->cpu_prec, inv_param->dirac_order);
 
@@ -312,9 +313,9 @@ void MatPCDagMatPCQuda(void *h_out, void *h_in, QudaInvertParam *inv_param)
 {
   checkPrecision(inv_param->cpu_prec);
 
-  ParitySpinor in = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad);
-  ParitySpinor out = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad);
-  ParitySpinor tmp = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad);
+  ParitySpinor in = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad, QUDA_TWIST_NO);
+  ParitySpinor out = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad, QUDA_TWIST_NO);
+  ParitySpinor tmp = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad, QUDA_TWIST_NO);
   
   loadParitySpinor(in, h_in, inv_param->cpu_prec, inv_param->dirac_order);  
 
@@ -341,8 +342,8 @@ void MatQuda(void *h_out, void *h_in, QudaInvertParam *inv_param, int dagger)
 {
   checkPrecision(inv_param->cpu_prec);
 
-  FullSpinor in = allocateSpinorField(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad);
-  FullSpinor out = allocateSpinorField(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad);
+  FullSpinor in = allocateSpinorField(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad, QUDA_TWIST_NO);
+  FullSpinor out = allocateSpinorField(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad, QUDA_TWIST_NO);
 
   loadSpinorField(in, h_in, inv_param->cpu_prec, inv_param->dirac_order);
 
@@ -353,7 +354,7 @@ void MatQuda(void *h_out, void *h_in, QudaInvertParam *inv_param, int dagger)
   if (inv_param->dslash_type == QUDA_WILSON_DSLASH) {
     MatCuda(out, cudaGaugePrecise, in, -kappa, dagger);
   } else if (inv_param->dslash_type == QUDA_CLOVER_WILSON_DSLASH) {
-    ParitySpinor tmp = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad);
+    ParitySpinor tmp = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad, QUDA_TWIST_NO);
     cloverMatCuda(out, cudaGaugePrecise, cudaCloverPrecise, in, kappa, tmp, dagger);
     freeParitySpinor(tmp);
   } else {
@@ -365,7 +366,9 @@ void MatQuda(void *h_out, void *h_in, QudaInvertParam *inv_param, int dagger)
   freeSpinorField(in);
 }
 
-void invertQuda(void *h_x, void *h_b, QudaInvertParam *param)
+//Warning: this is new version, with twisted mass dslash
+
+void invertQuda(void *h_x, void *h_b, QudaInvertParam *param, FlavorType flavor)
 {
   checkInvertParam(param);
   checkPrecision(param->cpu_prec);
@@ -381,17 +384,20 @@ void invertQuda(void *h_x, void *h_b, QudaInvertParam *param)
   param->gflops = 0;
   param->iter = 0;
 
-  double kappa = param->kappa;
+  double kappa      = param->kappa;
+  double _2kappa_mu = - 2 * kappa * param->mu * flavor;
+  double _1pm2	    = 1.0 / (1.0 + _2kappa_mu * _2kappa_mu); 
+  
   if (param->dirac_order == QUDA_CPS_WILSON_DIRAC_ORDER) kappa *= cudaGaugePrecise.anisotropy;
 
   FullSpinor b, x;
-  ParitySpinor in = allocateParitySpinor(cudaGaugePrecise.X, param->cuda_prec, param->sp_pad); // source
-  ParitySpinor out = allocateParitySpinor(cudaGaugePrecise.X, param->cuda_prec, param->sp_pad); // solution
-  ParitySpinor tmp = allocateParitySpinor(cudaGaugePrecise.X, param->cuda_prec, param->sp_pad); // temporary
+  ParitySpinor in = allocateParitySpinor(cudaGaugePrecise.X, param->cuda_prec, param->sp_pad, flavor); // source
+  ParitySpinor out = allocateParitySpinor(cudaGaugePrecise.X, param->cuda_prec, param->sp_pad, flavor); // solution
+  ParitySpinor tmp = allocateParitySpinor(cudaGaugePrecise.X, param->cuda_prec, param->sp_pad, flavor); // temporary
 
   if (param->solution_type == QUDA_MAT_SOLUTION) {
     if (param->preserve_source == QUDA_PRESERVE_SOURCE_YES) {
-      b = allocateSpinorField(cudaGaugePrecise.X, param->cuda_prec, param->sp_pad);
+      b = allocateSpinorField(cudaGaugePrecise.X, param->cuda_prec, param->sp_pad, flavor);
     } else {
       b.even = out;
       b.odd = tmp;
@@ -451,6 +457,21 @@ void invertQuda(void *h_x, void *h_b, QudaInvertParam *param)
       } else {
 	errorQuda("Invalid matpc_type");
       }
+    } else if (param->dslash_type == QUDA_TWISTED_WILSON_DSLASH) {
+      	//'mu' must be defined in invert parameters, b is not preserved, twist parity in spinor definition,
+	//dslash_type add TWISTED_WILSON
+      if (param->matpc_type == QUDA_MATPC_EVEN_EVEN) {
+	// in^{pm} = b^{pm}_e + k D_eo (R^{pm}_oo)^-1 b_o
+	twistGamma5Cuda(b.odd, _2kappa_mu, _1pm2);
+	dslashXpayCuda(in, cudaGaugePrecise, b.odd, 0, 0, b.even, kappa);
+	
+      } else if (param->matpc_type == QUDA_MATPC_ODD_ODD) {
+	// in^{pm} = b^{pm}_o + k D_oe (R^{pm}_ee)^-1 b_e
+	twistGamma5Cuda(b.even, _2kappa_mu, _1pm2);
+	dslashXpayCuda(in, cudaGaugePrecise, b.even, 1, 0, b.odd, kappa);
+      } else {
+	errorQuda("matpc_type not valid for plain Wilson");
+      }
     } else {
       errorQuda("Unsupported dslash_type");
     }
@@ -480,14 +501,21 @@ void invertQuda(void *h_x, void *h_b, QudaInvertParam *param)
   case QUDA_CG_INVERTER:
     if (param->solution_type != QUDA_MATPCDAG_MATPC_SOLUTION) {
       copyCuda(out, in);
-      if (param->dslash_type == QUDA_WILSON_DSLASH) {
+      if (param->dslash_type == QUDA_WILSON_DSLASH) 
+      {
 	MatPCCuda(in, cudaGaugePrecise, out, kappa, tmp, param->matpc_type, QUDA_DAG_YES);
-      } else {
+      } 
+      else if (param->dslash_type == QUDA_TWISTED_WILSON_DSLASH) 
+      {
+	twistMatPCCuda(in, cudaGaugePrecise, out, kappa, param->mu, tmp, param->matpc_type, QUDA_DAG_YES);
+      } 
+      else 
+      {
 	cloverMatPCCuda(in, cudaGaugePrecise, cudaCloverPrecise, cudaCloverInvPrecise, out, kappa, tmp,
 			param->matpc_type, QUDA_DAG_YES);
       }
     }
-    invertCgCuda(out, in, tmp, param);
+    invertCgCuda(out, in, tmp, param);//'param' includes 'mu' 
     break;
   case QUDA_BICGSTAB_INVERTER:
     if (param->solution_type == QUDA_MATPCDAG_MATPC_SOLUTION) {
@@ -499,7 +527,7 @@ void invertQuda(void *h_x, void *h_b, QudaInvertParam *param)
   default:
     errorQuda("Inverter type %d not implemented", param->inv_type);
   }
-  
+
   if (param->solution_type == QUDA_MAT_SOLUTION) {
 
     if (param->preserve_source == QUDA_PRESERVE_SOURCE_NO) {
@@ -507,7 +535,7 @@ void invertQuda(void *h_x, void *h_b, QudaInvertParam *param)
       b.even = in;
       loadSpinorField(b, h_b, param->cpu_prec, param->dirac_order);
     }
-
+ 
     if (param->dslash_type == QUDA_WILSON_DSLASH) {
       if (param->matpc_type == QUDA_MATPC_EVEN_EVEN) {
 	// x_o = b_o + k D_oe x_e
@@ -516,7 +544,21 @@ void invertQuda(void *h_x, void *h_b, QudaInvertParam *param)
 	// x_e = b_e + k D_eo x_o
 	dslashXpayCuda(x.even, cudaGaugePrecise, out, 0, 0, b.even, kappa);
       }
-    } else {
+    }else if (param->dslash_type == QUDA_TWISTED_WILSON_DSLASH) {
+      if (param->preserve_source == QUDA_PRESERVE_SOURCE_YES)
+	 loadSpinorField(b, h_b, param->cpu_prec, param->dirac_order);
+      if (param->matpc_type == QUDA_MATPC_EVEN_EVEN) {
+	// x_o = b_o + k D_oe x_e
+	   dslashXpayCuda(x.odd, cudaGaugePrecise, out, 1, 0, b.odd, kappa);
+	// x^{pm}_o = R^{pm}_oo x^{pm}_o
+	   twistGamma5Cuda(x.odd, _2kappa_mu, _1pm2);	   
+         } else {
+	// x_e = b_e + k D_eo x_o
+	   dslashXpayCuda(x.even, cudaGaugePrecise, out, 0, 0, b.even, kappa);
+	// x^{pm}_e = R^{pm}_ee x^{pm}_e
+	   twistGamma5Cuda(x.even, _2kappa_mu, _1pm2);
+         }
+    } else {    
       if (param->matpc_type == QUDA_MATPC_EVEN_EVEN ||
 	  param->matpc_type == QUDA_MATPC_EVEN_EVEN_ASYMMETRIC) {
 	// x_o = A_oo^-1 (b_o + k D_oe x_e)
@@ -545,3 +587,77 @@ void invertQuda(void *h_x, void *h_b, QudaInvertParam *param)
 
   return;
 }
+
+
+double checkTwistMatPCQuda(void *h_in, QudaInvertParam *inv_param, int dagger, FlavorType flavor)
+{
+  checkPrecision(inv_param->cpu_prec);
+
+  double error_check;
+  
+  ParitySpinor in    = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad, flavor);
+  ParitySpinor out   = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad, flavor);
+  ParitySpinor check = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad, flavor);  
+  ParitySpinor tmp   = allocateParitySpinor(cudaGaugePrecise.X, inv_param->cuda_prec, inv_param->sp_pad, flavor);
+
+  loadParitySpinor(in, h_in, inv_param->cpu_prec, inv_param->dirac_order);
+  //apply twistMatPCCuda first:
+  double kappa = inv_param->kappa;
+  if (inv_param->dirac_order == QUDA_CPS_WILSON_DIRAC_ORDER)
+    kappa *= cudaGaugePrecise.anisotropy;
+
+  twistMatPCCuda(out, cudaGaugePrecise, in, kappa, inv_param->mu, tmp, inv_param->matpc_type, dagger);
+  
+  //reload input spinor:
+  zeroCuda(in);
+  loadParitySpinor(in, h_in, inv_param->cpu_prec, inv_param->dirac_order);
+
+  //now apply operators one by one:
+  if(inv_param->matpc_type == QUDA_MATPC_EVEN_EVEN)
+  {
+    dslashCuda(tmp, cudaGaugePrecise, in, 1, dagger);//parity 0
+    //
+    double sign = dagger == 0 ? -1.0 : +1.0;
+    double _2kappa_mu = sign * 2 * kappa * inv_param->mu * flavor;
+    double _1pm2      = 1.0 / (1.0 + _2kappa_mu * _2kappa_mu);
+    //
+    twistGamma5Cuda(tmp, _2kappa_mu, _1pm2);
+    //
+    dslashCuda(check, cudaGaugePrecise, tmp, 0, dagger);//parity 1
+    //
+    axCuda(-kappa*kappa, check);
+    //
+    twistGamma5Cuda(in, -_2kappa_mu, 1.0);  
+    //
+  }
+  else if(inv_param->matpc_type == QUDA_MATPC_ODD_ODD)
+  {
+    dslashCuda(tmp, cudaGaugePrecise, in, 0, dagger);//parity 0
+    //
+    double sign = dagger == 0 ? -1.0 : +1.0;
+    double _2kappa_mu = sign * 2 * kappa * inv_param->mu * flavor;
+    double _1pm2      = 1.0 / (1.0 + _2kappa_mu * _2kappa_mu);
+    //
+    twistGamma5Cuda(tmp, _2kappa_mu, _1pm2);
+    //
+    dslashCuda(check, cudaGaugePrecise, tmp, 1, dagger);//parity 1
+    //
+    axCuda(-kappa*kappa, check);
+    //
+    twistGamma5Cuda(in, -_2kappa_mu, 1.0);  
+    //
+  }
+  xpyCuda(in, check);
+
+  //finally retrieve error:
+  mxpyCuda(out, check);
+  error_check = normCuda(check);
+  
+  freeParitySpinor(check);
+  freeParitySpinor(tmp);
+  freeParitySpinor(out);
+  freeParitySpinor(in);
+  
+  return(error_check);
+}
+

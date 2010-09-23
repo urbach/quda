@@ -573,3 +573,103 @@ void check_gauge(void **oldG, void **newG, double epsilon, QudaPrecision precisi
   else 
     checkGauge((float**)oldG, (float**)newG, epsilon);
 }
+
+///
+
+int getOddBitFromHLattCoordinate(int hlatt_coord)
+{
+	int x2, x3, x4;			//x / 2, y, z, t normal coordinates on even/odd latice
+	int z1, z2;
+	
+
+	z1  = (2 * hlatt_coord) / Z[0];
+	z2  = z1 / Z[1];
+	x2  = z1 - z2 * Z[1];
+	x4  = z2 / Z[2];
+	x3  = z2 - x4 * Z[2];
+
+	return ((x2 + x3 + x4 + 0) & 1);
+}
+
+template<typename Float>
+void readTMconfig(Float** gauge, char *filepath)
+{
+  Float *resEvn[4], *resOdd[4];
+  
+  int nsh  = Z[0] * Z[1] * Z[2] / 2;
+  int nvh = nsh * Z[3];
+  int oddBit, l;
+  
+  for(int dir = 0; dir < 4; dir++)
+  {
+    resEvn[dir] = gauge[dir];
+    resOdd[dir] = gauge[dir] + nvh * gaugeSiteSize;
+  }
+  
+  FILE *fp;
+  fp = fopen(filepath,"rb");
+  
+  double tmp_real, tmp_imag;
+
+  for(int dir = 0; dir < 4; dir++)
+  {
+    for(int t = 0; t < Z[3]; t++)
+    {
+      for(int s = 0; s < nsh; s++)
+      {
+	l = s + t * nsh;
+	oddBit = getOddBitFromHLattCoordinate(l);
+	if(!oddBit)
+	{
+	  for(int c1 = 0; c1 < 3; c1++)
+	    for(int c2 = 0; c2 < 3; c2++)
+	    {
+	      fread(&tmp_real, sizeof(double),1,fp);
+	      fread(&tmp_imag, sizeof(double),1,fp);
+	      resEvn[dir][l*(3*3*2) + c1*(3*2) + c2*(2) + 0] = (Float)tmp_real;
+	      resEvn[dir][l*(3*3*2) + c1*(3*2) + c2*(2) + 1] = (Float)tmp_imag;
+	    }
+	  for(int c1 = 0; c1 < 3; c1++)
+	    for(int c2 = 0; c2 < 3; c2++)
+	    {
+	      fread(&tmp_real, sizeof(double),1,fp);
+	      fread(&tmp_imag, sizeof(double),1,fp);
+	      resOdd[dir][l*(3*3*2) + c1*(3*2) + c2*(2) + 0] = (Float)tmp_real;
+	      resOdd[dir][l*(3*3*2) + c1*(3*2) + c2*(2) + 1] = (Float)tmp_imag;
+	    }
+	}
+	else
+	{
+	  for(int c1 = 0; c1 < 3; c1++)
+	    for(int c2 = 0; c2 < 3; c2++)
+	    {
+	      fread(&tmp_real, sizeof(double),1,fp);
+	      fread(&tmp_imag, sizeof(double),1,fp);
+	      resOdd[dir][l*(3*3*2) + c1*(3*2) + c2*(2) + 0] = (Float)tmp_real;
+	      resOdd[dir][l*(3*3*2) + c1*(3*2) + c2*(2) + 1] = (Float)tmp_imag;
+	    }
+	  for(int c1 = 0; c1 < 3; c1++)
+	    for(int c2 = 0; c2 < 3; c2++)
+	    {
+	      fread(&tmp_real, sizeof(double),1,fp);
+	      fread(&tmp_imag, sizeof(double),1,fp);
+	      resEvn[dir][l*(3*3*2) + c1*(3*2) + c2*(2) + 0] = (Float)tmp_real;
+	      resEvn[dir][l*(3*3*2) + c1*(3*2) + c2*(2) + 1] = (Float)tmp_imag;
+	    }
+	}
+
+      }
+    }
+  }	  
+  fclose(fp);
+}
+
+void readILDGconfig(void** gauge, char *file_path, QudaGaugeParam *param)
+{
+  if(param->cpu_prec == QUDA_DOUBLE_PRECISION)
+    readTMconfig<double>((double**) gauge, file_path);
+  else//single precision is set
+    readTMconfig<float>((float**) gauge, file_path);
+}
+
+

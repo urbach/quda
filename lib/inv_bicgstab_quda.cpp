@@ -7,6 +7,7 @@
 #include <spinor_quda.h>
 #include <blas_quda.h>
 #include <dslash_quda.h>
+#include <twist_dslash_quda.h>
 #include <invert_quda.h>
 #include <util_quda.h>
 
@@ -16,11 +17,14 @@ void MatVec(ParitySpinor out, FullGauge gauge,  FullClover clover, FullClover cl
   checkCudaError();
 
   double kappa = invert_param->kappa;
+  double mu    = invert_param->mu;
   if (invert_param->dirac_order == QUDA_CPS_WILSON_DIRAC_ORDER)
     kappa *= cudaGaugePrecise.anisotropy;
   
   if (invert_param->dslash_type == QUDA_WILSON_DSLASH) {
     MatPCCuda(out, gauge, in, kappa, tmp, invert_param->matpc_type, dag_type);
+  } else if (invert_param->dslash_type == QUDA_TWISTED_WILSON_DSLASH) {
+    twistMatPCCuda(out, gauge, in, kappa, mu, tmp, invert_param->matpc_type, dag_type);
   } else {
     cloverMatPCCuda(out, gauge, clover, cloverInv, in, kappa, tmp,
 		    invert_param->matpc_type, dag_type);
@@ -31,12 +35,12 @@ void MatVec(ParitySpinor out, FullGauge gauge,  FullClover clover, FullClover cl
 void invertBiCGstabCuda(ParitySpinor x, ParitySpinor b, ParitySpinor r, 
 			QudaInvertParam *invert_param, DagType dag_type)
 {
-  ParitySpinor y = allocateParitySpinor(x.X, x.precision, x.pad);
+  ParitySpinor y = allocateParitySpinor(x.X, x.precision, x.pad, x.twist_flavor);
 
-  ParitySpinor p = allocateParitySpinor(x.X, invert_param->cuda_prec_sloppy, x.pad);
-  ParitySpinor v = allocateParitySpinor(x.X, invert_param->cuda_prec_sloppy, x.pad);
-  ParitySpinor tmp = allocateParitySpinor(x.X, invert_param->cuda_prec_sloppy, x.pad);
-  ParitySpinor t = allocateParitySpinor(x.X, invert_param->cuda_prec_sloppy, x.pad);
+  ParitySpinor p = allocateParitySpinor(x.X, invert_param->cuda_prec_sloppy, x.pad, x.twist_flavor);
+  ParitySpinor v = allocateParitySpinor(x.X, invert_param->cuda_prec_sloppy, x.pad, x.twist_flavor);
+  ParitySpinor tmp = allocateParitySpinor(x.X, invert_param->cuda_prec_sloppy, x.pad, x.twist_flavor);
+  ParitySpinor t = allocateParitySpinor(x.X, invert_param->cuda_prec_sloppy, x.pad, x.twist_flavor);
 
   ParitySpinor x_sloppy, r_sloppy, r0;
   if (invert_param->cuda_prec_sloppy == x.precision) {
@@ -44,9 +48,9 @@ void invertBiCGstabCuda(ParitySpinor x, ParitySpinor b, ParitySpinor r,
     r_sloppy = r;
     r0 = b;
   } else {
-    x_sloppy = allocateParitySpinor(x.X, invert_param->cuda_prec_sloppy, x.pad);
-    r_sloppy = allocateParitySpinor(x.X, invert_param->cuda_prec_sloppy, x.pad);
-    r0 = allocateParitySpinor(x.X, invert_param->cuda_prec_sloppy, x.pad);
+    x_sloppy = allocateParitySpinor(x.X, invert_param->cuda_prec_sloppy, x.pad, x.twist_flavor);
+    r_sloppy = allocateParitySpinor(x.X, invert_param->cuda_prec_sloppy, x.pad, x.twist_flavor);
+    r0 = allocateParitySpinor(x.X, invert_param->cuda_prec_sloppy, x.pad, x.twist_flavor);
     copyCuda(r0, b);
   }
 

@@ -153,9 +153,9 @@ void init() {
   if (!transfer) {
 
     gauge_param.X[0] /= 2;
-    tmp = allocateParitySpinor(gauge_param.X, inv_param.cuda_prec, inv_param.sp_pad);
-    cudaSpinor = allocateSpinorField(gauge_param.X, inv_param.cuda_prec, inv_param.sp_pad);
-    cudaSpinorOut = allocateSpinorField(gauge_param.X, inv_param.cuda_prec, inv_param.sp_pad);
+    tmp = allocateParitySpinor(gauge_param.X, inv_param.cuda_prec, inv_param.sp_pad, QUDA_TWIST_NO);
+    cudaSpinor = allocateSpinorField(gauge_param.X, inv_param.cuda_prec, inv_param.sp_pad, QUDA_TWIST_NO);
+    cudaSpinorOut = allocateSpinorField(gauge_param.X, inv_param.cuda_prec, inv_param.sp_pad, QUDA_TWIST_NO);
     gauge_param.X[0] *= 2;
 
     if (test_type < 2) {

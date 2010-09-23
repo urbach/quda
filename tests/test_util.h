@@ -31,6 +31,8 @@ extern "C" {
   int compare_floats(void *a, void *b, int len, double epsilon, QudaPrecision precision);
 
   void check_gauge(void **, void **, double epsilon, QudaPrecision precision);
+  
+  void readILDGconfig(void** gauge, char *file_path, QudaGaugeParam *param);
 
   // ---------- gauge_read.cpp ----------
   

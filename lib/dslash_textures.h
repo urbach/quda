@@ -47,3 +47,19 @@ texture<float4, 1, cudaReadModeElementType> cloverTexSingle;
 // Half precision clover term
 texture<short4, 1, cudaReadModeNormalizedFloat> cloverTexHalf;
 texture<float, 1, cudaReadModeElementType> cloverTexNorm;
+
+/*------------------------------twisted mass stuff only----------------------------*/
+
+// Double precision input single flavour spinor field:
+texture<int4, 1> flavorTexDouble;
+
+// Single precision input single flavor spinor field:
+texture<float4, 1, cudaReadModeElementType> flavorTexSingle;
+
+// Double precision input double flavor spinor field:
+texture<int4, 1> flavorTexDouble0;
+texture<int4, 1> flavorTexDouble1;
+
+// Single precision input double flavor spinor field
+texture<float4, 1, cudaReadModeElementType> flavorTexSingle0;
+texture<float4, 1, cudaReadModeElementType> flavorTexSingle1;

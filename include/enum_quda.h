@@ -28,9 +28,12 @@ extern "C" {
     QUDA_INVALID_CLOVER_ORDER = QUDA_INVALID_ENUM
   } QudaCloverFieldOrder;
 
+///Warning: extra parameter is introduced  
+  
   typedef enum QudaDslashType_s {
     QUDA_WILSON_DSLASH,
     QUDA_CLOVER_WILSON_DSLASH,
+    QUDA_TWISTED_WILSON_DSLASH,    
     QUDA_INVALID_DSLASH = QUDA_INVALID_ENUM
   } QudaDslashType;
 
@@ -104,7 +107,7 @@ extern "C" {
     QUDA_DAG_YES,
     QUDA_DAG_INVALID = QUDA_INVALID_ENUM
   } QudaDagType;
-  
+    
   typedef enum QudaTboundary_s {
     QUDA_ANTI_PERIODIC_T = -1,
     QUDA_PERIODIC_T = 1,
@@ -117,6 +120,13 @@ extern "C" {
     QUDA_VERBOSE,
     QUDA_INVALID_VERBOSITY = QUDA_INVALID_ENUM
   } QudaVerbosity;
+  
+  typedef enum QudaTwistFlavorType_s {
+    QUDA_TWIST_MNS = -1,
+    QUDA_TWIST_PLS = +1,
+    QUDA_TWIST_NO  = 0,
+    QUDA_TWIST_INVALID = QUDA_INVALID_ENUM
+  } QudaTwistFlavorType;  
 
 #ifdef __cplusplus
 }

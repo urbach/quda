@@ -1,3 +1,5 @@
+///Warning:with twisted mass parameter here!
+
 #ifndef _QUDA_H
 #define _QUDA_H
 
@@ -38,13 +40,14 @@ extern "C" {
     double gaugeGiB;
 
   } QudaGaugeParam;
-
+  ///Warning! extra parameter is introduced corresponding to 2*kappa*mu for the twisted mass stuff
   typedef struct QudaInvertParam_s {
     
     QudaDslashType dslash_type;
     QudaInverterType inv_type;
 
-    double kappa;  
+    double kappa;
+    double mu;//for the twisted mass stuff 
     double tol;
     int maxiter;
     double reliable_delta; // reliable update tolerance
@@ -87,10 +90,8 @@ extern "C" {
   void saveGaugeQuda(void *h_gauge, QudaGaugeParam *param);
   void loadCloverQuda(void *h_clover, void *h_clovinv, QudaInvertParam *inv_param);
 
-  void invertQuda(void *h_x, void *h_b, QudaInvertParam *param);
-
+  void invertQuda(void *h_x, void *h_b, QudaInvertParam *param, QudaTwistFlavorType flavor);
   void dslashQuda(void *h_out, void *h_in, QudaInvertParam *inv_param, int parity, int dagger);
-
   void dslash3DQuda(void *h_out, void *h_in, QudaInvertParam *inv_param, int parity, int dagger);
 
   void MatPCQuda(void *h_out, void *h_in, QudaInvertParam *inv_param, int dagger);
@@ -104,6 +105,10 @@ extern "C" {
 
   void printQudaGaugeParam(QudaGaugeParam *param);
   void printQudaInvertParam(QudaInvertParam *param);
+  
+//temporal functions, added for testing only:
+
+  double checkTwistMatPCQuda(void *h_in, QudaInvertParam *inv_param, int dagger, QudaTwistFlavorType flavor);
 
 #ifdef __cplusplus
 }

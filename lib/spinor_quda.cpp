@@ -47,9 +47,13 @@ void freeSpinorBuffer(void)
 
 static int L[4];
 
-ParitySpinor allocateParitySpinor(int *X, Precision precision, int pad) {
+//Add here twisted mass parameter:
+
+ParitySpinor allocateParitySpinor(int *X, Precision precision, int pad, FlavorType flavor) {
   ParitySpinor ret;
 
+  ret.twist_flavor = flavor;
+  
   ret.precision = precision;
   ret.volume = 1;
   for (int d=0; d<4; d++) {
@@ -85,10 +89,10 @@ ParitySpinor allocateParitySpinor(int *X, Precision precision, int pad) {
   return ret;
 }
 
-FullSpinor allocateSpinorField(int *X, Precision precision, int pad) {
+FullSpinor allocateSpinorField(int *X, Precision precision, int pad, FlavorType flavor) {
   FullSpinor ret;
-  ret.even = allocateParitySpinor(X, precision, pad);
-  ret.odd = allocateParitySpinor(X, precision, pad);
+  ret.even = allocateParitySpinor(X, precision, pad, flavor);
+  ret.odd = allocateParitySpinor(X, precision, pad, flavor);
   return ret;
 }
 
@@ -419,7 +423,7 @@ void loadParitySpinor(ParitySpinor ret, void *spinor, Precision cpu_prec,
     }
     cudaMemcpy(ret.spinor, packedSpinor1, ret.bytes, cudaMemcpyHostToDevice);
   } else {
-    ParitySpinor tmp = allocateParitySpinor(ret.X, QUDA_SINGLE_PRECISION, ret.pad);
+    ParitySpinor tmp = allocateParitySpinor(ret.X, QUDA_SINGLE_PRECISION, ret.pad, ret.twist_flavor);
     loadParitySpinor(tmp, spinor, cpu_prec, dirac_order);
     copyCuda(ret, tmp);
     freeParitySpinor(tmp);
@@ -449,7 +453,7 @@ void loadFullSpinor(FullSpinor ret, void *spinor, Precision cpu_prec) {
     freeBuffer(&packedSpinor2);
 
   } else {
-    FullSpinor tmp = allocateSpinorField(ret.even.X, QUDA_SINGLE_PRECISION, ret.even.pad);
+    FullSpinor tmp = allocateSpinorField(ret.even.X, QUDA_SINGLE_PRECISION, ret.even.pad, ret.even.twist_flavor);
     loadFullSpinor(tmp, spinor, cpu_prec);
     copyCuda(ret.even, tmp.even);
     copyCuda(ret.odd, tmp.odd);
@@ -501,7 +505,7 @@ void retrieveParitySpinor(void *res, ParitySpinor spinor, Precision cpu_prec, Di
     }
 
   } else {
-    ParitySpinor tmp = allocateParitySpinor(spinor.X, QUDA_SINGLE_PRECISION, spinor.pad);
+    ParitySpinor tmp = allocateParitySpinor(spinor.X, QUDA_SINGLE_PRECISION, spinor.pad, spinor.twist_flavor);
     copyCuda(tmp, spinor);
     retrieveParitySpinor(res, tmp, cpu_prec, dirac_order);
     freeParitySpinor(tmp);
@@ -528,7 +532,7 @@ void retrieveFullSpinor(void *res, FullSpinor spinor, Precision cpu_prec) {
     freeBuffer(&packedSpinor2);
 
   } else {
-    FullSpinor tmp = allocateSpinorField(spinor.even.X, QUDA_SINGLE_PRECISION, spinor.even.pad);
+    FullSpinor tmp = allocateSpinorField(spinor.even.X, QUDA_SINGLE_PRECISION, spinor.even.pad, spinor.even.twist_flavor);
     copyCuda(tmp.even, spinor.even);
     copyCuda(tmp.odd, spinor.odd);
     retrieveFullSpinor(res, tmp, cpu_prec);
