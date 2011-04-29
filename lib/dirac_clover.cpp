@@ -4,13 +4,14 @@
 #include <tune_quda.h>
 
 DiracClover::DiracClover(const DiracParam &param)
-  : DiracWilson(param), blockClover(64, 1, 1), clover(*(param.clover))
+  : DiracWilson(param), blockClover(64, 1, 1), gridClover((param.gauge->volumeCB + blockClover.x-1)/blockClover.x, 1, 1),
+    clover(*(param.clover))
 {
 
 }
 
 DiracClover::DiracClover(const DiracClover &dirac) 
-  : DiracWilson(dirac), blockClover(64, 1, 1), clover(dirac.clover)
+  : DiracWilson(dirac), blockClover(64, 1, 1), gridClover(dirac.gridClover), clover(dirac.clover)
 {
 
 }
@@ -26,6 +27,7 @@ DiracClover& DiracClover::operator=(const DiracClover &dirac)
   if (&dirac != this) {
     DiracWilson::operator=(dirac);
     blockClover = dirac.blockClover;
+    gridClover = dirac.gridClover;
     clover = dirac.clover;
   }
 
@@ -42,7 +44,7 @@ void DiracClover::Tune(cudaColorSpinorField &out, const cudaColorSpinorField &in
 
   { // Tune clover application
     TuneDiracClover cloverTune(*this, out, in);
-    cloverTune.Benchmark(blockClover);
+    cloverTune.Benchmark(blockClover, gridClover);
   }
 
   setDslashTuning(QUDA_TUNE_NO);
@@ -72,7 +74,7 @@ void DiracClover::cloverApply(cudaColorSpinorField &out, const FullClover &clove
   if (!initClover) initCloverConstants(clover.even.stride);
   checkParitySpinor(in, out, clover);
 
-  cloverCuda(&out, gauge, clover, &in, parity, blockClover);
+  cloverCuda(&out, gauge, clover, &in, parity, blockClover, gridClover);
 
   flops += 504*in.volume;
 }
@@ -139,6 +141,8 @@ DiracCloverPC::DiracCloverPC(const DiracParam &param) :
   for (int i=0; i<5; i++) {
     blockDslash[i] = dim3(64, 1, 1);
     blockDslashXpay[i] = dim3(64, 1, 1);
+    gridDslash[i] = dim3((param.gauge->volumeCB+blockDslash[i].x-1)/blockDslash[i].x, 1, 1);
+    gridDslashXpay[i] = dim3((param.gauge->volumeCB+blockDslashXpay[i].x-1)/blockDslashXpay[i].x, 1, 1);
   }
 }
 
@@ -148,6 +152,8 @@ DiracCloverPC::DiracCloverPC(const DiracCloverPC &dirac) :
   for (int i=0; i<5; i++) {
     blockDslash[i] = dirac.blockDslash[i];
     blockDslashXpay[i] = dirac.blockDslashXpay[i];
+    gridDslash[i] = dirac.gridDslash[i];
+    gridDslashXpay[i] = dirac.gridDslashXpay[i];
   }
 }
 
@@ -163,6 +169,8 @@ DiracCloverPC& DiracCloverPC::operator=(const DiracCloverPC &dirac)
     for (int i=0; i<5; i++) {
       blockDslash[i] = dirac.blockDslash[i];
       blockDslashXpay[i] = dirac.blockDslashXpay[i];
+      gridDslash[i] = dirac.gridDslash[i];
+      gridDslashXpay[i] = dirac.gridDslashXpay[i];
     }
     cloverInv = dirac.cloverInv;
   }
@@ -179,16 +187,16 @@ void DiracCloverPC::Tune(cudaColorSpinorField &out, const cudaColorSpinorField &
 
   { // Tune Dslash
     TuneDiracCloverDslash dslashTune(*this, out, in);
-    dslashTune.Benchmark(blockDslash[0]);
+    dslashTune.Benchmark(blockDslash[0], gridDslash[0]);
     for (int i=0; i<4; i++) 
-      if (commDimPartitioned(i)) dslashTune.Benchmark(blockDslash[i+1]);
+      if (commDimPartitioned(i)) dslashTune.Benchmark(blockDslash[i+1], gridDslash[i+1]);
   }
 
   { // Tune DslashXpay
     TuneDiracCloverDslashXpay dslashXpayTune(*this, out, in, x);
-    dslashXpayTune.Benchmark(blockDslashXpay[0]);
+    dslashXpayTune.Benchmark(blockDslashXpay[0], gridDslashXpay[0]);
     for (int i=0; i<4; i++) 
-      if (commDimPartitioned(i)) dslashXpayTune.Benchmark(blockDslashXpay[i+1]);
+      if (commDimPartitioned(i)) dslashXpayTune.Benchmark(blockDslashXpay[i+1], gridDslashXpay[i+1]);
   }
 
   setDslashTuning(QUDA_TUNE_NO);
@@ -215,7 +223,7 @@ void DiracCloverPC::Dslash(cudaColorSpinorField &out, const cudaColorSpinorField
   setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda
 
   cloverDslashCuda(&out, gauge, cloverInv, &in, parity, dagger, 0, 0.0, 
-		   blockDslash, commDim);
+		   blockDslash, gridDslash, commDim);
 
   flops += (1320+504)*in.volume;
 }
@@ -233,7 +241,7 @@ void DiracCloverPC::DslashXpay(cudaColorSpinorField &out, const cudaColorSpinorF
   setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda
 
   cloverDslashCuda(&out, gauge, cloverInv, &in, parity, dagger, &x, k, 
-		   blockDslashXpay, commDim);
+		   blockDslashXpay, gridDslashXpay, commDim);
 
   flops += (1320+504+48)*in.volume;
 }

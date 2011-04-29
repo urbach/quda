@@ -302,7 +302,7 @@ class DslashCuda {
 public:
   DslashCuda() { ; }
   virtual ~DslashCuda() { ; }
-  virtual void apply(const dim3 &blockDim, const int shared_bytes, const cudaStream_t &stream) = 0;
+  virtual void apply(const dim3 &blockDim, const dim3 &gridDim, const int shared_bytes, const cudaStream_t &stream) = 0;
 };
 
 
@@ -331,8 +331,8 @@ public:
 
   virtual ~WilsonDslashCuda() { unbindSpinorTex(in, inNorm, out, outNorm, x, xNorm); }
 
-  void apply(const dim3 &blockDim, const int shared_bytes, const cudaStream_t &stream) {
-    dim3 gridDim( (dslashParam.threads+blockDim.x-1) / blockDim.x, 1, 1);
+  void apply(const dim3 &blockDim, const dim3 &gridDim, const int shared_bytes, const cudaStream_t &stream) {
+    //dim3 gridDim( (dslashParam.threads+blockDim.x-1) / blockDim.x, 1, 1);
     //printfQuda("Applying dslash: threads = %d, type = %d\n", dslashParam.threads, dslashParam.kernel_type);
     DSLASH(dslash, gridDim, blockDim, shared_bytes, stream, dslashParam,
 	   out, outNorm, gauge0, gauge1, in, inNorm, x, xNorm, a);
@@ -368,8 +368,8 @@ public:
   }
   virtual ~CloverDslashCuda() { unbindSpinorTex(in, inNorm, out, outNorm, x, xNorm); }
 
-  void apply(const dim3 &blockDim, const int shared_bytes, const cudaStream_t &stream) {
-    dim3 gridDim( (dslashParam.threads+blockDim.x-1) / blockDim.x, 1, 1);
+  void apply(const dim3 &blockDim, const dim3 &gridDim, const int shared_bytes, const cudaStream_t &stream) {
+    //dim3 gridDim( (dslashParam.threads+blockDim.x-1) / blockDim.x, 1, 1);
     DSLASH(cloverDslash, gridDim, blockDim, shared_bytes, stream, dslashParam,
 	   out, outNorm, gauge0, gauge1, clover, cloverNorm, in, inNorm, x, xNorm, a);
   }
@@ -418,8 +418,8 @@ public:
   }
   virtual ~TwistedDslashCuda() { unbindSpinorTex(in, inNorm, out, outNorm, x, xNorm); }
 
-  void apply(const dim3 &blockDim, const int shared_bytes, const cudaStream_t &stream) {
-    dim3 gridDim( (dslashParam.threads+blockDim.x-1) / blockDim.x, 1, 1);
+  void apply(const dim3 &blockDim, const dim3 &gridDim, const int shared_bytes, const cudaStream_t &stream) {
+    //dim3 gridDim( (dslashParam.threads+blockDim.x-1) / blockDim.x, 1, 1);
     DSLASH(twistedMassDslash, gridDim, blockDim, shared_bytes, stream, dslashParam,
 	   out, outNorm, gauge0, gauge1, in, inNorm, a, b, x, xNorm);
   }
@@ -451,8 +451,8 @@ public:
   }
   virtual ~DomainWallDslashCuda() { unbindSpinorTex(in, inNorm, out, outNorm, x, xNorm); }
 
-  void apply(const dim3 &blockDim, const int shared_bytes, const cudaStream_t &stream) {
-    dim3 gridDim( (dslashParam.threads+blockDim.x-1) / blockDim.x, 1, 1);
+  void apply(const dim3 &blockDim, const dim3 &gridDim, const int shared_bytes, const cudaStream_t &stream) {
+    //dim3 gridDim( (dslashParam.threads+blockDim.x-1) / blockDim.x, 1, 1);
     DSLASH(domainWallDslash, gridDim, blockDim, shared_bytes, stream, dslashParam,
     	   out, outNorm, gauge0, gauge1, in, inNorm, mferm, x, xNorm, a);
   }
@@ -460,7 +460,7 @@ public:
 };
 
 void dslashCuda(DslashCuda &dslash, const size_t regSize, const int parity, const int dagger, 
-		const int volume, const int *faceVolumeCB, const dim3 *blockDim) {
+		const int volume, const int *faceVolumeCB, const dim3 *blockDim, const dim3 *gridDim) {
 
   dslashParam.parity = parity;
 
@@ -479,7 +479,7 @@ void dslashCuda(DslashCuda &dslash, const size_t regSize, const int parity, cons
 #endif
 
   int shared_bytes = blockDim[0].x*(DSLASH_SHARED_FLOATS_PER_THREAD*regSize + SHARED_COORDS);
-  dslash.apply(blockDim[0], shared_bytes, streams[Nstream-1]); // stream 0 or 8
+  dslash.apply(blockDim[0], gridDim[0], shared_bytes, streams[Nstream-1]); // stream 0 or 8
 
 #ifdef MULTI_GPU
 
@@ -504,7 +504,7 @@ void dslashCuda(DslashCuda &dslash, const size_t regSize, const int parity, cons
     //dslashParam.tOffset = dims[i]-2; // is this redundant?
     dslashParam.threads = 2*faceVolumeCB[i]; // updating 2 faces
 
-    dslash.apply(blockDim[i+1], shared_bytes, streams[Nstream-1]); // all faces use this stream
+    dslash.apply(blockDim[i+1], gridDim[i+1], shared_bytes, streams[Nstream-1]); // all faces use this stream
   }
 
 #endif // MULTI_GPU
@@ -513,7 +513,7 @@ void dslashCuda(DslashCuda &dslash, const size_t regSize, const int parity, cons
 // Wilson wrappers
 void wilsonDslashCuda(cudaColorSpinorField *out, const FullGauge gauge, const cudaColorSpinorField *in,
 		      const int parity, const int dagger, const cudaColorSpinorField *x,
-		      const double &k, const dim3 *blockDim, const int *commOverride) {
+		      const double &k, const dim3 *blockDim, const dim3 *gridDim, const int *commOverride) {
 
   inSpinor = (cudaColorSpinorField*)in; // EVIL
 
@@ -556,7 +556,7 @@ void wilsonDslashCuda(cudaColorSpinorField *out, const FullGauge gauge, const cu
 						  gauge.reconstruct, (short4*)in->v, (float*)in->norm,
 						  (short4*)xv, (float*)xn, k, dagger, in->bytes, in->norm_bytes);
   }
-  dslashCuda(*dslash, regSize, parity, dagger, in->volume, in->ghostFace, blockDim);
+  dslashCuda(*dslash, regSize, parity, dagger, in->volume, in->ghostFace, blockDim, gridDim);
 
   delete dslash;
   unbindGaugeTex(gauge);
@@ -571,7 +571,7 @@ void wilsonDslashCuda(cudaColorSpinorField *out, const FullGauge gauge, const cu
 void cloverDslashCuda(cudaColorSpinorField *out, const FullGauge gauge, const FullClover cloverInv,
 		      const cudaColorSpinorField *in, const int parity, const int dagger, 
 		      const cudaColorSpinorField *x, const double &a,
-		      const dim3 *blockDim, const int *commOverride) {
+		      const dim3 *blockDim, const dim3 *gridDim, const int *commOverride) {
 
   inSpinor = (cudaColorSpinorField*)in; // EVIL
 
@@ -624,7 +624,7 @@ void cloverDslashCuda(cudaColorSpinorField *out, const FullGauge gauge, const Fu
 							  (short4*)xv, (float*)xn, a, dagger, in->bytes, in->norm_bytes);
   }
 
-  dslashCuda(*dslash, regSize, parity, dagger, in->volume, in->ghostFace, blockDim);
+  dslashCuda(*dslash, regSize, parity, dagger, in->volume, in->ghostFace, blockDim, gridDim);
 
   delete dslash;
   unbindGaugeTex(gauge);
@@ -641,7 +641,7 @@ void cloverDslashCuda(cudaColorSpinorField *out, const FullGauge gauge, const Fu
 void twistedMassDslashCuda(cudaColorSpinorField *out, const FullGauge gauge, 
 			   const cudaColorSpinorField *in, const int parity, const int dagger, 
 			   const cudaColorSpinorField *x, const double &kappa, const double &mu, 
-			   const double &a, const dim3 *blockDim, const int *commOverride) {
+			   const double &a, const dim3 *blockDim, const dim3 *gridDim, const int *commOverride) {
 
   inSpinor = (cudaColorSpinorField*)in; // EVIL
 
@@ -687,7 +687,7 @@ void twistedMassDslashCuda(cudaColorSpinorField *out, const FullGauge gauge,
     
   }
 
-  dslashCuda(*dslash, regSize, parity, dagger, in->volume, in->ghostFace, blockDim);
+  dslashCuda(*dslash, regSize, parity, dagger, in->volume, in->ghostFace, blockDim, gridDim);
 
   delete dslash;
   unbindGaugeTex(gauge);
@@ -702,7 +702,7 @@ void twistedMassDslashCuda(cudaColorSpinorField *out, const FullGauge gauge,
 void domainWallDslashCuda(cudaColorSpinorField *out, const FullGauge gauge, 
 			  const cudaColorSpinorField *in, const int parity, const int dagger, 
 			  const cudaColorSpinorField *x, const double &m_f, const double &k2,
-			  const dim3 *blockDim) {
+			  const dim3 *blockDim, const dim3 *gridDim) {
 
   inSpinor = (cudaColorSpinorField*)in; // EVIL
 
@@ -745,7 +745,7 @@ void domainWallDslashCuda(cudaColorSpinorField *out, const FullGauge gauge,
 						     (float*)xn, m_f, k2, dagger, in->bytes, in->norm_bytes);
   }
 
-  dslashCuda(*dslash, regSize, parity, dagger, in->volume, in->ghostFace, blockDim);
+  dslashCuda(*dslash, regSize, parity, dagger, in->volume, in->ghostFace, blockDim, gridDim);
 
   delete dslash;
   unbindGaugeTex(gauge);
@@ -823,7 +823,7 @@ template <typename spinorFloat, typename fatGaugeFloat, typename longGaugeFloat>
 void staggeredDslashCuda(cudaColorSpinorField *out, const FullGauge fatGauge, 
 			 const FullGauge longGauge, const cudaColorSpinorField *in,
 			 const int parity, const int dagger, const cudaColorSpinorField *x,
-			 const double &k, const dim3 *block, const int *commOverride)
+			 const double &k, const dim3 *block, const dim3 *grid, const int *commOverride)
 {
   
   inSpinor = (cudaColorSpinorField*)in; // EVIL
@@ -888,9 +888,9 @@ void staggeredDslashCuda(cudaColorSpinorField *out, const FullGauge fatGauge,
 template <typename spinorFloat, typename cloverFloat>
 void cloverCuda(spinorFloat *out, float *outNorm, const cloverFloat *clover,
 		const float *cloverNorm, const spinorFloat *in, const float *inNorm, 
-		const size_t bytes, const size_t norm_bytes, const dim3 blockDim)
+		const size_t bytes, const size_t norm_bytes, const dim3 blockDim, const dim3 gridDim)
 {
-  dim3 gridDim( (dslashParam.threads+blockDim.x-1) / blockDim.x, 1, 1);
+  //dim3 gridDim( (dslashParam.threads+blockDim.x-1) / blockDim.x, 1, 1);
 
   int shared_bytes = blockDim.x*CLOVER_SHARED_FLOATS_PER_THREAD*bindSpinorTex(bytes, norm_bytes, in, inNorm);
   cloverKernel<<<gridDim, blockDim, shared_bytes>>> 
@@ -899,7 +899,7 @@ void cloverCuda(spinorFloat *out, float *outNorm, const cloverFloat *clover,
 }
 
 void cloverCuda(cudaColorSpinorField *out, const FullGauge gauge, const FullClover clover, 
-		const cudaColorSpinorField *in, const int parity, const dim3 &blockDim) {
+		const cudaColorSpinorField *in, const int parity, const dim3 &blockDim, const dim3 &gridDim) {
 
   dslashParam.parity = parity;
   dslashParam.tOffset = 0;
@@ -917,18 +917,18 @@ void cloverCuda(cudaColorSpinorField *out, const FullGauge gauge, const FullClov
 #if (__CUDA_ARCH__ >= 130)
     cloverCuda((double2*)out->v, (float*)out->norm, (double2*)cloverP, 
 	       (float*)cloverNormP, (double2*)in->v, (float*)in->norm, 
-	       in->bytes, in->norm_bytes, blockDim);
+	       in->bytes, in->norm_bytes, blockDim, gridDim);
 #else
     errorQuda("Double precision not supported on this GPU");
 #endif
   } else if (in->precision == QUDA_SINGLE_PRECISION) {
     cloverCuda((float4*)out->v, (float*)out->norm, (float4*)cloverP, 
 	       (float*)cloverNormP, (float4*)in->v, (float*)in->norm,
-	       in->bytes, in->norm_bytes, blockDim);
+	       in->bytes, in->norm_bytes, blockDim, gridDim);
   } else if (in->precision == QUDA_HALF_PRECISION) {
     cloverCuda((short4*)out->v, (float*)out->norm, (short4*)cloverP, 
 	       (float*)cloverNormP, (short4*)in->v, (float*)in->norm, 
-	       in->bytes, in->norm_bytes, blockDim);
+	       in->bytes, in->norm_bytes, blockDim, gridDim);
   }
   unbindCloverTex(clover);
 
@@ -943,9 +943,9 @@ template <typename spinorFloat>
 void twistGamma5Cuda(spinorFloat *out, float *outNorm, const spinorFloat *in, 
 		     const float *inNorm, const int dagger, const double &kappa, 
 		     const double &mu, const size_t bytes, const size_t norm_bytes, 
-		     const QudaTwistGamma5Type twist, dim3 blockDim)
+		     const QudaTwistGamma5Type twist, dim3 blockDim, dim3 gridDim)
 {
-  dim3 gridDim( (dslashParam.threads+blockDim.x-1) / blockDim.x, 1, 1);
+  //  dim3 gridDim( (dslashParam.threads+blockDim.x-1) / blockDim.x, 1, 1);
 
   double a=0.0, b=0.0;
   setTwistParam(a, b, kappa, mu, dagger, twist);
@@ -957,7 +957,7 @@ void twistGamma5Cuda(spinorFloat *out, float *outNorm, const spinorFloat *in,
 
 void twistGamma5Cuda(cudaColorSpinorField *out, const cudaColorSpinorField *in,
 		     const int dagger, const double &kappa, const double &mu,
-		     const QudaTwistGamma5Type twist, const dim3 &block) {
+		     const QudaTwistGamma5Type twist, const dim3 &block, const dim3 &grid) {
 
   dslashParam.tOffset = 0;
   dslashParam.tMul = 1;
@@ -969,7 +969,7 @@ void twistGamma5Cuda(cudaColorSpinorField *out, const cudaColorSpinorField *in,
     twistGamma5Cuda((double2*)out->v, (float*)out->norm, 
 		    (double2*)in->v, (float*)in->norm, 
 		    dagger, kappa, mu, in->bytes, 
-		    in->norm_bytes, twist, block);
+		    in->norm_bytes, twist, block, grid);
 #else
     errorQuda("Double precision not supported on this GPU");
 #endif
@@ -977,12 +977,12 @@ void twistGamma5Cuda(cudaColorSpinorField *out, const cudaColorSpinorField *in,
     twistGamma5Cuda((float4*)out->v, (float*)out->norm,
 		    (float4*)in->v, (float*)in->norm, 
 		    dagger, kappa, mu, in->bytes, 
-		    in->norm_bytes, twist, block);
+		    in->norm_bytes, twist, block, grid);
   } else if (in->precision == QUDA_HALF_PRECISION) {
     twistGamma5Cuda((short4*)out->v, (float*)out->norm,
 		    (short4*)in->v, (float*)in->norm, 
 		    dagger, kappa, mu, in->bytes, 
-		    in->norm_bytes, twist, block);
+		    in->norm_bytes, twist, block, grid);
   }
   if (!dslashTuning) checkCudaError();
 #else
