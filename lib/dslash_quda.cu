@@ -778,6 +778,25 @@ template <typename spinorFloat, typename fatGaugeFloat, typename longGaugeFloat>
   size_t regSize = bindSpinorTex_mg(length, ghost_length, in, inNorm, x, xNorm); CUERR;
   int shared_bytes = blockDim[0].x*6*regSize;
   
+#ifdef DSLASH_PROFILE  
+  cudaEvent_t interior_start, interior_stop;
+  cudaEvent_t exterior_start[4], exterior_stop[4];
+  struct timeval comm_start[4], comm_stop[4];
+  struct timeval dslash_start, dslash_stop;
+  cudaEventCreate(&interior_start);
+  cudaEventCreate(&interior_stop);
+  for(int i=0;i < 4;i++){
+    cudaEventCreate(&exterior_start[i]);
+    cudaEventCreate(&exterior_stop[i]);
+  }
+  cudaThreadSynchronize();
+  gettimeofday(&dslash_start, NULL);
+#endif
+
+#ifdef DSLASH_PROFILE  
+  cudaEventRecord(interior_start, streams[Nstream-1]);
+#endif
+
   dslashParam.kernel_type = INTERIOR_KERNEL;
   dslashParam.tOffset =  0;
   dslashParam.threads = volume;
@@ -791,16 +810,29 @@ template <typename spinorFloat, typename fatGaugeFloat, typename longGaugeFloat>
 
   STAGGERED_DSLASH(interiorGridDim, blockDim[0], shared_bytes, streams[Nstream-1], dslashParam,
 		   out, outNorm, fatGauge0, fatGauge1, longGauge0, longGauge1, in, inNorm, x, xNorm, a); CUERR;
+  
+#ifdef DSLASH_PROFILE  
+  cudaEventRecord(interior_stop, streams[Nstream-1]);
+#endif
 
 #ifdef MULTI_GPU
 
   for(int i=0 ;i < 4;i++){
     if (!dslashParam.commDim[i]) continue;
 
+#ifdef DSLASH_PROFILE  
+    gettimeofday(&comm_start[i], NULL);
+#endif
+    
     // Finish gather and start comms
     face->exchangeFacesComms(i);
     // Wait for comms to finish, and scatter into the end zone
     face->exchangeFacesWait(*inSpinor, dagger,i);    
+
+#ifdef DSLASH_PROFILE  
+    gettimeofday(&comm_stop[i], NULL);
+#endif
+    
   }
 
   for(int i=0 ;i < 4;i++){
@@ -810,13 +842,78 @@ template <typename spinorFloat, typename fatGaugeFloat, typename longGaugeFloat>
     
     cudaStreamSynchronize(streams[2*i]);
     cudaStreamSynchronize(streams[2*i + 1]);
+
+#ifdef DSLASH_PROFILE  
+    cudaEventRecord(exterior_start[i], streams[Nstream-1]);
+#endif
+
+
     dslashParam.kernel_type = static_cast<KernelType>(i);
     dslashParam.tOffset =  dims[i]-6;
     dslashParam.threads = 6*Vsh[i];
     STAGGERED_DSLASH(exteriorGridDim[i], blockDim[i+1], shared_bytes, streams[Nstream-1], dslashParam,
 		     out, outNorm, fatGauge0, fatGauge1, longGauge0, longGauge1, in, inNorm, x, xNorm, a); CUERR;
+
+#ifdef DSLASH_PROFILE  
+    cudaEventRecord(exterior_stop[i], streams[Nstream-1]);
+#endif
+    
   }
   cudaStreamSynchronize(streams[Nstream-1]);
+
+#ifdef DSLASH_PROFILE  
+  cudaThreadSynchronize();
+  gettimeofday(&dslash_stop, NULL);
+  float interior_time, exterior_time[4], comm_time[4], dslash_time, accumu_time =0;
+  cudaEventElapsedTime(&interior_time, interior_start, interior_stop);
+  dslash_time = (dslash_stop.tv_sec - dslash_start.tv_sec)*1e+3
+    + (dslash_stop.tv_usec - dslash_start.tv_usec)*1e-3;
+  for(int i=0;i < 4;i++){
+    if(commDimPartitioned(i)){
+      cudaEventElapsedTime(&exterior_time[i], exterior_start[i], exterior_stop[i]);
+#define TDIFF(a,b) ((a.tv_sec - b.tv_sec)*1e+3 + (a.tv_usec - b.tv_usec)*1e-3)
+      comm_time[i] = TDIFF(comm_stop[i], comm_start[i]);
+      accumu_time += comm_time[i];
+      accumu_time += exterior_time[i];
+      if( sizeof(spinorFloat) == 8){
+	static int count_sp = 0;
+	if(count_sp < 10){
+	  printfQuda("SP: dir=%d, comm=%.2f ms, exterior kernel=%.2f ms\n", i, comm_time[i], exterior_time[i]); 
+	}
+	count_sp++;
+      }else if( sizeof(spinorFloat) == 16){
+	static int count_dp = 0;
+	if(count_dp < 10){
+	  printfQuda("DP: dir=%d, comm=%.2f ms, exterior kernel=%.2f ms\n", i, comm_time[i], exterior_time[i]); 
+	}
+	count_dp++;
+      }      
+    }
+  }
+  
+  if( sizeof(spinorFloat) == 8){
+    static int count_sp=0;
+    if(count_sp <10) {
+      printfQuda("SP: overall dslash time=%.2f ms, Interior kernel: %.2f ms,  external accumulation_time=%.2f ms\n", dslash_time, interior_time,  accumu_time); 
+    }
+    count_sp++;
+  }else if( sizeof(spinorFloat) == 16){
+    static int count_dp = 0;
+    if(count_dp < 10){
+      printfQuda("DP:overall dslash time=%.2f ms, Interior kernel: %.2f ms,  external accumulation_time=%.2f ms\n", dslash_time, interior_time,  accumu_time); 
+    }
+    count_dp++;
+  }
+
+  cudaEventDestroy(interior_start);
+  cudaEventDestroy(interior_stop);
+  for(int i=0;i < 4;i++){
+    cudaEventDestroy(exterior_start[i]);
+    cudaEventDestroy(exterior_stop[i]);
+  }
+  
+#endif
+  
 
 #endif
 }

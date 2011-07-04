@@ -9,6 +9,9 @@
 extern "C" {
 #endif
 
+
+#define DSLASH_PROFILE  
+  
   // When adding new members to QudaGaugeParam and QudaInvertParam, 
   // be sure to update lib/check_params.h
 #define QUDA_MAX_DIM 6
