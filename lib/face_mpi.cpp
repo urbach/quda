@@ -121,12 +121,10 @@ void FaceBuffer::exchangeFacesStart(cudaColorSpinorField &in, int parity,
   int downtags[4] = {XDOWN, YDOWN, ZDOWN, TDOWN};
 
 #ifdef DSLASH_PROFILE  
-  for(int d=0;d < 4; d++){
     for(int i =0;i < 2; i++){
-      cudaEventCreate(&pack_start[d][i]);
-      cudaEventCreate(&pack_stop[d][i]);
+      cudaEventCreate(&pack_start[dir][i]);
+      cudaEventCreate(&pack_stop[dir][i]);
     }
-  }
 #endif  
 
 
