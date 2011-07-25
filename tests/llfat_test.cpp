@@ -33,6 +33,7 @@ void *fatlink, *sitelink[4], *reflink[4];
 #ifdef MULTI_GPU
 void* ghost_sitelink[4];
 void* ghost_sitelink_diag[16];
+void* sitelink_ex[4];
 #endif
 
 int verify_results = 0;
@@ -50,6 +51,17 @@ int Vs[4];
 int Vsh[4];
 int Vs_x, Vs_y, Vs_z, Vs_t;
 int Vsh_x, Vsh_y, Vsh_z, Vsh_t;
+
+int Z_ex[4];
+int V_ex;
+int Vh_ex;
+int Vs_ex[4];
+int Vsh_ex[4];
+int Vs_ex_x, Vs_ex_y, Vs_ex_z, Vs_ex_t;
+int Vsh_ex_x, Vsh_ex_y, Vsh_ex_z, Vsh_ex_t;
+
+int X1, X1h, X2, X3, X4;
+int E1, E1h, E2, E3, E4;
 
 
 extern int xdim, ydim, zdim, tdim;
@@ -88,6 +100,29 @@ setDims(int *X) {
   Vsh[2] = Vsh_z = Vs_z/2;
   Vsh[3] = Vsh_t = Vs_t/2;
 
+  V_ex = 1;
+  for (int d=0; d< 4; d++) {
+    V_ex *= X[d]+4;
+    Z_ex[d] = X[d]+4;
+  }
+  Vh_ex = V_ex/2;
+  
+  Vs_ex[0] = Vs_ex_x = Z_ex[1]*Z_ex[2]*Z_ex[3];
+  Vs_ex[1] = Vs_ex_y = Z_ex[0]*Z_ex[2]*Z_ex[3];
+  Vs_ex[2] = Vs_ex_z = Z_ex[0]*Z_ex[1]*Z_ex[3];
+  Vs_ex[3] = Vs_ex_t = Z_ex[0]*Z_ex[1]*Z_ex[2];
+  
+  Vsh_ex[0] = Vsh_ex_x = Vs_ex_x/2;
+  Vsh_ex[1] = Vsh_ex_y = Vs_ex_y/2;
+  Vsh_ex[2] = Vsh_ex_z = Vs_ex_z/2;
+  Vsh_ex[3] = Vsh_ex_t = Vs_ex_t/2;
+
+
+  X1=X[0]; X2 = X[1]; X3=X[2]; X4=X[3];
+  X1h=X1/2;
+  E1=X1+4; E2=X2+4; E3=X3+4; E4=X4+4;
+  E1h=E1/2;
+  
 }
 
 static void
@@ -132,6 +167,19 @@ llfat_init(void)
   }
 
 #ifdef MULTI_GPU
+
+  for(i=0;i < 4;i++){
+#if (CUDA_VERSION >=4000)
+    cudaMallocHost((void**)&sitelink_ex[i], V_ex*gaugeSiteSize* gSize);
+#else
+    sitelink_ex[i] = malloc(V_ex*gaugeSiteSize* gSize);
+#endif
+    if (sitelink_ex[i] == NULL){
+      fprintf(stderr, "ERROR: malloc failed for sitelink_ex[%d]\n", i);
+      exit(1);
+    }
+  } 
+  
   //we need x,y,z site links in the back and forward T slice
   // so it is 3*2*Vs_t
   for(i=0;i < 4; i++){
@@ -189,6 +237,47 @@ llfat_init(void)
   
   createSiteLinkCPU(sitelink, gaugeParam.cpu_prec, 1);
 
+
+  //FIXME:only work for one MPI process case
+  //assuming all dimension size is even
+  //fill in the extended sitelink 
+  for(int dir= 0; dir < 4; dir++){
+    char* src = (char*)sitelink[dir];
+    char* dst = (char*)sitelink_ex[dir];
+    
+    for(i=0; i < V_ex; i++){
+      int sid = i;
+      int oddBit=0;
+      if(i >= Vh_ex){
+	sid = i - Vh_ex;
+	oddBit = 1;
+      }
+
+      int za = sid/E1h;
+      int x1h = sid - za*E1h;
+      int zb = za/E2;
+      int x2 = za - zb*E2;
+      int x4 = zb/E3;
+      int x3 = zb - x4*E3;
+      int x1odd = (x2 + x3 + x4 + oddBit) & 1;
+      int x1 = 2*x1h + x1odd;      
+      
+      x1 = x1 % X1;
+      x2 = x2 % X2;
+      x3 = x3 % X3;
+      x4 = x4 % X4;
+      
+      int idx = (x4*X3*X2*X1+x3*X2*X1+x2*X1+x1)>>1;
+      if(oddBit){
+	idx += Vh;
+      }
+
+      memcpy(dst+i*gaugeSiteSize*gSize, src+idx*gaugeSiteSize*gSize, gaugeSiteSize*gSize);
+      
+    }//i
+  }//dir
+
+
 #ifdef MULTI_GPU
   int Vh_2d_max = MAX(xdim*ydim/2, xdim*zdim/2);
   Vh_2d_max = MAX(Vh_2d_max, xdim*tdim/2);
@@ -233,11 +322,13 @@ llfat_end()
   cudaFreeHost(fatlink);
   for(i=0;i < 4 ;i++){
     cudaFreeHost(sitelink[i]);
+    cudaFreeHost(sitelink_ex[i]);
   }
 #else
   free(fatlink);
   for(i=0;i < 4 ;i++){
     free(sitelink[i]);
+    free(sitelink_ex[i]);
   }
 
 #endif
@@ -304,7 +395,8 @@ llfat_test(void)
 
 
 #ifdef MULTI_GPU
-    llfat_reference_mg(reflink, sitelink, ghost_sitelink, ghost_sitelink_diag, gaugeParam.cpu_prec, act_path_coeff);
+    //llfat_reference_mg(reflink, sitelink, ghost_sitelink, ghost_sitelink_diag, gaugeParam.cpu_prec, act_path_coeff);
+    llfat_reference_mg_nocomm(reflink, sitelink_ex, gaugeParam.cpu_prec, act_path_coeff);
     //llfat_reference(reflink, sitelink, gaugeParam.cpu_prec, act_path_coeff);
 #else
     llfat_reference(reflink, sitelink, gaugeParam.cpu_prec, act_path_coeff);

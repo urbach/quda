@@ -55,6 +55,16 @@ extern int Vsh[];
 extern int Vs_x, Vs_y, Vs_z, Vs_t;
 extern int Vsh_x, Vsh_y, Vsh_z, Vsh_t;
 
+extern int Z_ex[4];
+extern int V_ex;
+extern int Vh_ex;
+extern int Vs_ex[4];
+extern int Vsh_ex[4];
+extern int Vs_ex_x, Vs_ex_y, Vs_ex_z, Vs_ex_t;
+extern int Vsh_ex_x, Vsh_ex_y, Vsh_ex_z, Vsh_ex_t;
+
+extern int X1, X2, X3, X4, X1h;
+extern int E1, E2, E3, E4, E1h;
 
 template<typename su3_matrix, typename Real>
 void 
@@ -290,8 +300,6 @@ void llfat_cpu(void** fatlink, su3_matrix** sitelink, Float* act_path_coeff)
       llfat_scalar_mult_su3_matrix(sitelink[dir] + i, one_link, fat1 );
     }
   }
-
-
 
 
   for (int dir=XUP; dir<=TUP; dir++){
@@ -650,7 +658,9 @@ void llfat_cpu_mg(void** fatlink, su3_matrix** sitelink, su3_matrix** ghost_site
       llfat_scalar_mult_su3_matrix(sitelink[dir] + i, one_link, fat1 );
     }
   }
-  
+
+  return;
+
   for (int dir=XUP; dir<=TUP; dir++){
     for(int nu=XUP; nu<=TUP; nu++){
       if(nu!=dir){
@@ -707,6 +717,130 @@ void llfat_cpu_mg(void** fatlink, su3_matrix** sitelink, su3_matrix** ghost_site
 
 }
 
+template<typename su3_matrix, typename Real>
+void 
+llfat_compute_gen_staple_field_mg_nocomm(su3_matrix *staple, int mu, int nu, 
+					 su3_matrix* mulink, su3_matrix** sitelink,
+					 void** fatlink, Real coef,
+					 int use_staple) 
+{
+}
+
+static
+void get_coordinates(int i, int* x1p, int* x2p, int* x3p, int* x4p)
+{
+  int oddBit = 0;
+  int half_idx = i;
+  if(i >= Vh){
+    oddBit =1;
+    half_idx = i - Vh;
+  }
+
+  int sid =half_idx;
+  int za = sid/X1h;
+  int x1h = sid - za*X1h;
+  int zb = za/X2;
+  int x2 = za - zb*X2;
+  int x4 = zb/X3;
+  int x3 = zb - x4*X3;
+  int x1odd = (x2 + x3 + x4 + oddBit) & 1;
+  int x1 = 2*x1h + x1odd;  
+
+  *x1p = x1;
+  *x2p = x2;
+  *x3p = x3;
+  *x4p = x4;
+  
+  return;
+}
+
+
+template <typename su3_matrix, typename Float>
+void llfat_cpu_mg_nocomm(void** fatlink, su3_matrix** sitelink, Float* act_path_coeff)
+{
+  QudaPrecision prec;
+  if (sizeof(Float) == 4){
+    prec = QUDA_SINGLE_PRECISION;
+  }else{
+    prec = QUDA_DOUBLE_PRECISION;
+  }
+  
+  su3_matrix* staple = (su3_matrix *)malloc(V_ex*sizeof(su3_matrix));
+  if(staple == NULL){
+    fprintf(stderr, "Error: malloc failed for staple in function %s\n", __FUNCTION__);
+    exit(1);
+  }
+  
+  su3_matrix* tempmat1 = (su3_matrix *)malloc(V_ex*sizeof(su3_matrix));
+  if(tempmat1 == NULL){
+    fprintf(stderr, "ERROR:  malloc failed for tempmat1 in function %s\n", __FUNCTION__);
+    exit(1);
+  }
+    
+  /* to fix up the Lepage term, included by a trick below */
+  Float one_link = (act_path_coeff[0] - 6.0*act_path_coeff[5]);
+    
+
+  for (int dir=XUP; dir<=TUP; dir++){
+
+    /* Intialize fat links with c_1*U_\mu(x) */
+    for(int i=0;i < V;i ++){
+      su3_matrix* fat1 = ((su3_matrix*)fatlink[dir]) +  i;
+      int x1, x2, x3, x4;
+      get_coordinates(i, &x1, &x2, &x3, &x4);
+      int idx = (x4* E3*E2*E1 + x3*E2*E1 + x2*E1 + x1)>>1;
+      int oddBit= (x1+x2+x3+x4)% 2;
+      if(oddBit){
+	idx += Vh_ex;
+      }
+      llfat_scalar_mult_su3_matrix(sitelink[dir] + idx, one_link, fat1 );
+    }
+  }
+  
+  return ;
+  
+  for (int dir=XUP; dir<=TUP; dir++){
+    for(int nu=XUP; nu<=TUP; nu++){
+      if(nu!=dir){
+	llfat_compute_gen_staple_field_mg_nocomm(staple,dir,nu,
+						 sitelink[dir], sitelink, 
+						 fatlink, act_path_coeff[2], 0);	
+	/* The Lepage term */
+	/* Note this also involves modifying c_1 (above) */
+	llfat_compute_gen_staple_field_mg_nocomm((su3_matrix*)NULL,dir,nu,
+						 staple, sitelink, fatlink, act_path_coeff[5],1);
+	
+	for(int rho=XUP; rho<=TUP; rho++) {
+	  if((rho!=dir)&&(rho!=nu)){
+	    llfat_compute_gen_staple_field_mg_nocomm( tempmat1, dir, rho, 
+						      staple, sitelink,
+						      fatlink, act_path_coeff[3], 1);
+	    
+	    
+	    for(int sig=XUP; sig<=TUP; sig++){
+	      if((sig!=dir)&&(sig!=nu)&&(sig!=rho)){
+		
+		llfat_compute_gen_staple_field_mg_nocomm((su3_matrix*)NULL,dir,sig,
+							 tempmat1, sitelink, 
+							 fatlink, act_path_coeff[4], 1);
+		
+	      } 
+	    }/* sig */		
+	  } 
+	}/* rho */
+      } 
+
+    }/* nu */
+    
+  }/* dir */      
+  
+  free(staple);
+  free(tempmat1);
+  
+}
+
+
+
 
 
 void
@@ -735,6 +869,32 @@ llfat_reference_mg(void** fatlink, void** sitelink, void** ghost_sitelink,
   return;
 
 }
+
+void
+llfat_reference_mg_nocomm(void** fatlink, void** sitelink, QudaPrecision prec, void* act_path_coeff)
+{
+  
+  switch(prec){
+  case QUDA_DOUBLE_PRECISION:{
+    llfat_cpu_mg_nocomm((void**)fatlink, (dsu3_matrix**)sitelink, (double*) act_path_coeff);
+    break;
+  }
+  case QUDA_SINGLE_PRECISION:{
+    llfat_cpu_mg_nocomm((void**)fatlink, (fsu3_matrix**)sitelink, (float*) act_path_coeff);
+    break;
+  }
+  default:
+    fprintf(stderr, "ERROR: unsupported precision\n");
+    exit(1);
+    break;
+	
+  }
+
+  return;
+
+}
+
+
 
 
 #endif
