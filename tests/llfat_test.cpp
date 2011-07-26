@@ -262,10 +262,10 @@ llfat_init(void)
       int x1odd = (x2 + x3 + x4 + oddBit) & 1;
       int x1 = 2*x1h + x1odd;      
       
-      x1 = x1 % X1;
-      x2 = x2 % X2;
-      x3 = x3 % X3;
-      x4 = x4 % X4;
+      x1 = (x1 - 2 + X1) % X1;
+      x2 = (x2 - 2 + X2) % X2;
+      x3 = (x3 - 2 + X3) % X3;
+      x4 = (x4 - 2 + X4) % X4;
       
       int idx = (x4*X3*X2*X1+x3*X2*X1+x2*X1+x1)>>1;
       if(oddBit){

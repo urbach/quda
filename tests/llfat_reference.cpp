@@ -659,7 +659,6 @@ void llfat_cpu_mg(void** fatlink, su3_matrix** sitelink, su3_matrix** ghost_site
     }
   }
 
-  return;
 
   for (int dir=XUP; dir<=TUP; dir++){
     for(int nu=XUP; nu<=TUP; nu++){
@@ -668,6 +667,9 @@ void llfat_cpu_mg(void** fatlink, su3_matrix** sitelink, su3_matrix** ghost_site
 					  sitelink[dir], (su3_matrix**)NULL, 
 					  sitelink, ghost_sitelink, ghost_sitelink_diag, 
 					  fatlink, act_path_coeff[2], 0);	
+	
+	
+	return;
 	/* The Lepage term */
 	/* Note this also involves modifying c_1 (above) */
 
@@ -677,6 +679,8 @@ void llfat_cpu_mg(void** fatlink, su3_matrix** sitelink, su3_matrix** ghost_site
 					  staple,ghost_staple, 
 					  sitelink, ghost_sitelink, ghost_sitelink_diag, 
 					  fatlink, act_path_coeff[5],1);
+
+	return;
 
 	for(int rho=XUP; rho<=TUP; rho++) {
 	  if((rho!=dir)&&(rho!=nu)){
@@ -717,6 +721,36 @@ void llfat_cpu_mg(void** fatlink, su3_matrix** sitelink, su3_matrix** ghost_site
 
 }
 
+
+static
+void get_coordinates_ex(int i, int* x1p, int* x2p, int* x3p, int* x4p)
+{
+  int oddBit = 0;
+  int half_idx = i;
+  if(i >= Vh_ex){
+    oddBit =1;
+    half_idx = i - Vh_ex;
+  }
+
+  int sid =half_idx;
+  int za = sid/E1h;
+  int x1h = sid - za*E1h;
+  int zb = za/E2;
+  int x2 = za - zb*E2;
+  int x4 = zb/E3;
+  int x3 = zb - x4*E3;
+  int x1odd = (x2 + x3 + x4 + oddBit) & 1;
+  int x1 = 2*x1h + x1odd;  
+  
+  *x1p = x1;
+  *x2p = x2;
+  *x3p = x3;
+  *x4p = x4;
+  
+  return;
+}
+
+
 template<typename su3_matrix, typename Real>
 void 
 llfat_compute_gen_staple_field_mg_nocomm(su3_matrix *staple, int mu, int nu, 
@@ -724,7 +758,187 @@ llfat_compute_gen_staple_field_mg_nocomm(su3_matrix *staple, int mu, int nu,
 					 void** fatlink, Real coef,
 					 int use_staple) 
 {
+  su3_matrix tmat1,tmat2;
+  int i ;
+  su3_matrix *fat1;
+  
+  /* Upper staple */
+  /* Computes the staple :
+   *                mu (B)
+   *               +-------+
+   *       nu	   |	   | 
+   *	     (A)   |	   |(C)
+   *		   X	   X
+   *
+   * Where the mu link can be any su3_matrix. The result is saved in staple.
+   * if staple==NULL then the result is not saved.
+   * It also adds the computed staple to the fatlink[mu] with weight coef.
+   */
+    
+  int dx[4];
+
+  /* upper staple */
+  for(i=0;i < V_ex;i++){	    
+    int x1, x2, x3, x4;
+    int new_x1, new_x2, new_x3, new_x4;
+    int x1_org, x2_org, x3_org, x4_org;
+    get_coordinates_ex(i, &x1, &x2, &x3, &x4);
+
+    //FIXME: for the moment we only deal with  2 <= x_i  < X_i+2, where i =0,1,2,3
+    if(  !(2 <= x1 && x1 < X1 + 2
+	   && 2 <= x2 && x2 < X2 + 2 
+	   && 2 <= x3 && x3 < X3 + 2 
+	   && 2 <= x4 && x4 < X4 + 2 )){
+      continue;
+    }
+
+    x1_org= (x1 - 2 + X1) % X1;
+    x2_org= (x2 - 2 + X2) % X2;
+    x3_org= (x3 - 2 + X3) % X3;
+    x4_org= (x4 - 2 + X4) % X4;
+                    
+
+    int idx = (x4_org* X3*X2*X1 + x3_org*X2*X1 + x2_org*X1 + x1_org)>>1;
+    int oddBit= (x1_org+x2_org+x3_org+x4_org)% 2;
+    if(oddBit){
+      idx += Vh;
+    }
+    
+    fat1 = ((su3_matrix*)fatlink[mu]) + idx;
+    su3_matrix* A = sitelink[nu] + i;
+    
+    memset(dx, 0, sizeof(dx));
+    dx[nu] =1;
+    //int nbr_idx = neighborIndexFullLattice(i, dx[3], dx[2], dx[1], dx[0]);
+    new_x1 = x1 + dx[0];
+    new_x2 = x2 + dx[1];
+    new_x3 = x3 + dx[2];
+    new_x4 = x4 + dx[3];
+    int nbr_idx = (new_x4*E3*E2*E1 + new_x3*E2*E1 + new_x2*E1 + new_x1)>>1;
+    if(!oddBit){
+      nbr_idx += Vh_ex;
+    }
+
+    su3_matrix* B;
+    if (use_staple){
+      B = mulink + nbr_idx;
+    }else{
+      B = mulink + nbr_idx;
+    }
+    
+    memset(dx, 0, sizeof(dx));
+    dx[mu] =1;
+    new_x1 = x1 + dx[0];
+    new_x2 = x2 + dx[1];
+    new_x3 = x3 + dx[2];
+    new_x4 = x4 + dx[3];    
+    //nbr_idx = neighborIndexFullLattice(i, dx[3], dx[2],dx[1],dx[0]);
+    nbr_idx = (new_x4*E3*E2*E1 + new_x3*E2*E1 + new_x2*E1 + new_x1)>>1;
+    if(!oddBit){
+      nbr_idx += Vh_ex;
+    }
+    
+    su3_matrix* C = sitelink[nu] + nbr_idx;
+	
+    llfat_mult_su3_nn( A, B,&tmat1);
+	
+    if(staple!=NULL){/* Save the staple */
+      llfat_mult_su3_na( &tmat1, C, &staple[i]); 	    
+    } else{ /* No need to save the staple. Add it to the fatlinks */
+      llfat_mult_su3_na( &tmat1, C, &tmat2); 	    
+      llfat_scalar_mult_add_su3_matrix(fat1, &tmat2, coef, fat1);	    
+    }
+   }    
+  /***************lower staple****************
+   *
+   *               X       X
+   *       nu	   |	   | 
+   *	     (A)   |       |(C)
+   *		   +-------+
+   *                mu (B)
+   *
+   *********************************************/
+
+  for(i=0;i < V_ex;i++){	    
+    int x1, x2, x3, x4;
+    int new_x1, new_x2, new_x3, new_x4;
+    int x1_org, x2_org, x3_org, x4_org;
+    get_coordinates_ex(i, &x1, &x2, &x3, &x4);
+
+    //FIXME: for the moment we only deal with  2 <= x_i  < X_i+2, where i =0,1,2,3
+    if(  !(2 <= x1 && x1 < X1 + 2
+	   && 2 <= x2 && x2 < X2 + 2 
+	   && 2 <= x3 && x3 < X3 + 2 
+	   && 2 <= x4 && x4 < X4 + 2 )){
+      continue;
+    }
+
+
+    x1_org= (x1 - 2 + X1) % X1;
+    x2_org= (x2 - 2 + X2) % X2;
+    x3_org= (x3 - 2 + X3) % X3;
+    x4_org= (x4 - 2 + X4) % X4;
+                    
+
+    int idx = (x4_org* X3*X2*X1 + x3_org*X2*X1 + x2_org*X1 + x1_org)>>1;
+    int oddBit= (x1_org+x2_org+x3_org+x4_org)% 2;
+    if(oddBit){
+      idx += Vh;
+    }
+    
+    fat1 = ((su3_matrix*)fatlink[mu]) + idx;
+
+    memset(dx, 0, sizeof(dx));
+    dx[nu] = -1;
+    new_x1 = x1 + dx[0];
+    new_x2 = x2 + dx[1];
+    new_x3 = x3 + dx[2];
+    new_x4 = x4 + dx[3]; 
+    int nbr_idx = (new_x4*E3*E2*E1 + new_x3*E2*E1 + new_x2*E1 + new_x1)>>1;
+    if(!oddBit){
+      nbr_idx += Vh_ex;
+    }
+    //int nbr_idx = neighborIndexFullLattice(i, dx[3], dx[2], dx[1], dx[0]);	
+    su3_matrix* A = sitelink[nu] + nbr_idx;
+        
+    su3_matrix* B;
+    if (use_staple){
+      B = mulink + nbr_idx;
+    }else{
+      B = mulink + nbr_idx;
+    }
+	
+    memset(dx, 0, sizeof(dx));
+    dx[nu] = -1;
+    dx[mu] = 1;
+    //nbr_idx = neighborIndexFullLattice(nbr_idx, dx[3], dx[2],dx[1],dx[0]);
+    new_x1 = x1 + dx[0];
+    new_x2 = x2 + dx[1];
+    new_x3 = x3 + dx[2];
+    new_x4 = x4 + dx[3]; 
+    nbr_idx = (new_x4*E3*E2*E1 + new_x3*E2*E1 + new_x2*E1 + new_x1)>>1;    
+    if(oddBit){
+      nbr_idx += Vh_ex;
+    }
+    su3_matrix* C = sitelink[nu] + nbr_idx;
+
+    llfat_mult_su3_an( A, B,&tmat1);	
+    llfat_mult_su3_nn( &tmat1, C,&tmat2);
+	
+    if(staple!=NULL){/* Save the staple */
+      llfat_add_su3_matrix(&staple[i], &tmat2, &staple[i]);
+      llfat_scalar_mult_add_su3_matrix(fat1, &staple[i], coef, fat1);
+	    
+    } else{ /* No need to save the staple. Add it to the fatlinks */
+      llfat_scalar_mult_add_su3_matrix(fat1, &tmat2, coef, fat1);	    
+    }
+  } 
+    
+  
+
+  
 }
+
 
 static
 void get_coordinates(int i, int* x1p, int* x2p, int* x3p, int* x4p)
@@ -784,20 +998,25 @@ void llfat_cpu_mg_nocomm(void** fatlink, su3_matrix** sitelink, Float* act_path_
   for (int dir=XUP; dir<=TUP; dir++){
 
     /* Intialize fat links with c_1*U_\mu(x) */
-    for(int i=0;i < V;i ++){
-      su3_matrix* fat1 = ((su3_matrix*)fatlink[dir]) +  i;
+    for(int i=0;i < V_ex;i ++){
       int x1, x2, x3, x4;
-      get_coordinates(i, &x1, &x2, &x3, &x4);
-      int idx = (x4* E3*E2*E1 + x3*E2*E1 + x2*E1 + x1)>>1;
+      get_coordinates_ex(i, &x1, &x2, &x3, &x4);
+      
+      x1= (x1 - 2 + X1) % X1;
+      x2= (x2 - 2 + X2) % X2;
+      x3= (x3 - 2 + X3) % X3;
+      x4= (x4 - 2 + X4) % X4;
+            
+      int idx = (x4* X3*X2*X1 + x3*X2*X1 + x2*X1 + x1)>>1;
       int oddBit= (x1+x2+x3+x4)% 2;
       if(oddBit){
-	idx += Vh_ex;
+	idx += Vh;
       }
-      llfat_scalar_mult_su3_matrix(sitelink[dir] + idx, one_link, fat1 );
+
+      su3_matrix* fat1 = ((su3_matrix*)fatlink[dir]) +  idx;      
+      llfat_scalar_mult_su3_matrix(sitelink[dir] + i, one_link, fat1 );
     }
   }
-  
-  return ;
   
   for (int dir=XUP; dir<=TUP; dir++){
     for(int nu=XUP; nu<=TUP; nu++){
@@ -805,10 +1024,16 @@ void llfat_cpu_mg_nocomm(void** fatlink, su3_matrix** sitelink, Float* act_path_
 	llfat_compute_gen_staple_field_mg_nocomm(staple,dir,nu,
 						 sitelink[dir], sitelink, 
 						 fatlink, act_path_coeff[2], 0);	
+	
+	
+	return;
+	
 	/* The Lepage term */
 	/* Note this also involves modifying c_1 (above) */
 	llfat_compute_gen_staple_field_mg_nocomm((su3_matrix*)NULL,dir,nu,
 						 staple, sitelink, fatlink, act_path_coeff[5],1);
+	
+	return ;
 	
 	for(int rho=XUP; rho<=TUP; rho++) {
 	  if((rho!=dir)&&(rho!=nu)){

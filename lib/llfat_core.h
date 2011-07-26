@@ -636,6 +636,7 @@ template<int mu, int nu, int odd_bit>
     RECONSTRUCT_SITE_LINK(nu, mem_idx, sign, a);
 
 
+
     /* load matrix B*/  
     LLFAT_COMPUTE_NEW_IDX_PLUS(nu, X);    
     LOAD_ODD_SITE_MATRIX(mu, new_mem_idx, B);
@@ -652,7 +653,7 @@ template<int mu, int nu, int odd_bit>
     COMPUTE_RECONSTRUCT_SIGN(sign, nu, new_x1, new_x2, new_x3, new_x4);    
     RECONSTRUCT_SITE_LINK(nu, new_mem_idx, sign, c);
 
-    MULT_SU3_NA(tempa, c, staple);		
+    MULT_SU3_NA(tempa, c, staple);		   
   }
 
   /***************lower staple****************
