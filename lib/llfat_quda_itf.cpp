@@ -117,7 +117,6 @@ llfat_cuda(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 	}	
 	//end
 
-	return;
 	//start of one call
         kparam.kernel_type = LLFAT_INTERIOR_KERNEL;
 	computeGenStapleFieldParityKernel((void*)NULL, (void*)NULL,
@@ -127,7 +126,6 @@ llfat_cuda(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 					  dir, nu, 0,
 					  act_path_coeff[5],
 					  recon, prec,  halfGridDim, kparam, &stream[nStream-1]); CUERR;
-	//return;
 
 	//end
 	for(int rho = 0; rho < 4; rho++){
@@ -183,7 +181,6 @@ llfat_cuda(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 	    }	
 #endif	    
 	    //end
-
 	    
 	    for(int sig = 0; sig < 4; sig++){
 	      if (sig != dir && sig != nu && sig != rho){						

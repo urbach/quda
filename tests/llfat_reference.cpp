@@ -669,7 +669,7 @@ void llfat_cpu_mg(void** fatlink, su3_matrix** sitelink, su3_matrix** ghost_site
 					  fatlink, act_path_coeff[2], 0);	
 	
 	
-	return;
+	//return;
 	/* The Lepage term */
 	/* Note this also involves modifying c_1 (above) */
 
@@ -785,10 +785,20 @@ llfat_compute_gen_staple_field_mg_nocomm(su3_matrix *staple, int mu, int nu,
     get_coordinates_ex(i, &x1, &x2, &x3, &x4);
 
     //FIXME: for the moment we only deal with  2 <= x_i  < X_i+2, where i =0,1,2,3
-    if(  !(2 <= x1 && x1 < X1 + 2
-	   && 2 <= x2 && x2 < X2 + 2 
-	   && 2 <= x3 && x3 < X3 + 2 
-	   && 2 <= x4 && x4 < X4 + 2 )){
+    if(  !(1 <= x1 && x1 < X1 + 3
+	   && 1 <= x2 && x2 < X2 + 3 
+	   && 1 <= x3 && x3 < X3 + 3 
+	   && 1 <= x4 && x4 < X4 + 3 )){
+      continue;
+    }
+    int boundary = 0;
+    if(x1 == 1 || x1 == X1 + 2
+       || x2 == 1 || x2 == X2 + 2
+       || x3 == 1 || x3 == X3 + 2
+       || x4 == 1 || x4 == X4 + 2){
+      boundary  =1; 
+    }
+    if(boundary && !staple){
       continue;
     }
 
@@ -845,7 +855,7 @@ llfat_compute_gen_staple_field_mg_nocomm(su3_matrix *staple, int mu, int nu,
     if(staple!=NULL){/* Save the staple */
       llfat_mult_su3_na( &tmat1, C, &staple[i]); 	    
     } else{ /* No need to save the staple. Add it to the fatlinks */
-      llfat_mult_su3_na( &tmat1, C, &tmat2); 	    
+      llfat_mult_su3_na( &tmat1, C, &tmat2); 	          
       llfat_scalar_mult_add_su3_matrix(fat1, &tmat2, coef, fat1);	    
     }
    }    
@@ -866,10 +876,21 @@ llfat_compute_gen_staple_field_mg_nocomm(su3_matrix *staple, int mu, int nu,
     get_coordinates_ex(i, &x1, &x2, &x3, &x4);
 
     //FIXME: for the moment we only deal with  2 <= x_i  < X_i+2, where i =0,1,2,3
-    if(  !(2 <= x1 && x1 < X1 + 2
-	   && 2 <= x2 && x2 < X2 + 2 
-	   && 2 <= x3 && x3 < X3 + 2 
-	   && 2 <= x4 && x4 < X4 + 2 )){
+    if(  !(1 <= x1 && x1 < X1 + 3
+	   && 1 <= x2 && x2 < X2 + 3 
+	   && 1 <= x3 && x3 < X3 + 3 
+	   && 1 <= x4 && x4 < X4 + 3 )){
+      continue;
+    }
+    
+    int boundary = 0;
+    if(x1 == 1 || x1 == X1 + 2
+       || x2 == 1 || x2 == X2 + 2
+       || x3 == 1 || x3 == X3 + 2
+       || x4 == 1 || x4 == X4 + 2){
+      boundary  =1; 
+    }
+    if(boundary && !staple){
       continue;
     }
 
@@ -927,16 +948,14 @@ llfat_compute_gen_staple_field_mg_nocomm(su3_matrix *staple, int mu, int nu,
 	
     if(staple!=NULL){/* Save the staple */
       llfat_add_su3_matrix(&staple[i], &tmat2, &staple[i]);
-      llfat_scalar_mult_add_su3_matrix(fat1, &staple[i], coef, fat1);
+      if(!boundary){
+	llfat_scalar_mult_add_su3_matrix(fat1, &staple[i], coef, fat1);
+      }
 	    
     } else{ /* No need to save the staple. Add it to the fatlinks */
       llfat_scalar_mult_add_su3_matrix(fat1, &tmat2, coef, fat1);	    
     }
   } 
-    
-  
-
-  
 }
 
 
@@ -996,7 +1015,7 @@ void llfat_cpu_mg_nocomm(void** fatlink, su3_matrix** sitelink, Float* act_path_
     
 
   for (int dir=XUP; dir<=TUP; dir++){
-
+    
     /* Intialize fat links with c_1*U_\mu(x) */
     for(int i=0;i < V_ex;i ++){
       int x1, x2, x3, x4;
@@ -1026,14 +1045,12 @@ void llfat_cpu_mg_nocomm(void** fatlink, su3_matrix** sitelink, Float* act_path_
 						 fatlink, act_path_coeff[2], 0);	
 	
 	
-	return;
 	
 	/* The Lepage term */
 	/* Note this also involves modifying c_1 (above) */
 	llfat_compute_gen_staple_field_mg_nocomm((su3_matrix*)NULL,dir,nu,
 						 staple, sitelink, fatlink, act_path_coeff[5],1);
 	
-	return ;
 	
 	for(int rho=XUP; rho<=TUP; rho++) {
 	  if((rho!=dir)&&(rho!=nu)){
