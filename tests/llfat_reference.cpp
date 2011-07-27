@@ -680,7 +680,6 @@ void llfat_cpu_mg(void** fatlink, su3_matrix** sitelink, su3_matrix** ghost_site
 					  sitelink, ghost_sitelink, ghost_sitelink_diag, 
 					  fatlink, act_path_coeff[5],1);
 
-	return;
 
 	for(int rho=XUP; rho<=TUP; rho++) {
 	  if((rho!=dir)&&(rho!=nu)){
