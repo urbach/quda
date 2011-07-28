@@ -178,6 +178,7 @@ llfat_init(void)
       fprintf(stderr, "ERROR: malloc failed for sitelink_ex[%d]\n", i);
       exit(1);
     }
+    memset(sitelink_ex[i], 0, V_ex*gaugeSiteSize*gSize);
   } 
   
   //we need x,y,z site links in the back and forward T slice
@@ -241,11 +242,8 @@ llfat_init(void)
   //FIXME:only work for one MPI process case
   //assuming all dimension size is even
   //fill in the extended sitelink 
-  for(int dir= 0; dir < 4; dir++){
-    char* src = (char*)sitelink[dir];
-    char* dst = (char*)sitelink_ex[dir];
-    
-    for(i=0; i < V_ex; i++){
+  for(i=0; i < V_ex; i++){
+      
       int sid = i;
       int oddBit=0;
       if(i >= Vh_ex){
@@ -262,7 +260,7 @@ llfat_init(void)
       int x1odd = (x2 + x3 + x4 + oddBit) & 1;
       int x1 = 2*x1h + x1odd;      
       
-
+      
       if( x1< 2 || x1 >= X1 +2 
 	  || x2< 2 || x2 >= X2 +2 
 	  || x3< 2 || x3 >= X3 +2 
@@ -270,6 +268,7 @@ llfat_init(void)
 	continue;
       }
 
+      
       x1 = (x1 - 2 + X1) % X1;
       x2 = (x2 - 2 + X2) % X2;
       x3 = (x3 - 2 + X3) % X3;
@@ -279,14 +278,19 @@ llfat_init(void)
       if(oddBit){
 	idx += Vh;
       }
+      for(int dir= 0; dir < 4; dir++){
+	char* src = (char*)sitelink[dir];
+	char* dst = (char*)sitelink_ex[dir];	
+	memcpy(dst+i*gaugeSiteSize*gSize, src+idx*gaugeSiteSize*gSize, gaugeSiteSize*gSize);	
+      }//dir
 
-      memcpy(dst+i*gaugeSiteSize*gSize, src+idx*gaugeSiteSize*gSize, gaugeSiteSize*gSize);
       
-    }//i
-  }//dir
+      
+  }//i
   
-  exchange_cpu_sitelink_ex(gaugeParam.X, sitelink_ex, gaugeParam.cpu_prec, 1);
 
+  exchange_cpu_sitelink_ex(gaugeParam.X, sitelink_ex, gaugeParam.cpu_prec, 1);
+  
 #ifdef MULTI_GPU
   int Vh_2d_max = MAX(xdim*ydim/2, xdim*zdim/2);
   Vh_2d_max = MAX(Vh_2d_max, xdim*tdim/2);

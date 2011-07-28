@@ -978,7 +978,7 @@ createSiteLinkCPU(void** link,  QudaPrecision precision, int phase)
 		  if ((commCoords(3) == commDim(3) -1) && i4 == (X4-1) ){
 		    coeff *= -1;
 		  }
-		    break;
+		  break;
 
 		default:
 		    printf("ERROR: wrong dir(%d)\n", dir);

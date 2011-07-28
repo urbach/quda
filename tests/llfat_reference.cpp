@@ -783,7 +783,6 @@ llfat_compute_gen_staple_field_mg_nocomm(su3_matrix *staple, int mu, int nu,
     int x1_org, x2_org, x3_org, x4_org;
     get_coordinates_ex(i, &x1, &x2, &x3, &x4);
 
-    //FIXME: for the moment we only deal with  2 <= x_i  < X_i+2, where i =0,1,2,3
     if(  !(1 <= x1 && x1 < X1 + 3
 	   && 1 <= x2 && x2 < X2 + 3 
 	   && 1 <= x3 && x3 < X3 + 3 
@@ -874,7 +873,6 @@ llfat_compute_gen_staple_field_mg_nocomm(su3_matrix *staple, int mu, int nu,
     int x1_org, x2_org, x3_org, x4_org;
     get_coordinates_ex(i, &x1, &x2, &x3, &x4);
 
-    //FIXME: for the moment we only deal with  2 <= x_i  < X_i+2, where i =0,1,2,3
     if(  !(1 <= x1 && x1 < X1 + 3
 	   && 1 <= x2 && x2 < X2 + 3 
 	   && 1 <= x3 && x3 < X3 + 3 
@@ -1019,6 +1017,12 @@ void llfat_cpu_mg_nocomm(void** fatlink, su3_matrix** sitelink, Float* act_path_
     for(int i=0;i < V_ex;i ++){
       int x1, x2, x3, x4;
       get_coordinates_ex(i, &x1, &x2, &x3, &x4);
+      if( x1< 2 || x1 >= X1 +2 
+          || x2< 2 || x2 >= X2 +2 
+          || x3< 2 || x3 >= X3 +2 
+          || x4< 2 || x4 >= X4 +2){
+        continue;
+      }
       
       x1= (x1 - 2 + X1) % X1;
       x2= (x2 - 2 + X2) % X2;
