@@ -279,7 +279,7 @@ comm_size(void)
 int
 comm_dim(int dir) {
 
-  int i;
+  int i=-1;
   switch(dir) {
   case 0:
     i = xgridsize;
@@ -304,7 +304,7 @@ comm_dim(int dir) {
 int
 comm_coords(int dir) {
 
-  int i;
+  int i=-1;
   switch(dir) {
   case 0:
     i = xgridid;
@@ -336,7 +336,7 @@ comm_send(void* buf, int len, int dst)
     comm_exit(1);
   }
 
-  int dstproc;
+  int dstproc=-1;
   int sendtag=99;
   if (dst == BACK_NBR){
     dstproc = back_nbr;
@@ -412,7 +412,6 @@ comm_send_with_tag(void* buf, int len, int dst, int tag)
     printf("ERROR: invalid dest, line %d, file %s\n", __LINE__, __FILE__);
     comm_exit(1);
   }
-
   MPI_Isend(buf, len, MPI_BYTE, dstproc, tag, MPI_COMM_WORLD, request);
   return (unsigned long)request;
 }

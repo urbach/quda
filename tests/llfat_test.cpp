@@ -262,6 +262,14 @@ llfat_init(void)
       int x1odd = (x2 + x3 + x4 + oddBit) & 1;
       int x1 = 2*x1h + x1odd;      
       
+
+      if( x1< 2 || x1 >= X1 +2 
+	  || x2< 2 || x2 >= X2 +2 
+	  || x3< 2 || x3 >= X3 +2 
+	  || x4< 2 || x4 >= X4 +2){
+	continue;
+      }
+
       x1 = (x1 - 2 + X1) % X1;
       x2 = (x2 - 2 + X2) % X2;
       x3 = (x3 - 2 + X3) % X3;
@@ -276,7 +284,8 @@ llfat_init(void)
       
     }//i
   }//dir
-
+  
+  exchange_cpu_sitelink_ex(gaugeParam.X, sitelink_ex, gaugeParam.cpu_prec, 1);
 
 #ifdef MULTI_GPU
   int Vh_2d_max = MAX(xdim*ydim/2, xdim*zdim/2);
