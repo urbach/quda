@@ -46,7 +46,6 @@ llfat_cuda(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 		     param, act_path_coeff); CUERR;
 
 
-  return ;
 
   llfat_kernel_param_t kparam;
   for(int i=0;i < 4;i++){
@@ -119,6 +118,7 @@ llfat_cuda(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 	}	
 	//end
 
+	return ;
 	//start of one call
         kparam.kernel_type = LLFAT_INTERIOR_KERNEL;
 	computeGenStapleFieldParityKernel((void*)NULL, (void*)NULL,
@@ -224,9 +224,7 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 	      FullStaple cudaStaple, FullStaple cudaStaple1,
 	      QudaGaugeParam* param, double* act_path_coeff)
 {
-  int volume = param->X[0]*param->X[1]*param->X[2]*param->X[3];
   int volume_ex = (param->X[0]+4)*(param->X[1]+4)*(param->X[2]+4)*(param->X[3]+4);
-  int Vh = volume/2;
   int Vh_ex = volume_ex/2;
   dim3 gridDim(volume_ex/BLOCK_DIM,1,1);
   dim3 halfGridDim(Vh_ex/BLOCK_DIM,1,1);
@@ -262,8 +260,6 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
   
   cudaThreadSynchronize(); MYCUERR;
   
-  return;
-
   llfat_kernel_param_t kparam;
   for(int i=0;i < 4;i++){
      kparam.ghostDim[i] = commDimPartitioned(i);

@@ -1039,7 +1039,6 @@ void llfat_cpu_mg_nocomm(void** fatlink, su3_matrix** sitelink, Float* act_path_
     }
   }
 
-  return ;
   
   for (int dir=XUP; dir<=TUP; dir++){
     for(int nu=XUP; nu<=TUP; nu++){
@@ -1048,6 +1047,7 @@ void llfat_cpu_mg_nocomm(void** fatlink, su3_matrix** sitelink, Float* act_path_
 						 sitelink[dir], sitelink, 
 						 fatlink, act_path_coeff[2], 0);	
 	
+	return ;
 	
 	
 	/* The Lepage term */

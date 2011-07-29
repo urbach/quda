@@ -219,6 +219,7 @@ __constant__ int dir2_array[16];
 __constant__ int last_proc_in_tdim;
 __constant__ int first_proc_in_tdim;
 __constant__ int E1, E2, E3, E4, E1h;
+__constant__ int E3E2E1, E2E1;
 __constant__ int Vh_ex;
 
 unsigned long staple_bytes=0;
@@ -285,7 +286,8 @@ llfat_init_cuda(QudaGaugeParam* param)
   int E2 = param->X[1]+4;
   int E3 = param->X[2]+4;
   int E4 = param->X[3]+4;
-  
+  int E2E1 =E2*E1;
+  int E3E2E1=E3*E2*E1;
   int Vh_ex = (E4*E3*E2*E1)/2;
   
   cudaMemcpyToSymbol("E1", &E1, sizeof(int));
@@ -293,6 +295,8 @@ llfat_init_cuda(QudaGaugeParam* param)
   cudaMemcpyToSymbol("E2", &E2, sizeof(int));
   cudaMemcpyToSymbol("E3", &E3, sizeof(int));
   cudaMemcpyToSymbol("E4", &E4, sizeof(int));
+  cudaMemcpyToSymbol("E2E1", &E2E1, sizeof(int));
+  cudaMemcpyToSymbol("E3E2E1", &E3E2E1, sizeof(int));
 
   cudaMemcpyToSymbol("Vh_ex", &Vh_ex, sizeof(int));
   
@@ -986,7 +990,7 @@ void siteComputeGenStapleParityKernel_ex(void* staple_even, void* staple_odd,
     }									\
   }
   
-
+  
   dim3 blockDim(BLOCK_DIM , 1, 1);  
   ENUMERATE_FUNCS(mu,nu);  
 

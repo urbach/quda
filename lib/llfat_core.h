@@ -379,6 +379,23 @@
     UPDATE_COOR_PLUS(mydir, idx);					\
   }while(0)
 
+#define LLFAT_COMPUTE_NEW_IDX_PLUS_EX(mydir, idx) do {			\
+    switch(mydir){                                                      \
+    case 0:                                                             \
+      new_mem_idx = (idx+1)>>1;						\
+      break;                                                            \
+    case 1:                                                             \
+      new_mem_idx = (idx+E1)>>1;					\
+      break;                                                            \
+    case 2:                                                             \
+      new_mem_idx = (idx+E2E1)>>1;					\
+      break;                                                            \
+    case 3:								\
+      new_mem_idx = (idx+E3E2E1)>>1;					\
+      break;                                                            \
+    }                                                                   \
+    UPDATE_COOR_PLUS(mydir, idx);					\
+  }while(0)
 
 #define LLFAT_COMPUTE_NEW_IDX_MINUS(mydir, idx) do {			\
     switch(mydir){                                                      \
@@ -398,6 +415,23 @@
     UPDATE_COOR_MINUS(mydir, idx);					\
   }while(0)
 
+#define LLFAT_COMPUTE_NEW_IDX_MINUS_EX(mydir, idx) do {			\
+    switch(mydir){                                                      \
+    case 0:                                                             \
+      new_mem_idx = (idx-1) >> 1;					\
+      break;                                                            \
+    case 1:                                                             \
+      new_mem_idx = (idx-E1) >> 1;					\
+      break;                                                            \
+    case 2:                                                             \
+      new_mem_idx = (idx-E2E1) >> 1;					\
+      break;								\
+    case 3:								\
+      new_mem_idx = (idx-E3E2E1) >> 1;					\
+      break;								\
+    }									\
+    UPDATE_COOR_MINUS(mydir, idx);					\
+  }while(0)
 
 #define LLFAT_COMPUTE_NEW_IDX_LOWER_STAPLE(mydir1, mydir2) do {		\
     int local_new_x1=x1;						\
@@ -476,6 +510,51 @@
     new_mem_idx = new_mem_idx >> 1;					\
     UPDATE_COOR_LOWER_STAPLE(mydir1, mydir2);				\
   }while(0)
+
+
+#define LLFAT_COMPUTE_NEW_IDX_LOWER_STAPLE_EX(mydir1, mydir2) do {	\
+    new_x1 = x1;                                                        \
+    new_x2 = x2;                                                        \
+    new_x3 = x3;                                                        \
+    new_x4 = x4;                                                        \
+    switch(mydir1){                                                     \
+    case 0:                                                             \
+      new_mem_idx = X-1;						\
+      new_x1 = x1 - 1;							\
+      break;                                                            \
+    case 1:                                                             \
+      new_mem_idx = X-E1;						\
+      new_x2 = x2 - 1;							\
+      break;                                                            \
+    case 2:                                                             \
+      new_mem_idx = X-E2E1;						\
+      new_x3 = x3 - 1;							\
+      break;                                                            \
+    case 3:                                                             \
+      new_mem_idx = X-E3E2E1;						\
+      new_x4 = x4 - 1;							\
+      break;                                                            \
+    }                                                                   \
+    switch(mydir2){                                                     \
+    case 0:                                                             \
+      new_mem_idx = (new_mem_idx+1)>> 1;				\
+      new_x1 = x1+1;							\
+      break;                                                            \
+    case 1:                                                             \
+      new_mem_idx = (new_mem_idx+E1) >> 1;				\
+      new_x2 = x2+1;							\
+      break;                                                            \
+    case 2:                                                             \
+      new_mem_idx = (new_mem_idx+E2E1) >> 1;				\
+      new_x3 = x3+1;							\
+      break;                                                            \
+    case 3:                                                             \
+      new_mem_idx = (new_mem_idx+E3E2E1) >> 1;				\
+      new_x4 = x4+1;							\
+      break;								\
+    }                                                                   \
+  }while(0)
+
 
 #define LLFAT_COMPUTE_NEW_IDX_LOWER_STAPLE_DIAG(nu, mu, dir1, dir2) do { \
     new_mem_idx = Vh+2*(Vsh_x+Vsh_y+Vsh_z+Vsh_t) + mu*Vh_2d_max + ((x[dir2]*Z[dir1] + x[dir1])>>1); \
@@ -931,41 +1010,40 @@ template<int mu, int nu, int odd_bit>
     
   int mem_idx = blockIdx.x*blockDim.x + threadIdx.x;
     
-  int z1 = FAST_INT_DIVIDE(mem_idx, X1h);
-  short x1h = mem_idx - z1*X1h;
-  int z2 = FAST_INT_DIVIDE(z1, X2);
-  short x2 = z1 - z2*X2;
-  short x4 = FAST_INT_DIVIDE(z2, X3);
-  short x3 = z2 - x4*X3;
+  int z1 = FAST_INT_DIVIDE(mem_idx, E1h);
+  short x1h = mem_idx - z1*E1h;
+  int z2 = FAST_INT_DIVIDE(z1, E2);
+  short x2 = z1 - z2*E2;
+  short x4 = FAST_INT_DIVIDE(z2, E3);
+  short x3 = z2 - x4*E3;
 
   short x1odd = (x2 + x3 + x4 + odd_bit) & 1;
   short x1 = 2*x1h + x1odd;
   int X = 2*mem_idx + x1odd;    
+  
+  if(  !(1 <= x1 && x1 < X1 + 3
+	 && 1 <= x2 && x2 < X2 + 3
+	 && 1 <= x3 && x3 < X3 + 3
+	 && 1 <= x4 && x4 < X4 + 3 )){
+    return;
+  }
 
-  if(kparam.kernel_type == LLFAT_EXTERIOR_KERNEL_FWD_X && x1 != X1m1) return;
-  if(kparam.kernel_type == LLFAT_EXTERIOR_KERNEL_BACK_X && x1 != 0) return;
-  if(kparam.kernel_type == LLFAT_EXTERIOR_KERNEL_FWD_Y && x2 != X2m1) return;
-  if(kparam.kernel_type == LLFAT_EXTERIOR_KERNEL_BACK_Y && x2 != 0) return;
-  if(kparam.kernel_type == LLFAT_EXTERIOR_KERNEL_FWD_Z && x3 != X3m1) return;
-  if(kparam.kernel_type == LLFAT_EXTERIOR_KERNEL_BACK_Z && x3 != 0) return;
-  if(kparam.kernel_type == LLFAT_EXTERIOR_KERNEL_FWD_T && x4 != X4m1) return;
-  if(kparam.kernel_type == LLFAT_EXTERIOR_KERNEL_BACK_T && x4 != 0) return;
+  int boundary = 0;
+  if(x1 == 1 || x1 == X1 + 2
+     || x2 == 1 || x2 == X2 + 2
+     || x3 == 1 || x3 == X3 + 2
+     || x4 == 1 || x4 == X4 + 2){
+    boundary  =1;
+  }
+
 
   int new_mem_idx;
-#if (RECONSTRUCT != 18)
   float sign =1;    
   int new_x1 = x1;
   int new_x2 = x2;
+  int new_x3 = x3;
   int new_x4 = x4;
-#endif
 
-  int x[4] = {x1,x2,x3, x4};
-  int Z[4] ={X1,X2,X3,X4};
-
-  int spacecon_x = (x4*X3X2+x3*X2+x2)>>1;
-  int spacecon_y = (x4*X3X1+x3*X1+x1)>>1;
-  int spacecon_z = (x4*X2X1+x2*X1+x1)>>1;
-  int spacecon_t = (x3*X2X1+x2*X1+x1)>>1;
   /* Upper staple */
   /* Computes the staple :
    *                 mu (B)
@@ -985,7 +1063,7 @@ template<int mu, int nu, int odd_bit>
 
 
     /* load matrix B*/  
-    LLFAT_COMPUTE_NEW_IDX_PLUS(nu, X);    
+    LLFAT_COMPUTE_NEW_IDX_PLUS_EX(nu, X);    
     LOAD_ODD_SITE_MATRIX(mu, new_mem_idx, B);
     COMPUTE_RECONSTRUCT_SIGN(sign, mu, new_x1, new_x2, new_x3, new_x4);    
     RECONSTRUCT_SITE_LINK(mu, new_mem_idx, sign, b);
@@ -995,7 +1073,7 @@ template<int mu, int nu, int odd_bit>
     
     /* load matrix C*/
         
-    LLFAT_COMPUTE_NEW_IDX_PLUS(mu, X);    
+    LLFAT_COMPUTE_NEW_IDX_PLUS_EX(mu, X);    
     LOAD_ODD_SITE_MATRIX(nu, new_mem_idx, C);
     COMPUTE_RECONSTRUCT_SIGN(sign, nu, new_x1, new_x2, new_x3, new_x4);    
     RECONSTRUCT_SITE_LINK(nu, new_mem_idx, sign, c);
@@ -1014,7 +1092,7 @@ template<int mu, int nu, int odd_bit>
    *********************************************/
   {
     /* load matrix A*/
-    LLFAT_COMPUTE_NEW_IDX_MINUS(nu,X);    
+    LLFAT_COMPUTE_NEW_IDX_MINUS_EX(nu,X);    
     
     LOAD_ODD_SITE_MATRIX(nu, (new_mem_idx), A);
     COMPUTE_RECONSTRUCT_SIGN(sign, nu, new_x1, new_x2, new_x3, new_x4);        
@@ -1028,13 +1106,7 @@ template<int mu, int nu, int odd_bit>
     MULT_SU3_AN(a, b, tempa);
     
     /* load matrix C*/
-    //if(x[nu] == 0 && x[mu] == Z[mu] - 1){
-    if(dimcomm[nu] && dimcomm[mu] && x[nu] == 0 && x[mu] == Z[mu] - 1){
-      int idx = nu*4+mu;
-      LLFAT_COMPUTE_NEW_IDX_LOWER_STAPLE_DIAG(nu, mu, dir1_array[idx], dir2_array[idx]);
-    }else{
-      LLFAT_COMPUTE_NEW_IDX_LOWER_STAPLE(nu, mu);
-    }
+    LLFAT_COMPUTE_NEW_IDX_LOWER_STAPLE_EX(nu, mu);
     LOAD_EVEN_SITE_MATRIX(nu, new_mem_idx, C);
    
     COMPUTE_RECONSTRUCT_SIGN(sign, nu, new_x1, new_x2, new_x3, new_x4);        
@@ -1045,10 +1117,16 @@ template<int mu, int nu, int odd_bit>
     LLFAT_ADD_SU3_MATRIX(b, staple, staple);
   }
   
-  if(kparam.kernel_type == LLFAT_INTERIOR_KERNEL){
-    LOAD_EVEN_FAT_MATRIX(mu, mem_idx);
+  if(!boundary){
+    int x1_org= x1 - 2;
+    int x2_org= x2 - 2;
+    int x3_org= x3 - 2;
+    int x4_org= x4 - 2;
+    int orig_idx = (x4_org* X3X2X1 + x3_org*X2X1 + x2_org*X1 + x1_org)>>1;
+    
+    LOAD_EVEN_FAT_MATRIX(mu, orig_idx);
     SCALAR_MULT_ADD_SU3_MATRIX(fat, staple, mycoeff, fat);
-    WRITE_FAT_MATRIX(fatlink_even,mu,  mem_idx);	
+    WRITE_FAT_MATRIX(fatlink_even,mu,  orig_idx);	
   }
   WRITE_STAPLE_MATRIX(staple_even, mem_idx);	
     
