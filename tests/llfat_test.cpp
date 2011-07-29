@@ -23,11 +23,12 @@
 
 #define MAX(a,b) ((a)>(b)? (a):(b))
 
-FullGauge cudaSiteLink;
+FullGauge cudaSiteLink, cudaSiteLink_ex;
 FullGauge cudaFatLink;
-FullStaple cudaStaple;
-FullStaple cudaStaple1;
+FullStaple cudaStaple, cudaStaple_ex;
+FullStaple cudaStaple1, cudaStaple1_ex;
 QudaGaugeParam gaugeParam;
+QudaGaugeParam gaugeParam_ex;
 void *fatlink, *sitelink[4], *reflink[4];
 
 #ifdef MULTI_GPU
@@ -301,16 +302,29 @@ llfat_init(void)
   gaugeParam.site_ga_pad = gaugeParam.ga_pad = 3*(Vsh_x+Vsh_y+Vsh_z+Vsh_t) + 4*Vh_2d_max;
   gaugeParam.reconstruct = link_recon;
   createLinkQuda(&cudaSiteLink, &gaugeParam);
-  //loadLinkToGPU(cudaSiteLink, sitelink, &gaugeParam);
 
   gaugeParam.staple_pad = 3*(Vsh_x + Vsh_y + Vsh_z+ Vsh_t);
   createStapleQuda(&cudaStaple, &gaugeParam);
   createStapleQuda(&cudaStaple1, &gaugeParam);
+  
+  //create extended sitelink/staple/stapl1 in gpu
+  memcpy(&gaugeParam_ex, &gaugeParam, sizeof(QudaGaugeParam));
+  gaugeParam_ex.X[0]= E1;
+  gaugeParam_ex.X[1]= E2;
+  gaugeParam_ex.X[2]= E3;
+  gaugeParam_ex.X[3]= E4;
+  gaugeParam_ex.site_ga_pad = gaugeParam_ex.ga_pad=0;
+  gaugeParam_ex.reconstruct = link_recon;
+  createLinkQuda(&cudaSiteLink_ex, &gaugeParam_ex);
+  
+  gaugeParam_ex.staple_pad = 0;
+  createStapleQuda(&cudaStaple_ex, &gaugeParam_ex);
+  createStapleQuda(&cudaStaple1_ex, &gaugeParam_ex);
+
 #else
   gaugeParam.site_ga_pad = gaugeParam.ga_pad = Vsh_t;
   gaugeParam.reconstruct = link_recon;
   createLinkQuda(&cudaSiteLink, &gaugeParam);
-  //loadLinkToGPU(cudaSiteLink, sitelink, NULL, NULL, &gaugeParam);
 
   gaugeParam.staple_pad = Vsh_t;
   createStapleQuda(&cudaStaple, &gaugeParam);
@@ -416,7 +430,9 @@ llfat_test(void)
 #endif
   }
   
-  llfat_init_cuda(&gaugeParam);
+  //llfat_init_cuda(&gaugeParam);
+  llfat_init_cuda_ex(&gaugeParam);
+ 
   //The number comes from CPU implementation in MILC, fermion_links_helpers.c    
   int flops= 61632; 
 
@@ -426,13 +442,20 @@ llfat_test(void)
   gaugeParam.ga_pad = gaugeParam.site_ga_pad;
   gaugeParam.reconstruct = link_recon;
   loadLinkToGPU(cudaSiteLink, sitelink, &gaugeParam);
+  
+  //load extended sitelink to GPU
+  gaugeParam_ex.ga_pad = gaugeParam_ex.site_ga_pad;
+  gaugeParam_ex.reconstruct = link_recon;
+  loadLinkToGPU_ex(cudaSiteLink_ex, sitelink_ex, &gaugeParam_ex);
+  
 #else
   loadLinkToGPU(cudaSiteLink, sitelink, NULL, NULL, &gaugeParam);
 #endif
   
   gettimeofday(&t1, NULL);  
 
-  llfat_cuda(cudaFatLink, cudaSiteLink, cudaStaple, cudaStaple1, &gaugeParam, act_path_coeff_2);
+  //llfat_cuda(cudaFatLink, cudaSiteLink, cudaStaple, cudaStaple1, &gaugeParam, act_path_coeff_2);
+  llfat_cuda_ex(cudaFatLink, cudaSiteLink_ex, cudaStaple_ex, cudaStaple1_ex, &gaugeParam, act_path_coeff_2);
   
   gettimeofday(&t2, NULL);
   storeLinkToCPU(fatlink, &cudaFatLink, &gaugeParam);

@@ -352,8 +352,7 @@ llfat_reference(void** fatlink, void** sitelink, QudaPrecision prec, void* act_p
     break;
   }
   default:
-    fprintf(stderr, "ERROR: unsupported precision\n");
-    exit(1);
+    errorQuda( "ERROR: unsupported precision\n");
     break;
 	
   }
@@ -1039,6 +1038,8 @@ void llfat_cpu_mg_nocomm(void** fatlink, su3_matrix** sitelink, Float* act_path_
       llfat_scalar_mult_su3_matrix(sitelink[dir] + i, one_link, fat1 );
     }
   }
+
+  return ;
   
   for (int dir=XUP; dir<=TUP; dir++){
     for(int nu=XUP; nu<=TUP; nu++){
@@ -1105,8 +1106,7 @@ llfat_reference_mg(void** fatlink, void** sitelink, void** ghost_sitelink,
     break;
   }
   default:
-    fprintf(stderr, "ERROR: unsupported precision\n");
-    exit(1);
+    errorQuda("ERROR: unsupported precision\n");
     break;
 	
   }
@@ -1129,8 +1129,7 @@ llfat_reference_mg_nocomm(void** fatlink, void** sitelink, QudaPrecision prec, v
     break;
   }
   default:
-    fprintf(stderr, "ERROR: unsupported precision\n");
-    exit(1);
+    errorQuda("ERROR: unsupported precision(prec=%d)\n", prec);
     break;
 	
   }

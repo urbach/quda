@@ -218,6 +218,8 @@ __constant__ int dir1_array[16];
 __constant__ int dir2_array[16];
 __constant__ int last_proc_in_tdim;
 __constant__ int first_proc_in_tdim;
+__constant__ int E1, E2, E3, E4, E1h;
+__constant__ int Vh_ex;
 
 unsigned long staple_bytes=0;
 
@@ -277,12 +279,79 @@ llfat_init_cuda(QudaGaugeParam* param)
 
   cudaMemcpyToSymbol("last_proc_in_tdim", &last_proc_in_tdim, sizeof(int));
   cudaMemcpyToSymbol("first_proc_in_tdim", &first_proc_in_tdim, sizeof(int));
+
+  int E1 = param->X[0]+4;
+  int E1h = E1/2;
+  int E2 = param->X[1]+4;
+  int E3 = param->X[2]+4;
+  int E4 = param->X[3]+4;
+  
+  int Vh_ex = (E4*E3*E2*E1)/2;
+  
+  cudaMemcpyToSymbol("E1", &E1, sizeof(int));
+  cudaMemcpyToSymbol("E1h", &E1h, sizeof(int));
+  cudaMemcpyToSymbol("E2", &E2, sizeof(int));
+  cudaMemcpyToSymbol("E3", &E3, sizeof(int));
+  cudaMemcpyToSymbol("E4", &E4, sizeof(int));
+
+  cudaMemcpyToSymbol("Vh_ex", &Vh_ex, sizeof(int));
   
 }
 
+void
+llfat_init_cuda_ex(QudaGaugeParam* param)
+{
+  static int llfat_init_cuda_flag = 0;
+  if (llfat_init_cuda_flag){
+    return;
+  }
+  
+  llfat_init_cuda_flag = 1;
+  
+  init_kernel_cuda(param);
+  int Vh_ex = (param->X[0]+4)*(param->X[1]+4)*(param->X[2]+4)*(param->X[3]+4)/2;
+  int Vh = param->X[0]*param->X[1]*param->X[2]*param->X[3]/2;
+  int site_ga_stride = Vh_ex;
+  int staple_stride = Vh_ex;
+  int llfat_ga_stride = param->llfat_ga_pad + Vh;
+  
+  cudaMemcpyToSymbol("site_ga_stride", &site_ga_stride, sizeof(int));  
+  cudaMemcpyToSymbol("staple_stride", &staple_stride, sizeof(int));  
+  cudaMemcpyToSymbol("llfat_ga_stride", &llfat_ga_stride, sizeof(int));
+  
+  int first_proc_in_tdim = 0;
+  int last_proc_in_tdim = 0;
+  if(commCoords(3) == (commDim(3) -1)){
+    last_proc_in_tdim =  1;
+  }
+  
+  if(commCoords(3) == 0){
+    first_proc_in_tdim =  1;    
+  }
+
+  cudaMemcpyToSymbol("last_proc_in_tdim", &last_proc_in_tdim, sizeof(int));
+  cudaMemcpyToSymbol("first_proc_in_tdim", &first_proc_in_tdim, sizeof(int));
+
+  int E1 = param->X[0]+4;
+  int E1h = E1/2;
+  int E2 = param->X[1]+4;
+  int E3 = param->X[2]+4;
+  int E4 = param->X[3]+4;
+    
+  cudaMemcpyToSymbol("E1", &E1, sizeof(int));
+  cudaMemcpyToSymbol("E1h", &E1h, sizeof(int));
+  cudaMemcpyToSymbol("E2", &E2, sizeof(int));
+  cudaMemcpyToSymbol("E3", &E3, sizeof(int));
+  cudaMemcpyToSymbol("E4", &E4, sizeof(int));
+
+  cudaMemcpyToSymbol("Vh_ex", &Vh_ex, sizeof(int));
+  
+}
 
 #define LLFAT_CONCAT(a,b) a##b##Kernel
+#define LLFAT_CONCAT_EX(a,b) a##b##Kernel_ex
 #define LLFAT_KERNEL(a,b) LLFAT_CONCAT(a,b)
+#define LLFAT_KERNEL_EX(a,b) LLFAT_CONCAT_EX(a,b)
 
 //precision: 0 is for double, 1 is for single
 
@@ -453,7 +522,9 @@ llfat_init_cuda(QudaGaugeParam* param)
 #undef LOAD_ODD_FAT_MATRIX
 
 #undef LLFAT_CONCAT
+#undef LLFAT_CONCAT_EX
 #undef LLFAT_KERNEL
+#undef LLFAT_KERNEL_EX
 
 #define UNBIND_ALL_TEXTURE do{						\
     if(prec ==QUDA_DOUBLE_PRECISION){					\
@@ -853,6 +924,79 @@ void siteComputeGenStapleParityKernel(void* staple_even, void* staple_odd,
     
 }
 
+void siteComputeGenStapleParityKernel_ex(void* staple_even, void* staple_odd, 
+					 void* sitelink_even, void* sitelink_odd, 
+					 void* fatlink_even, void* fatlink_odd,	
+					 int mu, int nu, double mycoeff,
+					 QudaReconstructType recon, QudaPrecision prec,
+					 dim3 halfGridDim,  llfat_kernel_param_t kparam,
+					 cudaStream_t* stream)
+{
+
+  //compute even and odd
+  
+#define  CALL_FUNCTION(mu, nu)						\
+  if (prec == QUDA_DOUBLE_PRECISION){					\
+    if(recon == QUDA_RECONSTRUCT_NO){					\
+      do_siteComputeGenStapleParity18Kernel_ex<mu,nu, 0>		\
+	<<<halfGridDim, blockDim, 0, *stream>>>((double2*)staple_even, (double2*)staple_odd, \
+						(double2*)sitelink_even, (double2*)sitelink_odd, \
+						(double2*)fatlink_even, (double2*)fatlink_odd, \
+						(double)mycoeff, kparam);	\
+      do_siteComputeGenStapleParity18Kernel_ex<mu,nu, 1>		\
+	<<<halfGridDim, blockDim, 0, *stream>>>((double2*)staple_odd, (double2*)staple_even, \
+						(double2*)sitelink_odd, (double2*)sitelink_even, \
+						(double2*)fatlink_odd, (double2*)fatlink_even, \
+						(double)mycoeff, kparam);	\
+    }else{								\
+      do_siteComputeGenStapleParity12Kernel_ex<mu,nu, 0>		\
+	<<<halfGridDim, blockDim, 0, *stream>>>((double2*)staple_even, (double2*)staple_odd, \
+						(double2*)sitelink_even, (double2*)sitelink_odd, \
+						(double2*)fatlink_even, (double2*)fatlink_odd, \
+						(double)mycoeff, kparam);	\
+      do_siteComputeGenStapleParity12Kernel_ex<mu,nu, 1>		\
+	<<<halfGridDim, blockDim, 0, *stream>>>((double2*)staple_odd, (double2*)staple_even, \
+						(double2*)sitelink_odd, (double2*)sitelink_even, \
+						(double2*)fatlink_odd, (double2*)fatlink_even, \
+						(double)mycoeff, kparam);	\
+    }									\
+  }else {								\
+    if(recon == QUDA_RECONSTRUCT_NO){					\
+      do_siteComputeGenStapleParity18Kernel_ex<mu,nu, 0>		\
+	<<<halfGridDim, blockDim, 0, *stream>>>((float2*)staple_even, (float2*)staple_odd, \
+						(float2*)sitelink_even, (float2*)sitelink_odd, \
+						(float2*)fatlink_even, (float2*)fatlink_odd, \
+						(float)mycoeff, kparam); \
+      do_siteComputeGenStapleParity18Kernel_ex<mu,nu, 1>		\
+	<<<halfGridDim, blockDim, 0, *stream>>>((float2*)staple_odd, (float2*)staple_even, \
+						(float2*)sitelink_odd, (float2*)sitelink_even, \
+						(float2*)fatlink_odd, (float2*)fatlink_even, \
+						(float)mycoeff, kparam); \
+    }else{								\
+      do_siteComputeGenStapleParity12Kernel_ex<mu,nu, 0>		\
+	<<<halfGridDim, blockDim, 0, *stream>>>((float2*)staple_even, (float2*)staple_odd, \
+						(float2*)sitelink_even, (float2*)sitelink_odd, \
+						(float2*)fatlink_even, (float2*)fatlink_odd, \
+						(float)mycoeff, kparam); \
+      do_siteComputeGenStapleParity12Kernel_ex<mu,nu, 1>		\
+	<<<halfGridDim, blockDim, 0, *stream>>>((float2*)staple_odd, (float2*)staple_even, \
+						(float2*)sitelink_odd, (float2*)sitelink_even, \
+						(float2*)fatlink_odd, (float2*)fatlink_even, \
+						(float)mycoeff, kparam); \
+    }									\
+  }
+  
+
+  dim3 blockDim(BLOCK_DIM , 1, 1);  
+  ENUMERATE_FUNCS(mu,nu);  
+
+#undef CALL_FUNCTION
+    
+    
+}
+
+
+
 
 void
 computeGenStapleFieldParityKernel(void* staple_even, void* staple_odd, 
@@ -972,6 +1116,45 @@ void llfatOneLinkKernel(FullGauge cudaFatLink, FullGauge cudaSiteLink,
       llfatOneLink12Kernel<<<gridDim, blockDim>>>((float2*)cudaSiteLink.even, (float2*)cudaSiteLink.odd,
 						  (float2*)cudaFatLink.even, (float2*)cudaFatLink.odd,
 						  (float)act_path_coeff[0], (float)act_path_coeff[5]);    
+    }
+  }
+}
+
+void llfatOneLinkKernel_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
+			   FullStaple cudaStaple, FullStaple cudaStaple1,
+			   QudaGaugeParam* param, double* act_path_coeff)
+{  
+  QudaPrecision prec = cudaSiteLink.precision;
+  QudaReconstructType recon = cudaSiteLink.reconstruct;
+  
+  BIND_SITE_AND_FAT_LINK;
+  int volume_ex = (param->X[0]+4)*(param->X[1]+4)*(param->X[2]+4)*(param->X[3]+4);  
+  dim3 gridDim(volume_ex/BLOCK_DIM,1,1);
+  dim3 blockDim(BLOCK_DIM , 1, 1);
+  
+  staple_bytes = cudaStaple.bytes;
+  
+  if(prec == QUDA_DOUBLE_PRECISION){
+    if(recon == QUDA_RECONSTRUCT_NO){
+      llfatOneLink18Kernel_ex<<<gridDim, blockDim>>>((double2*)cudaSiteLink.even, (double2*)cudaSiteLink.odd,
+						     (double2*)cudaFatLink.even, (double2*)cudaFatLink.odd,
+						     (double)act_path_coeff[0], (double)act_path_coeff[5]);    
+    }else{
+      
+      llfatOneLink12Kernel_ex<<<gridDim, blockDim>>>((double2*)cudaSiteLink.even, (double2*)cudaSiteLink.odd,
+						     (double2*)cudaFatLink.even, (double2*)cudaFatLink.odd,
+						     (double)act_path_coeff[0], (double)act_path_coeff[5]);    
+      
+    }
+  }else{ //single precision
+    if(recon == QUDA_RECONSTRUCT_NO){    
+      llfatOneLink18Kernel_ex<<<gridDim, blockDim>>>((float2*)cudaSiteLink.even, (float2*)cudaSiteLink.odd,
+						     (float2*)cudaFatLink.even, (float2*)cudaFatLink.odd,
+						     (float)act_path_coeff[0], (float)act_path_coeff[5]);    						  
+    }else{
+      llfatOneLink12Kernel_ex<<<gridDim, blockDim>>>((float2*)cudaSiteLink.even, (float2*)cudaSiteLink.odd,
+						     (float2*)cudaFatLink.even, (float2*)cudaFatLink.odd,
+						     (float)act_path_coeff[0], (float)act_path_coeff[5]);    
     }
   }
 }
