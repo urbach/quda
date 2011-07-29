@@ -1133,6 +1133,167 @@ template<int mu, int nu, int odd_bit>
   return;
 }
 
+template<int mu, int nu, int odd_bit, int save_staple>
+  __global__ void
+  LLFAT_KERNEL_EX(do_computeGenStapleFieldParity,RECONSTRUCT)(FloatM* staple_even, FloatM* staple_odd, 
+							      FloatN* sitelink_even, FloatN* sitelink_odd,
+							      FloatM* fatlink_even, FloatM* fatlink_odd,			    
+							      FloatM* mulink_even, FloatM* mulink_odd, 
+							      Float mycoeff, llfat_kernel_param_t kparam)
+{
+  __shared__ FloatM sd_data[NUM_FLOATS*64];
+  //FloatM TEMPA0, TEMPA1, TEMPA2, TEMPA3, TEMPA4, TEMPA5, TEMPA6, TEMPA7, TEMPA8;  
+  FloatM  TEMPA5, TEMPA6, TEMPA7, TEMPA8;  
+  FloatM TEMPB0, TEMPB1, TEMPB2, TEMPB3, TEMPB4, TEMPB5, TEMPB6, TEMPB7, TEMPB8;
+  FloatM STAPLE0, STAPLE1, STAPLE2, STAPLE3, STAPLE4, STAPLE5, STAPLE6, STAPLE7, STAPLE8;
+  //FloatM STAPLE6, STAPLE7, STAPLE8;
+  
+  int mem_idx = blockIdx.x*blockDim.x + threadIdx.x;
+  
+  int z1 = FAST_INT_DIVIDE(mem_idx, E1h);
+  int x1h = mem_idx - z1*E1h;
+  int z2 = FAST_INT_DIVIDE(z1, E2);
+  int x2 = z1 - z2*E2;
+  int x4 = FAST_INT_DIVIDE(z2, E3);
+  int x3 = z2 - x4*E3;
+
+  int x1odd = (x2 + x3 + x4 + odd_bit) & 1;
+  int x1 = 2*x1h + x1odd;
+  int X = 2*mem_idx + x1odd;
+  
+  if(  !(1 <= x1 && x1 < X1 + 3
+	 && 1 <= x2 && x2 < X2 + 3
+	 && 1 <= x3 && x3 < X3 + 3
+	 && 1 <= x4 && x4 < X4 + 3 )){
+    return;
+  }
+  
+  int boundary = 0;
+  if(x1 == 1 || x1 == X1 + 2
+     || x2 == 1 || x2 == X2 + 2
+     || x3 == 1 || x3 == X3 + 2
+     || x4 == 1 || x4 == X4 + 2){
+    boundary  =1;
+  }
+  if(boundary && !staple_even){
+    return;
+  }
+
+  int new_mem_idx;
+  int sign =1;
+  int new_x1 = x1;
+  int new_x2 = x2;
+  int new_x3 = x3;
+  int new_x4 = x4;
+
+
+  /* Upper staple */
+  /* Computes the staple :
+   *                mu (BB)
+   *               +-------+
+   *       nu	   |	   | 
+   *	     (A)   |	   |(C)
+   *		   X	   X
+   *
+   */
+  {		
+    /* load matrix A*/
+    LOAD_EVEN_SITE_MATRIX(nu, mem_idx, A);
+    COMPUTE_RECONSTRUCT_SIGN(sign, nu, x1, x2, x3, x4);
+    RECONSTRUCT_SITE_LINK(nu, mem_idx, sign, a);
+    
+    /* load matrix BB*/
+    LLFAT_COMPUTE_NEW_IDX_PLUS_EX(nu, X);    
+    LOAD_ODD_MULINK_MATRIX(0, new_mem_idx, BB);
+    
+    MULT_SU3_NN(a, bb, tempa);    
+    
+    /* load matrix C*/
+    LLFAT_COMPUTE_NEW_IDX_PLUS_EX(mu, X);    
+    LOAD_ODD_SITE_MATRIX(nu, new_mem_idx, C);
+    COMPUTE_RECONSTRUCT_SIGN(sign, nu, new_x1, new_x2, new_x3, new_x4);
+    RECONSTRUCT_SITE_LINK(nu, new_mem_idx, sign, c);
+    if (save_staple){
+      MULT_SU3_NA(tempa, c, staple);
+    }else{
+      MULT_SU3_NA(tempa, c, tempb);
+    }
+  }
+  
+  /***************lower staple****************
+   *
+   *                   X       X
+   *             nu    |       | 
+   *	         (A)   |       | (C)
+   *		       +-------+
+   *                  mu (B)
+   *
+   *********************************************/
+    
+
+  {
+    /* load matrix A*/
+    LLFAT_COMPUTE_NEW_IDX_MINUS_EX(nu, X);
+    
+    LOAD_ODD_SITE_MATRIX(nu, new_mem_idx, A);
+    COMPUTE_RECONSTRUCT_SIGN(sign, nu, new_x1, new_x2, new_x3, new_x4);
+    RECONSTRUCT_SITE_LINK(nu, new_mem_idx, sign, a);
+    
+    /* load matrix B*/
+    LLFAT_COMPUTE_NEW_IDX_MINUS_EX(nu, X);				
+    LOAD_ODD_MULINK_MATRIX(0, new_mem_idx, BB);
+    
+    MULT_SU3_AN(a, bb, tempa);
+    
+    /* load matrix C*/
+ 
+    LLFAT_COMPUTE_NEW_IDX_LOWER_STAPLE_EX(nu, mu);
+    
+    LOAD_EVEN_SITE_MATRIX(nu, new_mem_idx, C);
+    COMPUTE_RECONSTRUCT_SIGN(sign, nu, new_x1, new_x2, new_x3, new_x4);
+    RECONSTRUCT_SITE_LINK(nu, new_mem_idx, sign, c);				
+    
+    MULT_SU3_NN(tempa, c, a);	
+    if(save_staple){
+      LLFAT_ADD_SU3_MATRIX(staple, a, staple);
+    }else{
+      LLFAT_ADD_SU3_MATRIX(a, tempb, tempb);
+    }
+  }
+
+  int x1_org;
+  int x2_org;
+  int x3_org;
+  int x4_org;
+  int orig_idx;
+  
+  if(!boundary){
+    x1_org= x1 - 2;
+    x2_org= x2 - 2;
+    x3_org= x3 - 2;
+    x4_org= x4 - 2;
+    orig_idx = (x4_org* X3X2X1 + x3_org*X2X1 + x2_org*X1 + x1_org)>>1;
+    LOAD_EVEN_FAT_MATRIX(mu, orig_idx);
+
+    if(save_staple){
+      SCALAR_MULT_ADD_SU3_MATRIX(fat, staple, mycoeff, fat);
+      WRITE_STAPLE_MATRIX(staple_even, mem_idx);		    
+    }else{
+      SCALAR_MULT_ADD_SU3_MATRIX(fat, tempb, mycoeff, fat);	
+    }
+    
+    WRITE_FAT_MATRIX(fatlink_even, mu,  orig_idx);	
+  }else{
+    //only one possibility: save staple
+    if(save_staple){
+      WRITE_STAPLE_MATRIX(staple_even, mem_idx);
+    }else{
+      //code should not reach here
+    }
+  }
+  return;
+}
+
 
 __global__ void 
 LLFAT_KERNEL_EX(llfatOneLink, RECONSTRUCT)(FloatN* sitelink_even, FloatN* sitelink_odd,

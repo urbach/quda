@@ -1047,7 +1047,6 @@ void llfat_cpu_mg_nocomm(void** fatlink, su3_matrix** sitelink, Float* act_path_
 						 sitelink[dir], sitelink, 
 						 fatlink, act_path_coeff[2], 0);	
 	
-	return ;
 	
 	
 	/* The Lepage term */
@@ -1055,7 +1054,8 @@ void llfat_cpu_mg_nocomm(void** fatlink, su3_matrix** sitelink, Float* act_path_
 	llfat_compute_gen_staple_field_mg_nocomm((su3_matrix*)NULL,dir,nu,
 						 staple, sitelink, fatlink, act_path_coeff[5],1);
 	
-	
+	return ;
+	    
 	for(int rho=XUP; rho<=TUP; rho++) {
 	  if((rho!=dir)&&(rho!=nu)){
 	    llfat_compute_gen_staple_field_mg_nocomm( tempmat1, dir, rho, 
