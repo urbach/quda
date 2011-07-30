@@ -51,8 +51,7 @@ typedef struct llfat_kernel_param_s{
 					    int mu, int nu, int save_staple,
 					    double mycoeff,
 					    QudaReconstructType recon, QudaPrecision prec,
-					    dim3 halfGridDim,  llfat_kernel_param_t kparam,
-					    cudaStream_t* stream);
+					    dim3 halfGridDim);
 
   void siteComputeGenStapleParityKernel(void* staple_even, void* staple_odd, 
 					void* sitelink_even, void* sitelink_odd, 
@@ -66,8 +65,7 @@ typedef struct llfat_kernel_param_s{
 					   void* fatlink_even, void* fatlink_odd,	
 					   int mu, int nu,	double mycoeff,
 					   QudaReconstructType recon, QudaPrecision prec,
-					   dim3 halfGridDim, llfat_kernel_param_t kparam,
-					   cudaStream_t* stream); 
+					   dim3 halfGridDim);
 
   void llfatOneLinkKernel(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 			  FullStaple cudaStaple, FullStaple cudaStaple1,

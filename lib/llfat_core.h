@@ -999,7 +999,7 @@ template<int mu, int nu, int odd_bit>
   LLFAT_KERNEL_EX(do_siteComputeGenStapleParity, RECONSTRUCT)(FloatM* staple_even, FloatM* staple_odd, 
 							      FloatN* sitelink_even, FloatN* sitelink_odd, 
 							      FloatM* fatlink_even, FloatM* fatlink_odd,	
-							      Float mycoeff, llfat_kernel_param_t kparam)
+							      Float mycoeff)
 {
   __shared__ FloatM sd_data[NUM_FLOATS*64];
   
@@ -1139,7 +1139,7 @@ template<int mu, int nu, int odd_bit, int save_staple>
 							      FloatN* sitelink_even, FloatN* sitelink_odd,
 							      FloatM* fatlink_even, FloatM* fatlink_odd,			    
 							      FloatM* mulink_even, FloatM* mulink_odd, 
-							      Float mycoeff, llfat_kernel_param_t kparam)
+							      Float mycoeff)
 {
   __shared__ FloatM sd_data[NUM_FLOATS*64];
   //FloatM TEMPA0, TEMPA1, TEMPA2, TEMPA3, TEMPA4, TEMPA5, TEMPA6, TEMPA7, TEMPA8;  
@@ -1175,7 +1175,7 @@ template<int mu, int nu, int odd_bit, int save_staple>
      || x4 == 1 || x4 == X4 + 2){
     boundary  =1;
   }
-  if(boundary && !staple_even){
+  if(boundary && !save_staple){
     return;
   }
 
@@ -1205,7 +1205,7 @@ template<int mu, int nu, int odd_bit, int save_staple>
     /* load matrix BB*/
     LLFAT_COMPUTE_NEW_IDX_PLUS_EX(nu, X);    
     LOAD_ODD_MULINK_MATRIX(0, new_mem_idx, BB);
-    
+    int b_idx = new_mem_idx;
     MULT_SU3_NN(a, bb, tempa);    
     
     /* load matrix C*/

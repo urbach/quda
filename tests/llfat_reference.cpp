@@ -825,6 +825,8 @@ llfat_compute_gen_staple_field_mg_nocomm(su3_matrix *staple, int mu, int nu,
     if(!oddBit){
       nbr_idx += Vh_ex;
     }
+    
+    int b_idx = nbr_idx;
 
     su3_matrix* B;
     if (use_staple){
@@ -1054,7 +1056,6 @@ void llfat_cpu_mg_nocomm(void** fatlink, su3_matrix** sitelink, Float* act_path_
 	llfat_compute_gen_staple_field_mg_nocomm((su3_matrix*)NULL,dir,nu,
 						 staple, sitelink, fatlink, act_path_coeff[5],1);
 	
-	return ;
 	    
 	for(int rho=XUP; rho<=TUP; rho++) {
 	  if((rho!=dir)&&(rho!=nu)){
@@ -1069,6 +1070,7 @@ void llfat_cpu_mg_nocomm(void** fatlink, su3_matrix** sitelink, Float* act_path_
 		llfat_compute_gen_staple_field_mg_nocomm((su3_matrix*)NULL,dir,sig,
 							 tempmat1, sitelink, 
 							 fatlink, act_path_coeff[4], 1);
+		//return ;
 		
 	      } 
 	    }/* sig */		

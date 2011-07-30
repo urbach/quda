@@ -228,9 +228,7 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 {
   int volume_ex = (param->X[0]+4)*(param->X[1]+4)*(param->X[2]+4)*(param->X[3]+4);
   int Vh_ex = volume_ex/2;
-  dim3 gridDim(volume_ex/BLOCK_DIM,1,1);
   dim3 halfGridDim(Vh_ex/BLOCK_DIM,1,1);
-  dim3 blockDim(BLOCK_DIM , 1, 1);
   
   QudaPrecision prec = cudaSiteLink.precision;
   QudaReconstructType recon = cudaSiteLink.reconstruct;
@@ -244,98 +242,52 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
     
   }
       
-  int nStream=9;
-  cudaStream_t stream[nStream];
-  for(int i = 0;i < nStream; i++){
-    cudaStreamCreate(&stream[i]);
-  }
-
-#define MYCUERR  do{ cudaError_t cuda_err;                                \
-    if ((cuda_err = cudaGetLastError()) != cudaSuccess) {               \
-      fprintf(stderr, "ERROR: CUDA error: %s, line %d, function %s, file %s\n", \
-              cudaGetErrorString(cuda_err),  __LINE__, __FUNCTION__, __FILE__); \
-      exit(cuda_err);}}while(0)
-
-  
   llfatOneLinkKernel_ex(cudaFatLink, cudaSiteLink,cudaStaple, cudaStaple1,
 			param, act_path_coeff); CUERR;
   
-  cudaThreadSynchronize(); MYCUERR;
   
-  llfat_kernel_param_t kparam;
-  for(int i=0;i < 4;i++){
-     kparam.ghostDim[i] = commDimPartitioned(i);
-  }
-  int ktype[8] = {
-		LLFAT_EXTERIOR_KERNEL_BACK_X, 
-		LLFAT_EXTERIOR_KERNEL_FWD_X, 
-		LLFAT_EXTERIOR_KERNEL_BACK_Y, 
-		LLFAT_EXTERIOR_KERNEL_FWD_Y, 
-		LLFAT_EXTERIOR_KERNEL_BACK_Z, 
-		LLFAT_EXTERIOR_KERNEL_FWD_Z, 
-		LLFAT_EXTERIOR_KERNEL_BACK_T, 
-		LLFAT_EXTERIOR_KERNEL_FWD_T, 
-  };
-
-
   for(int dir = 0;dir < 4; dir++){
     for(int nu = 0; nu < 4; nu++){
       if (nu != dir){
 	
-        kparam.kernel_type = LLFAT_INTERIOR_KERNEL;
 	siteComputeGenStapleParityKernel_ex((void*)cudaStaple.even, (void*)cudaStaple.odd,
 					    (void*)cudaSiteLink.even, (void*)cudaSiteLink.odd,
 					    (void*)cudaFatLink.even, (void*)cudaFatLink.odd, 
 					    dir, nu,
 					    act_path_coeff[2],
-					    recon, prec, halfGridDim, 
-					    kparam, &stream[nStream-1]); CUERR;
+					    recon, prec, halfGridDim); 
 	
-	//end
-
-	//start of one call
-        kparam.kernel_type = LLFAT_INTERIOR_KERNEL;
 	computeGenStapleFieldParityKernel_ex((void*)NULL, (void*)NULL,
 					     (void*)cudaSiteLink.even, (void*)cudaSiteLink.odd,
 					     (void*)cudaFatLink.even, (void*)cudaFatLink.odd, 
 					     (void*)cudaStaple.even, (void*)cudaStaple.odd,
 					     dir, nu, 0,
 					     act_path_coeff[5],
-					     recon, prec,  halfGridDim, kparam, &stream[nStream-1]); CUERR;
+					     recon, prec,  halfGridDim);
 	
-	//end
-	cudaThreadSynchronize();
-	return;
 	
 	for(int rho = 0; rho < 4; rho++){
 	  if (rho != dir && rho != nu){
-
-	    //start of one call
-	    kparam.kernel_type = LLFAT_INTERIOR_KERNEL;
+	    
 	    computeGenStapleFieldParityKernel_ex((void*)cudaStaple1.even, (void*)cudaStaple1.odd,
 						 (void*)cudaSiteLink.even, (void*)cudaSiteLink.odd,
 						 (void*)cudaFatLink.even, (void*)cudaFatLink.odd, 
 						 (void*)cudaStaple.even, (void*)cudaStaple.odd,
 						 dir, rho, 1,
 						 act_path_coeff[3],
-						 recon, prec, halfGridDim, kparam, &stream[nStream-1]); CUERR;
+						 recon, prec, halfGridDim);
 	    
-	    //end
 	    
 	    for(int sig = 0; sig < 4; sig++){
 	      if (sig != dir && sig != nu && sig != rho){						
 		
-		//start of one call
-		kparam.kernel_type = LLFAT_INTERIOR_KERNEL;
-		computeGenStapleFieldParityKernel((void*)NULL, (void*)NULL, 
-						  (void*)cudaSiteLink.even, (void*)cudaSiteLink.odd,
-						  (void*)cudaFatLink.even, (void*)cudaFatLink.odd, 
-						  (void*)cudaStaple1.even, (void*)cudaStaple1.odd,
-						  dir, sig, 0,
-						  act_path_coeff[4],
-						  recon, prec, halfGridDim, kparam, &stream[nStream-1]);	 CUERR;
-
-		//end
+		computeGenStapleFieldParityKernel_ex((void*)NULL, (void*)NULL, 
+						     (void*)cudaSiteLink.even, (void*)cudaSiteLink.odd,
+						     (void*)cudaFatLink.even, (void*)cudaFatLink.odd, 
+						     (void*)cudaStaple1.even, (void*)cudaStaple1.odd,
+						     dir, sig, 0,
+						     act_path_coeff[4],
+						     recon, prec, halfGridDim);
 		
 	      }			    
 	    }//sig
@@ -349,10 +301,6 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
   cudaThreadSynchronize(); 
   checkCudaError();
   
-  for(int i=0;i < nStream; i++){
-    cudaStreamDestroy(stream[i]);
-  }
-
   return;
 }
 
