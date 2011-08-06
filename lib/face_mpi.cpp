@@ -560,15 +560,15 @@ void exchange_cpu_sitelink(int* X,
 }
 
 
-/* This function exchange the sitelink and store them in the ghost array
- * @sitelink: this is stored according to local dimension size X1+4/X2+4/X3+4/X4+4
- * @ghost_sitelink: this is stored according to the local dim size plus 4 format
- * It is done this way so that it is easier to access the ghost data
+/* This function exchange the sitelink and store them in the correspoinding portion of 
+ * the extended sitelink memory region
+ * @sitelink: this is stored according to dimension size (X1+4) (X2+4) (X3+4) (X4+4)
  */
 
 void exchange_cpu_sitelink_ex(int* X, void** sitelink,
 			      QudaPrecision gPrecision, int optflag)
 {
+
   int X1,X2,X3,X4;
   int E1,E2,E3,E4;  
   X1 = X[0]; X2 = X[1]; X3 = X[2]; X4 = X[3]; 
@@ -692,44 +692,79 @@ void exchange_cpu_sitelink_ex(int* X, void** sitelink,
 
     //use the messages to fill the sitelink data
     //back
-    for(d=0; d < 2; d++)
-      for(a=starta[dir];a < enda[dir]; a++)
-	for(b=startb[dir]; b < endb[dir]; b++)
-	  for (c=startc[dir]; c < endc[dir]; c++){
-	    int oddness = (a+b+c+d)%2;
-	    int dst_idx = ( a*f_main[dir][0] + b*f_main[dir][1]+ c*f_main[dir][2] + d*f_main[dir][3])>> 1;
-	    int src_idx = ( a*f_bound[dir][0] + b*f_bound[dir][1]+ c*f_bound[dir][2] + d*f_bound[dir][3])>> 1;
-	    if(oddness){
-	      src_idx += nslices*slice_3d[dir]/2;
-	      dst_idx += Vh_ex;
-	    }
-	    for(int linkdir=0; linkdir < 4; linkdir ++){
-	      char* dst = (char*)sitelink[linkdir];
-	      char* src = ((char*)(ghost_sitelink_back[dir])) + linkdir*nslices*slice_3d[dir]*gaugeSiteSize*gPrecision;
-	      memcpy(dst + dst_idx * gaugeSiteSize*gPrecision, src+src_idx*gaugeSiteSize*gPrecision, gaugeSiteSize*gPrecision);
-	    }//linkdir
-	  }//c      
+    if (dir < 3 ){
+      for(d=0; d < 2; d++)
+	for(a=starta[dir];a < enda[dir]; a++)
+	  for(b=startb[dir]; b < endb[dir]; b++)
+	    for (c=startc[dir]; c < endc[dir]; c++){
+	      int oddness = (a+b+c+d)%2;
+	      int dst_idx = ( a*f_main[dir][0] + b*f_main[dir][1]+ c*f_main[dir][2] + d*f_main[dir][3])>> 1;
+	      int src_idx = ( a*f_bound[dir][0] + b*f_bound[dir][1]+ c*f_bound[dir][2] + d*f_bound[dir][3])>> 1;
+	      if(oddness){
+		src_idx += nslices*slice_3d[dir]/2;
+		dst_idx += Vh_ex;
+	      }
+	      for(int linkdir=0; linkdir < 4; linkdir ++){
+		char* dst = (char*)sitelink[linkdir];
+		char* src = ((char*)(ghost_sitelink_back[dir])) + linkdir*nslices*slice_3d[dir]*gaugeSiteSize*gPrecision;
+		memcpy(dst + dst_idx * gaugeSiteSize*gPrecision, src+src_idx*gaugeSiteSize*gPrecision, gaugeSiteSize*gPrecision);
+	      }//linkdir
+	    }//c    
+    }else{
+      //when dir == 3 (T direction), the data layout format in sitelink and the message is the same, we can do large copys
+      for(int linkdir=0; linkdir < 4; linkdir ++){
+	char* dst = (char*)sitelink[linkdir];
+	char* src = ((char*)(ghost_sitelink_back[dir])) + linkdir*nslices*slice_3d[dir]*gaugeSiteSize*gPrecision;	
+	//even
+	int dst_idx = 0;
+	int src_idx = 0;
+	memcpy(dst + dst_idx * gaugeSiteSize*gPrecision, src+src_idx*gaugeSiteSize*gPrecision, nslices*slice_3d[dir]*gaugeSiteSize*gPrecision/2);
+
+	//odd
+	dst_idx = Vh_ex;
+	src_idx = nslices*slice_3d[dir]/2;
+	memcpy(dst + dst_idx * gaugeSiteSize*gPrecision, src+src_idx*gaugeSiteSize*gPrecision, nslices*slice_3d[dir]*gaugeSiteSize*gPrecision/2);
+      }
+    }//if
     
     //fwd
-    for(d=X[dir]+2; d < X[dir]+4; d++)
-      for(a=starta[dir];a < enda[dir]; a++)
-	for(b=startb[dir]; b < endb[dir]; b++)
-	  for (c=startc[dir]; c < endc[dir]; c++){
-	    int oddness = (a+b+c+d)%2;
-	    int dst_idx = ( a*f_main[dir][0] + b*f_main[dir][1]+ c*f_main[dir][2] + d*f_main[dir][3])>> 1;
-	    int src_idx = ( a*f_bound[dir][0] + b*f_bound[dir][1]+ c*f_bound[dir][2] + (d-X[dir]-2)*f_bound[dir][3])>> 1;
-	    if(oddness){
-	      src_idx += nslices*slice_3d[dir]/2;
-	      dst_idx += Vh_ex;
+    if( dir < 3 ){
+      for(d=X[dir]+2; d < X[dir]+4; d++)
+	for(a=starta[dir];a < enda[dir]; a++)
+	  for(b=startb[dir]; b < endb[dir]; b++)
+	    for (c=startc[dir]; c < endc[dir]; c++){
+	      int oddness = (a+b+c+d)%2;
+	      int dst_idx = ( a*f_main[dir][0] + b*f_main[dir][1]+ c*f_main[dir][2] + d*f_main[dir][3])>> 1;
+	      int src_idx = ( a*f_bound[dir][0] + b*f_bound[dir][1]+ c*f_bound[dir][2] + (d-X[dir]-2)*f_bound[dir][3])>> 1;
+	      if(oddness){
+		src_idx += nslices*slice_3d[dir]/2;
+		dst_idx += Vh_ex;
 	      }
-	    for(int linkdir=0; linkdir < 4; linkdir++){
-	      char* dst = (char*)sitelink[linkdir];
-	      char* src = ((char*)(ghost_sitelink_fwd[dir])) + linkdir*nslices*slice_3d[dir]*gaugeSiteSize*gPrecision;
-	      memcpy(dst + dst_idx * gaugeSiteSize*gPrecision, src+src_idx*gaugeSiteSize*gPrecision, gaugeSiteSize*gPrecision);
-	    }//linkdir
-	  }//c
+	      for(int linkdir=0; linkdir < 4; linkdir++){
+		char* dst = (char*)sitelink[linkdir];
+		char* src = ((char*)(ghost_sitelink_fwd[dir])) + linkdir*nslices*slice_3d[dir]*gaugeSiteSize*gPrecision;
+		memcpy(dst + dst_idx * gaugeSiteSize*gPrecision, src+src_idx*gaugeSiteSize*gPrecision, gaugeSiteSize*gPrecision);
+	      }//linkdir
+	    }//c
+    }else{
+      //when dir == 3 (T direction), the data layout format in sitelink and the message is the same, we can do large copys
+      for(int linkdir=0; linkdir < 4; linkdir ++){
+	char* dst = (char*)sitelink[linkdir];
+	char* src = ((char*)(ghost_sitelink_fwd[dir])) + linkdir*nslices*slice_3d[dir]*gaugeSiteSize*gPrecision;	
+	//even
+	int dst_idx = ((X[dir]+2)*f_main[dir][3]) >> 1;
+	int src_idx = 0;
+	memcpy(dst + dst_idx * gaugeSiteSize*gPrecision, src+src_idx*gaugeSiteSize*gPrecision, nslices*slice_3d[dir]*gaugeSiteSize*gPrecision/2);
+	
+	//odd
+	dst_idx = Vh_ex + (((X[dir]+2)*f_main[dir][3]) >> 1);
+	src_idx = nslices*slice_3d[dir]/2;
+	memcpy(dst + dst_idx * gaugeSiteSize*gPrecision, src+src_idx*gaugeSiteSize*gPrecision, nslices*slice_3d[dir]*gaugeSiteSize*gPrecision/2);
+      }
+      
+    }//if    
   }
-  
+    
   
   for(int dir=0;dir < 4;dir++){
     free(ghost_sitelink_fwd_sendbuf[dir]);

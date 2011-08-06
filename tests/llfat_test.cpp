@@ -172,6 +172,7 @@ llfat_init(void)
   for(i=0;i < 4;i++){
 #if (CUDA_VERSION >=4000)
     cudaMallocHost((void**)&sitelink_ex[i], V_ex*gaugeSiteSize* gSize);
+    cudaMemset(sitelink_ex[i], 0, V_ex*gaugeSiteSize* gSize);
 #else
     sitelink_ex[i] = malloc(V_ex*gaugeSiteSize* gSize);
 #endif
@@ -474,8 +475,8 @@ llfat_test(void)
    
    
 #ifdef MULTI_GPU
-   //llfat_reference_mg(reflink, sitelink, ghost_sitelink, ghost_sitelink_diag, gaugeParam.cpu_prec, act_path_coeff);
-   llfat_reference_mg_nocomm(reflink, sitelink_ex, gaugeParam.cpu_prec, act_path_coeff);
+   llfat_reference_mg(reflink, sitelink, ghost_sitelink, ghost_sitelink_diag, gaugeParam.cpu_prec, act_path_coeff);
+   //llfat_reference_mg_nocomm(reflink, sitelink_ex, gaugeParam.cpu_prec, act_path_coeff);
    //llfat_reference(reflink, sitelink, gaugeParam.cpu_prec, act_path_coeff);
 #else
    llfat_reference(reflink, sitelink, gaugeParam.cpu_prec, act_path_coeff);
