@@ -226,10 +226,28 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 	      FullStaple cudaStaple, FullStaple cudaStaple1,
 	      QudaGaugeParam* param, double* act_path_coeff)
 {
-  int volume_ex = (param->X[0]+4)*(param->X[1]+4)*(param->X[2]+4)*(param->X[3]+4);
-  int Vh_ex = volume_ex/2;
-  dim3 halfGridDim(Vh_ex/BLOCK_DIM,1,1);
+  int volume = (param->X[0])*(param->X[1])*(param->X[2])*(param->X[3]);
+  int Vh = volume/2;
+  dim3 halfGridDim(Vh/BLOCK_DIM,1,1);
+  if(Vh % BLOCK_DIM != 0){
+    halfGridDim.x +=1;
+  }
+
+
+  int volume_1g = (param->X[0]+2)*(param->X[1]+2)*(param->X[2]+2)*(param->X[3]+2);
+  int Vh_1g = volume_1g/2;
+  dim3 halfGridDim_1g(Vh_1g/BLOCK_DIM,1,1);
+  if(Vh_1g % BLOCK_DIM != 0){
+    halfGridDim_1g.x +=1;
+  }
   
+  int volume_2g = (param->X[0]+4)*(param->X[1]+4)*(param->X[2]+4)*(param->X[3]+4);
+  int Vh_2g = volume_2g/2;
+  dim3 halfGridDim_2g(Vh_2g/BLOCK_DIM,1,1);
+  if(Vh_2g % BLOCK_DIM != 0){
+    halfGridDim_2g.x +=1;
+  }
+
   QudaPrecision prec = cudaSiteLink.precision;
   QudaReconstructType recon = cudaSiteLink.reconstruct;
   
@@ -242,20 +260,53 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
     
   }
       
+  
+  llfat_kernel_param_t kparam;
+  llfat_kernel_param_t kparam_1g;
+  llfat_kernel_param_t kparam_2g;
+
+  kparam.threads= Vh;
+  kparam.halfGridDim = halfGridDim;
+  kparam.D1 = param->X[0];
+  kparam.D2 = param->X[1];
+  kparam.D3 = param->X[2];
+  kparam.D4 = param->X[3];
+  kparam.D1h = param->X[0]/2;
+  kparam.base_idx = 2;
+  
+  kparam_1g.threads= Vh_1g;
+  kparam_1g.halfGridDim = halfGridDim_1g;
+  kparam_1g.D1 = param->X[0] + 2;
+  kparam_1g.D2 = param->X[1] + 2;
+  kparam_1g.D3 = param->X[2] + 2;
+  kparam_1g.D4 = param->X[3] + 2;
+  kparam_1g.D1h = (param->X[0] + 2)/2;
+  kparam_1g.base_idx = 1;
+
+  kparam_2g.threads= Vh_2g;
+  kparam_2g.halfGridDim = halfGridDim_2g;
+  kparam_2g.D1 = param->X[0] + 4;
+  kparam_2g.D2 = param->X[1] + 4;
+  kparam_2g.D3 = param->X[2] + 4;
+  kparam_2g.D4 = param->X[3] + 4;
+  kparam_2g.D1h = (param->X[0] + 4)/2;
+  kparam_2g.base_idx = 0;
+
+
   llfatOneLinkKernel_ex(cudaFatLink, cudaSiteLink,cudaStaple, cudaStaple1,
-			param, act_path_coeff); CUERR;
-  
-  
+			param, act_path_coeff, kparam_2g); CUERR;
+
   for(int dir = 0;dir < 4; dir++){
     for(int nu = 0; nu < 4; nu++){
       if (nu != dir){
 	
+
 	siteComputeGenStapleParityKernel_ex((void*)cudaStaple.even, (void*)cudaStaple.odd,
 					    (void*)cudaSiteLink.even, (void*)cudaSiteLink.odd,
 					    (void*)cudaFatLink.even, (void*)cudaFatLink.odd, 
 					    dir, nu,
 					    act_path_coeff[2],
-					    recon, prec, halfGridDim); 
+					    recon, prec, halfGridDim, kparam_1g); 
 	
 	computeGenStapleFieldParityKernel_ex((void*)NULL, (void*)NULL,
 					     (void*)cudaSiteLink.even, (void*)cudaSiteLink.odd,
@@ -263,7 +314,7 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 					     (void*)cudaStaple.even, (void*)cudaStaple.odd,
 					     dir, nu, 0,
 					     act_path_coeff[5],
-					     recon, prec,  halfGridDim);
+					     recon, prec,  halfGridDim, kparam);
 	
 	
 	for(int rho = 0; rho < 4; rho++){
@@ -275,7 +326,7 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 						 (void*)cudaStaple.even, (void*)cudaStaple.odd,
 						 dir, rho, 1,
 						 act_path_coeff[3],
-						 recon, prec, halfGridDim);
+						 recon, prec, halfGridDim, kparam_1g);
 	    
 	    
 	    for(int sig = 0; sig < 4; sig++){
@@ -287,7 +338,7 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 						     (void*)cudaStaple1.even, (void*)cudaStaple1.odd,
 						     dir, sig, 0,
 						     act_path_coeff[4],
-						     recon, prec, halfGridDim);
+						     recon, prec, halfGridDim, kparam);
 		
 	      }			    
 	    }//sig

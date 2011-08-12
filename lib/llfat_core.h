@@ -9,6 +9,12 @@
 #define tcomm kparam.ghostDim[3]
 #define dimcomm kparam.ghostDim
 
+#define D1 kparam.D1
+#define D2 kparam.D2
+#define D3 kparam.D3
+#define D4 kparam.D4
+#define D1h kparam.D1h
+
 #define a00_re A0.x
 #define a00_im A0.y
 #define a01_re A1.x
@@ -662,7 +668,7 @@ template<int mu, int nu, int odd_bit>
   //FloatM STAPLE6, STAPLE7, STAPLE8;
     
   int mem_idx = blockIdx.x*blockDim.x + threadIdx.x;
-    
+
   int z1 = FAST_INT_DIVIDE(mem_idx, X1h);
   short x1h = mem_idx - z1*X1h;
   int z2 = FAST_INT_DIVIDE(z1, X2);
@@ -999,7 +1005,7 @@ template<int mu, int nu, int odd_bit>
   LLFAT_KERNEL_EX(do_siteComputeGenStapleParity, RECONSTRUCT)(FloatM* staple_even, FloatM* staple_odd, 
 							      FloatN* sitelink_even, FloatN* sitelink_odd, 
 							      FloatM* fatlink_even, FloatM* fatlink_odd,	
-							      Float mycoeff)
+							      Float mycoeff, llfat_kernel_param_t kparam)
 {
   __shared__ FloatM sd_data[NUM_FLOATS*64];
   
@@ -1009,17 +1015,25 @@ template<int mu, int nu, int odd_bit>
   //FloatM STAPLE6, STAPLE7, STAPLE8;
     
   int mem_idx = blockIdx.x*blockDim.x + threadIdx.x;
-    
-  int z1 = FAST_INT_DIVIDE(mem_idx, E1h);
-  short x1h = mem_idx - z1*E1h;
-  int z2 = FAST_INT_DIVIDE(z1, E2);
-  short x2 = z1 - z2*E2;
-  short x4 = FAST_INT_DIVIDE(z2, E3);
-  short x3 = z2 - x4*E3;
+  if(mem_idx >= kparam.threads) return;
 
+  int z1 = FAST_INT_DIVIDE(mem_idx, D1h);
+  short x1h = mem_idx - z1*D1h;
+  int z2 = FAST_INT_DIVIDE(z1, D2);
+  short x2 = z1 - z2*D2;
+  short x4 = FAST_INT_DIVIDE(z2, D3);
+  short x3 = z2 - x4*D3;
+  
   short x1odd = (x2 + x3 + x4 + odd_bit) & 1;
   short x1 = 2*x1h + x1odd;
   int X = 2*mem_idx + x1odd;    
+  
+  x1 += kparam.base_idx;
+  x2 += kparam.base_idx;
+  x3 += kparam.base_idx;
+  x4 += kparam.base_idx;
+  X = x4*E3E2E1 + x3*E2E1 + x2*E2 + x1;
+  mem_idx = X/2;
   
   if(  !(1 <= x1 && x1 < X1 + 3
 	 && 1 <= x2 && x2 < X2 + 3
@@ -1139,7 +1153,7 @@ template<int mu, int nu, int odd_bit, int save_staple>
 							      FloatN* sitelink_even, FloatN* sitelink_odd,
 							      FloatM* fatlink_even, FloatM* fatlink_odd,			    
 							      FloatM* mulink_even, FloatM* mulink_odd, 
-							      Float mycoeff)
+							      Float mycoeff, llfat_kernel_param_t kparam)
 {
   __shared__ FloatM sd_data[NUM_FLOATS*64];
   //FloatM TEMPA0, TEMPA1, TEMPA2, TEMPA3, TEMPA4, TEMPA5, TEMPA6, TEMPA7, TEMPA8;  
@@ -1150,17 +1164,24 @@ template<int mu, int nu, int odd_bit, int save_staple>
   
   int mem_idx = blockIdx.x*blockDim.x + threadIdx.x;
   
-  int z1 = FAST_INT_DIVIDE(mem_idx, E1h);
-  int x1h = mem_idx - z1*E1h;
-  int z2 = FAST_INT_DIVIDE(z1, E2);
-  int x2 = z1 - z2*E2;
-  int x4 = FAST_INT_DIVIDE(z2, E3);
-  int x3 = z2 - x4*E3;
+  int z1 = FAST_INT_DIVIDE(mem_idx, D1h);
+  int x1h = mem_idx - z1*D1h;
+  int z2 = FAST_INT_DIVIDE(z1, D2);
+  int x2 = z1 - z2*D2;
+  int x4 = FAST_INT_DIVIDE(z2, D3);
+  int x3 = z2 - x4*D3;
 
   int x1odd = (x2 + x3 + x4 + odd_bit) & 1;
   int x1 = 2*x1h + x1odd;
   int X = 2*mem_idx + x1odd;
-  
+
+  x1 += kparam.base_idx;
+  x2 += kparam.base_idx;
+  x3 += kparam.base_idx;
+  x4 += kparam.base_idx;
+  X = x4*E3E2E1 + x3*E2E1 + x2*E2 + x1;
+  mem_idx = X/2;
+
   if(  !(1 <= x1 && x1 < X1 + 3
 	 && 1 <= x2 && x2 < X2 + 3
 	 && 1 <= x3 && x3 < X3 + 3
@@ -1298,7 +1319,7 @@ template<int mu, int nu, int odd_bit, int save_staple>
 __global__ void 
 LLFAT_KERNEL_EX(llfatOneLink, RECONSTRUCT)(FloatN* sitelink_even, FloatN* sitelink_odd,
 					   FloatM* fatlink_even, FloatM* fatlink_odd,
-					   Float coeff0, Float coeff5)
+					   Float coeff0, Float coeff5, llfat_kernel_param_t kparam)
 {
   FloatN* my_sitelink;
   FloatM* my_fatlink;
