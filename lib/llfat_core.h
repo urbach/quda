@@ -519,46 +519,35 @@
 
 
 #define LLFAT_COMPUTE_NEW_IDX_LOWER_STAPLE_EX(mydir1, mydir2) do {	\
-    new_x1 = x1;                                                        \
-    new_x2 = x2;                                                        \
-    new_x3 = x3;                                                        \
-    new_x4 = x4;                                                        \
     switch(mydir1){                                                     \
     case 0:                                                             \
       new_mem_idx = X-1;						\
-      new_x1 = x1 - 1;							\
       break;                                                            \
     case 1:                                                             \
       new_mem_idx = X-E1;						\
-      new_x2 = x2 - 1;							\
       break;                                                            \
     case 2:                                                             \
       new_mem_idx = X-E2E1;						\
-      new_x3 = x3 - 1;							\
       break;                                                            \
     case 3:                                                             \
       new_mem_idx = X-E3E2E1;						\
-      new_x4 = x4 - 1;							\
       break;                                                            \
     }                                                                   \
     switch(mydir2){                                                     \
     case 0:                                                             \
       new_mem_idx = (new_mem_idx+1)>> 1;				\
-      new_x1 = x1+1;							\
       break;                                                            \
     case 1:                                                             \
       new_mem_idx = (new_mem_idx+E1) >> 1;				\
-      new_x2 = x2+1;							\
       break;                                                            \
     case 2:                                                             \
       new_mem_idx = (new_mem_idx+E2E1) >> 1;				\
-      new_x3 = x3+1;							\
       break;                                                            \
     case 3:                                                             \
       new_mem_idx = (new_mem_idx+E3E2E1) >> 1;				\
-      new_x4 = x4+1;							\
       break;								\
     }                                                                   \
+    /*UPDATE_COOR_LOWER_STAPLE(mydir1, mydir2);	*/			\
   }while(0)
 
 
@@ -1012,7 +1001,6 @@ template<int mu, int nu, int odd_bit>
   //FloatM TEMPA0, TEMPA1, TEMPA2, TEMPA3, TEMPA4, TEMPA5, TEMPA6, TEMPA7, TEMPA8;
   FloatM TEMPA5, TEMPA6, TEMPA7, TEMPA8;
   FloatM STAPLE0, STAPLE1, STAPLE2, STAPLE3, STAPLE4, STAPLE5, STAPLE6, STAPLE7, STAPLE8;
-  //FloatM STAPLE6, STAPLE7, STAPLE8;
     
   int mem_idx = blockIdx.x*blockDim.x + threadIdx.x;
   if(mem_idx >= kparam.threads) return;
@@ -1026,31 +1014,14 @@ template<int mu, int nu, int odd_bit>
   
   short x1odd = (x2 + x3 + x4 + odd_bit) & 1;
   short x1 = 2*x1h + x1odd;
-  int X = 2*mem_idx + x1odd;    
   
   x1 += kparam.base_idx;
   x2 += kparam.base_idx;
   x3 += kparam.base_idx;
   x4 += kparam.base_idx;
-  X = x4*E3E2E1 + x3*E2E1 + x2*E2 + x1;
+  int X = x4*E3E2E1 + x3*E2E1 + x2*E2 + x1;
   mem_idx = X/2;
-  
-  if(  !(1 <= x1 && x1 < X1 + 3
-	 && 1 <= x2 && x2 < X2 + 3
-	 && 1 <= x3 && x3 < X3 + 3
-	 && 1 <= x4 && x4 < X4 + 3 )){
-    return;
-  }
-
-  int boundary = 0;
-  if(x1 == 1 || x1 == X1 + 2
-     || x2 == 1 || x2 == X2 + 2
-     || x3 == 1 || x3 == X3 + 2
-     || x4 == 1 || x4 == X4 + 2){
-    boundary  =1;
-  }
-
-
+ 
   int new_mem_idx;
   float sign =1;    
   int new_x1 = x1;
@@ -1130,13 +1101,11 @@ template<int mu, int nu, int odd_bit>
     MULT_SU3_NN(tempa, c, b);		
     LLFAT_ADD_SU3_MATRIX(b, staple, staple);
   }
+   
   
-  if(!boundary){
-    int x1_org= x1 - 2;
-    int x2_org= x2 - 2;
-    int x3_org= x3 - 2;
-    int x4_org= x4 - 2;
-    int orig_idx = (x4_org* X3X2X1 + x3_org*X2X1 + x2_org*X1 + x1_org)>>1;
+  if( !(x1 == 1 || x1 == X1 + 2 || x2 == 1 || x2 == X2 + 2
+	|| x3 == 1 || x3 == X3 + 2 || x4 == 1 || x4 == X4 + 2)){
+    int orig_idx = ((x4-2)* X3X2X1 + (x3-2)*X2X1 + (x2-2)*X1 + (x1-2))>>1;
     
     LOAD_EVEN_FAT_MATRIX(mu, orig_idx);
     SCALAR_MULT_ADD_SU3_MATRIX(fat, staple, mycoeff, fat);
@@ -1158,12 +1127,11 @@ template<int mu, int nu, int odd_bit, int save_staple>
   __shared__ FloatM sd_data[NUM_FLOATS*64];
   //FloatM TEMPA0, TEMPA1, TEMPA2, TEMPA3, TEMPA4, TEMPA5, TEMPA6, TEMPA7, TEMPA8;  
   FloatM  TEMPA5, TEMPA6, TEMPA7, TEMPA8;  
-  FloatM TEMPB0, TEMPB1, TEMPB2, TEMPB3, TEMPB4, TEMPB5, TEMPB6, TEMPB7, TEMPB8;
   FloatM STAPLE0, STAPLE1, STAPLE2, STAPLE3, STAPLE4, STAPLE5, STAPLE6, STAPLE7, STAPLE8;
-  //FloatM STAPLE6, STAPLE7, STAPLE8;
   
   int mem_idx = blockIdx.x*blockDim.x + threadIdx.x;
-  
+  if(mem_idx >= kparam.threads) return;
+
   int z1 = FAST_INT_DIVIDE(mem_idx, D1h);
   int x1h = mem_idx - z1*D1h;
   int z2 = FAST_INT_DIVIDE(z1, D2);
@@ -1173,32 +1141,13 @@ template<int mu, int nu, int odd_bit, int save_staple>
 
   int x1odd = (x2 + x3 + x4 + odd_bit) & 1;
   int x1 = 2*x1h + x1odd;
-  int X = 2*mem_idx + x1odd;
 
   x1 += kparam.base_idx;
   x2 += kparam.base_idx;
   x3 += kparam.base_idx;
   x4 += kparam.base_idx;
-  X = x4*E3E2E1 + x3*E2E1 + x2*E2 + x1;
+  int X = x4*E3E2E1 + x3*E2E1 + x2*E2 + x1;
   mem_idx = X/2;
-
-  if(  !(1 <= x1 && x1 < X1 + 3
-	 && 1 <= x2 && x2 < X2 + 3
-	 && 1 <= x3 && x3 < X3 + 3
-	 && 1 <= x4 && x4 < X4 + 3 )){
-    return;
-  }
-  
-  int boundary = 0;
-  if(x1 == 1 || x1 == X1 + 2
-     || x2 == 1 || x2 == X2 + 2
-     || x3 == 1 || x3 == X3 + 2
-     || x4 == 1 || x4 == X4 + 2){
-    boundary  =1;
-  }
-  if(boundary && !save_staple){
-    return;
-  }
 
   int new_mem_idx;
   int sign =1;
@@ -1234,11 +1183,8 @@ template<int mu, int nu, int odd_bit, int save_staple>
     LOAD_ODD_SITE_MATRIX(nu, new_mem_idx, C);
     COMPUTE_RECONSTRUCT_SIGN(sign, nu, new_x1, new_x2, new_x3, new_x4);
     RECONSTRUCT_SITE_LINK(nu, new_mem_idx, sign, c);
-    if (save_staple){
-      MULT_SU3_NA(tempa, c, staple);
-    }else{
-      MULT_SU3_NA(tempa, c, tempb);
-    }
+    
+    MULT_SU3_NA(tempa, c, staple);
   }
   
   /***************lower staple****************
@@ -1275,43 +1221,23 @@ template<int mu, int nu, int odd_bit, int save_staple>
     RECONSTRUCT_SITE_LINK(nu, new_mem_idx, sign, c);				
     
     MULT_SU3_NN(tempa, c, a);	
-    if(save_staple){
-      LLFAT_ADD_SU3_MATRIX(staple, a, staple);
-    }else{
-      LLFAT_ADD_SU3_MATRIX(a, tempb, tempb);
-    }
+
+    LLFAT_ADD_SU3_MATRIX(a, staple, staple);
   }
 
-  int x1_org;
-  int x2_org;
-  int x3_org;
-  int x4_org;
-  int orig_idx;
-  
-  if(!boundary){
-    x1_org= x1 - 2;
-    x2_org= x2 - 2;
-    x3_org= x3 - 2;
-    x4_org= x4 - 2;
-    orig_idx = (x4_org* X3X2X1 + x3_org*X2X1 + x2_org*X1 + x1_org)>>1;
-    LOAD_EVEN_FAT_MATRIX(mu, orig_idx);
-
-    if(save_staple){
-      SCALAR_MULT_ADD_SU3_MATRIX(fat, staple, mycoeff, fat);
-      WRITE_STAPLE_MATRIX(staple_even, mem_idx);		    
-    }else{
-      SCALAR_MULT_ADD_SU3_MATRIX(fat, tempb, mycoeff, fat);	
-    }
     
+  if( !(x1 == 1 || x1 == X1 + 2 || x2 == 1 || x2 == X2 + 2
+	|| x3 == 1 || x3 == X3 + 2 || x4 == 1 || x4 == X4 + 2)){
+    int orig_idx = ((x4-2)* X3X2X1 + (x3-2)*X2X1 + (x2-2)*X1 + (x1-2))>>1;
+    LOAD_EVEN_FAT_MATRIX(mu, orig_idx);    
+    SCALAR_MULT_ADD_SU3_MATRIX(fat, staple, mycoeff, fat);    
     WRITE_FAT_MATRIX(fatlink_even, mu,  orig_idx);	
-  }else{
-    //only one possibility: save staple
-    if(save_staple){
-      WRITE_STAPLE_MATRIX(staple_even, mem_idx);
-    }else{
-      //code should not reach here
-    }
   }
+
+  if(save_staple){
+    WRITE_STAPLE_MATRIX(staple_even, mem_idx);		    
+  }
+  
   return;
 }
 
@@ -1324,42 +1250,38 @@ LLFAT_KERNEL_EX(llfatOneLink, RECONSTRUCT)(FloatN* sitelink_even, FloatN* siteli
   FloatN* my_sitelink;
   FloatM* my_fatlink;
   int sid = blockIdx.x*blockDim.x + threadIdx.x;
-  int mem_idx = sid;
+  int idx = sid;
+  
+  if(sid >= 2*kparam.threads) return;
   
   int odd_bit= 0;
   
   my_sitelink = sitelink_even;
   my_fatlink = fatlink_even;
-  if (mem_idx >= Vh_ex){
+  if (idx >= kparam.threads){
     odd_bit=1;
-    mem_idx = mem_idx - Vh_ex;
+    idx = idx - kparam.threads;
     my_sitelink = sitelink_odd;
     my_fatlink = fatlink_odd;
   }
    
-  int z1 = FAST_INT_DIVIDE(mem_idx, E1h);
-  int x1h = mem_idx - z1*E1h;
-  int z2 = FAST_INT_DIVIDE(z1, E2);
-  int x2 = z1 - z2*E2;
-  int x4 = FAST_INT_DIVIDE(z2, E3);
-  int x3 = z2 - x4*E3;
+  int z1 = FAST_INT_DIVIDE(idx, D1h);
+  int x1h = idx - z1*D1h;
+  int z2 = FAST_INT_DIVIDE(z1, D2);
+  int x2 = z1 - z2*D2;
+  int x4 = FAST_INT_DIVIDE(z2, D3);
+  int x3 = z2 - x4*D3;
   int x1odd = (x2 + x3 + x4 + odd_bit) & 1;
   int x1 = 2*x1h + x1odd; 
   int sign =1;   	
+  
+  x1 += kparam.base_idx;
+  x2 += kparam.base_idx;
+  x3 += kparam.base_idx;
+  x4 += kparam.base_idx;
+  int X = x4*E3E2E1 + x3*E2E1 + x2*E2 + x1;
+  int mem_idx = X/2;
 
-  if( x1< 2 || x1 >= X1 +2
-      || x2< 2 || x2 >= X2 +2
-      || x3< 2 || x3 >= X3 +2
-      || x4< 2 || x4 >= X4 +2){
-    return;
-  }
-
-  x1= (x1 - 2 + X1) % X1;
-  x2= (x2 - 2 + X2) % X2;
-  x3= (x3 - 2 + X3) % X3;
-  x4= (x4 - 2 + X4) % X4;
-
-  int idx = (x4* X3X2X1 + x3*X2X1 + x2*X1 + x1)>>1;  
   for(int dir=0;dir < 4; dir++){
     LOAD_SITE_MATRIX(my_sitelink, dir, mem_idx, A);
     COMPUTE_RECONSTRUCT_SIGN(sign, dir, x1, x2, x3, x4);

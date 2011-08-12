@@ -917,7 +917,7 @@ void siteComputeGenStapleParityKernel_ex(void* staple_even, void* staple_odd,
 					 void* fatlink_even, void* fatlink_odd,	
 					 int mu, int nu, double mycoeff,
 					 QudaReconstructType recon, QudaPrecision prec,
-					 dim3 halfGridDim1, llfat_kernel_param_t kparam)
+					 llfat_kernel_param_t kparam)
 {
   
   //compute even and odd
@@ -1075,7 +1075,7 @@ computeGenStapleFieldParityKernel_ex(void* staple_even, void* staple_odd,
 				     int mu, int nu, int save_staple,
 				     double mycoeff,
 				     QudaReconstructType recon, QudaPrecision prec,
-				     dim3 halfGridDim1, llfat_kernel_param_t kparam)
+				     llfat_kernel_param_t kparam)
 {
 
   dim3 halfGridDim= kparam.halfGridDim;
@@ -1196,10 +1196,12 @@ void llfatOneLinkKernel_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
   QudaReconstructType recon = cudaSiteLink.reconstruct;
   
   BIND_SITE_AND_FAT_LINK;
-  int volume_ex = (param->X[0]+4)*(param->X[1]+4)*(param->X[2]+4)*(param->X[3]+4);  
-  dim3 gridDim(volume_ex/BLOCK_DIM,1,1);
-  dim3 blockDim(BLOCK_DIM , 1, 1);
   
+  dim3 gridDim;    
+  dim3 blockDim(BLOCK_DIM , 1, 1);
+  gridDim.x = 2* kparam.halfGridDim.x;
+  gridDim.y = 1;
+  gridDim.z = 1;
   staple_bytes = cudaStaple.bytes;
   
   if(prec == QUDA_DOUBLE_PRECISION){

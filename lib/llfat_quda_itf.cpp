@@ -294,8 +294,8 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 
 
   llfatOneLinkKernel_ex(cudaFatLink, cudaSiteLink,cudaStaple, cudaStaple1,
-			param, act_path_coeff, kparam_2g); CUERR;
-
+			param, act_path_coeff, kparam); CUERR;
+  
   for(int dir = 0;dir < 4; dir++){
     for(int nu = 0; nu < 4; nu++){
       if (nu != dir){
@@ -306,7 +306,7 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 					    (void*)cudaFatLink.even, (void*)cudaFatLink.odd, 
 					    dir, nu,
 					    act_path_coeff[2],
-					    recon, prec, halfGridDim, kparam_1g); 
+					    recon, prec, kparam_1g); 
 	
 	computeGenStapleFieldParityKernel_ex((void*)NULL, (void*)NULL,
 					     (void*)cudaSiteLink.even, (void*)cudaSiteLink.odd,
@@ -314,7 +314,7 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 					     (void*)cudaStaple.even, (void*)cudaStaple.odd,
 					     dir, nu, 0,
 					     act_path_coeff[5],
-					     recon, prec,  halfGridDim, kparam);
+					     recon, prec, kparam);
 	
 	
 	for(int rho = 0; rho < 4; rho++){
@@ -326,7 +326,7 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 						 (void*)cudaStaple.even, (void*)cudaStaple.odd,
 						 dir, rho, 1,
 						 act_path_coeff[3],
-						 recon, prec, halfGridDim, kparam_1g);
+						 recon, prec, kparam_1g);
 	    
 	    
 	    for(int sig = 0; sig < 4; sig++){
@@ -338,7 +338,7 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 						     (void*)cudaStaple1.even, (void*)cudaStaple1.odd,
 						     dir, sig, 0,
 						     act_path_coeff[4],
-						     recon, prec, halfGridDim, kparam);
+						     recon, prec, kparam);
 		
 	      }			    
 	    }//sig

@@ -180,7 +180,7 @@
   }while(0)
 
 
-#define MULT_SU3_NN(ma, mb, mc)					\
+#define MULT_SU3_NN2(ma, mb, mc)					\
     mc##00_re =							\
 	ma##00_re * mb##00_re - ma##00_im * mb##00_im +		\
 	ma##01_re * mb##10_re - ma##01_im * mb##10_im +		\
@@ -254,6 +254,84 @@
 	ma##21_re * mb##12_im + ma##21_im * mb##12_re +		\
 	ma##22_re * mb##22_im + ma##22_im * mb##22_re;
 
+
+#define MULT_SU3_NN(ma, mb, mc)						\
+  mc##00_re = ma##00_re * mb##00_re;					\
+  mc##00_re -= ma##00_im * mb##00_im;					\
+  mc##00_re += ma##01_re * mb##10_re;					\
+  mc##00_re -= ma##01_im * mb##10_im;					\
+  mc##00_re += ma##02_re * mb##20_re;					\
+  mc##00_re -= ma##02_im * mb##20_im;					\
+  mc##00_im = ma##00_re * mb##00_im;					\
+  mc##00_im += ma##00_im * mb##00_re;					\
+  mc##00_im += ma##01_re * mb##10_im;					\
+  mc##00_im += ma##01_im * mb##10_re;					\
+  mc##00_im += ma##02_re * mb##20_im;					\
+  mc##00_im += ma##02_im * mb##20_re;					\
+    mc##10_re =							\
+	ma##10_re * mb##00_re - ma##10_im * mb##00_im +		\
+	ma##11_re * mb##10_re - ma##11_im * mb##10_im +		\
+	ma##12_re * mb##20_re - ma##12_im * mb##20_im;		\
+    mc##10_im =							\
+	ma##10_re * mb##00_im + ma##10_im * mb##00_re +		\
+	ma##11_re * mb##10_im + ma##11_im * mb##10_re +		\
+	ma##12_re * mb##20_im + ma##12_im * mb##20_re;		\
+    mc##20_re =							\
+	ma##20_re * mb##00_re - ma##20_im * mb##00_im +		\
+	ma##21_re * mb##10_re - ma##21_im * mb##10_im +		\
+	ma##22_re * mb##20_re - ma##22_im * mb##20_im;		\
+    mc##20_im =							\
+	ma##20_re * mb##00_im + ma##20_im * mb##00_re +		\
+	ma##21_re * mb##10_im + ma##21_im * mb##10_re +		\
+	ma##22_re * mb##20_im + ma##22_im * mb##20_re;		\
+    mc##01_re =							\
+	ma##00_re * mb##01_re - ma##00_im * mb##01_im +		\
+	ma##01_re * mb##11_re - ma##01_im * mb##11_im +		\
+	ma##02_re * mb##21_re - ma##02_im * mb##21_im;		\
+    mc##01_im =							\
+	ma##00_re * mb##01_im + ma##00_im * mb##01_re +		\
+	ma##01_re * mb##11_im + ma##01_im * mb##11_re +		\
+	ma##02_re * mb##21_im + ma##02_im * mb##21_re;		\
+    mc##11_re =							\
+	ma##10_re * mb##01_re - ma##10_im * mb##01_im +		\
+	ma##11_re * mb##11_re - ma##11_im * mb##11_im +		\
+	ma##12_re * mb##21_re - ma##12_im * mb##21_im;		\
+    mc##11_im =							\
+	ma##10_re * mb##01_im + ma##10_im * mb##01_re +		\
+	ma##11_re * mb##11_im + ma##11_im * mb##11_re +		\
+	ma##12_re * mb##21_im + ma##12_im * mb##21_re;		\
+    mc##21_re =							\
+	ma##20_re * mb##01_re - ma##20_im * mb##01_im +		\
+	ma##21_re * mb##11_re - ma##21_im * mb##11_im +		\
+	ma##22_re * mb##21_re - ma##22_im * mb##21_im;		\
+    mc##21_im =							\
+	ma##20_re * mb##01_im + ma##20_im * mb##01_re +		\
+	ma##21_re * mb##11_im + ma##21_im * mb##11_re +		\
+	ma##22_re * mb##21_im + ma##22_im * mb##21_re;		\
+    mc##02_re =							\
+	ma##00_re * mb##02_re - ma##00_im * mb##02_im +		\
+	ma##01_re * mb##12_re - ma##01_im * mb##12_im +		\
+	ma##02_re * mb##22_re - ma##02_im * mb##22_im;		\
+    mc##02_im =							\
+	ma##00_re * mb##02_im + ma##00_im * mb##02_re +		\
+	ma##01_re * mb##12_im + ma##01_im * mb##12_re +		\
+	ma##02_re * mb##22_im + ma##02_im * mb##22_re;		\
+    mc##12_re =							\
+	ma##10_re * mb##02_re - ma##10_im * mb##02_im +		\
+	ma##11_re * mb##12_re - ma##11_im * mb##12_im +		\
+	ma##12_re * mb##22_re - ma##12_im * mb##22_im;		\
+    mc##12_im =							\
+	ma##10_re * mb##02_im + ma##10_im * mb##02_re +		\
+	ma##11_re * mb##12_im + ma##11_im * mb##12_re +		\
+	ma##12_re * mb##22_im + ma##12_im * mb##22_re;		\
+    mc##22_re =							\
+	ma##20_re * mb##02_re - ma##20_im * mb##02_im +		\
+	ma##21_re * mb##12_re - ma##21_im * mb##12_im +		\
+	ma##22_re * mb##22_re - ma##22_im * mb##22_im;		\
+    mc##22_im =							\
+	ma##20_re * mb##02_im + ma##20_im * mb##02_re +		\
+	ma##21_re * mb##12_im + ma##21_im * mb##12_re +		\
+	ma##22_re * mb##22_im + ma##22_im * mb##22_re;
 
 
 #define MULT_SU3_NA(ma, mb, mc)						\
