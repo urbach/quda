@@ -1024,10 +1024,10 @@ template<int mu, int nu, int odd_bit>
  
   int new_mem_idx;
   float sign =1;    
-  int new_x1 = x1;
-  int new_x2 = x2;
-  int new_x3 = x3;
-  int new_x4 = x4;
+  short new_x1 = x1;
+  short new_x2 = x2;
+  short new_x3 = x3;
+  short new_x4 = x4;
 
   /* Upper staple */
   /* Computes the staple :
@@ -1131,16 +1131,16 @@ template<int mu, int nu, int odd_bit, int save_staple>
   
   int mem_idx = blockIdx.x*blockDim.x + threadIdx.x;
   if(mem_idx >= kparam.threads) return;
-
+  
   int z1 = FAST_INT_DIVIDE(mem_idx, D1h);
-  int x1h = mem_idx - z1*D1h;
+  short x1h = mem_idx - z1*D1h;
   int z2 = FAST_INT_DIVIDE(z1, D2);
-  int x2 = z1 - z2*D2;
-  int x4 = FAST_INT_DIVIDE(z2, D3);
-  int x3 = z2 - x4*D3;
+  short x2 = z1 - z2*D2;
+  short x4 = FAST_INT_DIVIDE(z2, D3);
+  short x3 = z2 - x4*D3;
 
-  int x1odd = (x2 + x3 + x4 + odd_bit) & 1;
-  int x1 = 2*x1h + x1odd;
+  short x1odd = (x2 + x3 + x4 + odd_bit) & 1;
+  short x1 = 2*x1h + x1odd;
 
   x1 += kparam.base_idx;
   x2 += kparam.base_idx;
@@ -1150,11 +1150,11 @@ template<int mu, int nu, int odd_bit, int save_staple>
   mem_idx = X/2;
 
   int new_mem_idx;
-  int sign =1;
-  int new_x1 = x1;
-  int new_x2 = x2;
-  int new_x3 = x3;
-  int new_x4 = x4;
+  short sign =1;
+  short new_x1 = x1;
+  short new_x2 = x2;
+  short new_x3 = x3;
+  short new_x4 = x4;
 
 
   /* Upper staple */
@@ -1254,7 +1254,7 @@ LLFAT_KERNEL_EX(llfatOneLink, RECONSTRUCT)(FloatN* sitelink_even, FloatN* siteli
   
   if(sid >= 2*kparam.threads) return;
   
-  int odd_bit= 0;
+  short odd_bit= 0;
   
   my_sitelink = sitelink_even;
   my_fatlink = fatlink_even;
@@ -1264,16 +1264,16 @@ LLFAT_KERNEL_EX(llfatOneLink, RECONSTRUCT)(FloatN* sitelink_even, FloatN* siteli
     my_sitelink = sitelink_odd;
     my_fatlink = fatlink_odd;
   }
-   
+  
   int z1 = FAST_INT_DIVIDE(idx, D1h);
-  int x1h = idx - z1*D1h;
+  short x1h = idx - z1*D1h;
   int z2 = FAST_INT_DIVIDE(z1, D2);
-  int x2 = z1 - z2*D2;
+  short x2 = z1 - z2*D2;
   int x4 = FAST_INT_DIVIDE(z2, D3);
-  int x3 = z2 - x4*D3;
-  int x1odd = (x2 + x3 + x4 + odd_bit) & 1;
-  int x1 = 2*x1h + x1odd; 
-  int sign =1;   	
+  short x3 = z2 - x4*D3;
+  short x1odd = (x2 + x3 + x4 + odd_bit) & 1;
+  short x1 = 2*x1h + x1odd; 
+  short sign =1;   	
   
   x1 += kparam.base_idx;
   x2 += kparam.base_idx;
