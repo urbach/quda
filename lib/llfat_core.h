@@ -1019,7 +1019,7 @@ template<int mu, int nu, int odd_bit>
   x2 += kparam.base_idx;
   x3 += kparam.base_idx;
   x4 += kparam.base_idx;
-  int X = x4*E3E2E1 + x3*E2E1 + x2*E2 + x1;
+  int X = x4*E3E2E1 + x3*E2E1 + x2*E1 + x1;
   mem_idx = X/2;
  
   int new_mem_idx;
@@ -1146,7 +1146,7 @@ template<int mu, int nu, int odd_bit, int save_staple>
   x2 += kparam.base_idx;
   x3 += kparam.base_idx;
   x4 += kparam.base_idx;
-  int X = x4*E3E2E1 + x3*E2E1 + x2*E2 + x1;
+  int X = x4*E3E2E1 + x3*E2E1 + x2*E1 + x1;
   mem_idx = X/2;
 
   int new_mem_idx;
@@ -1279,7 +1279,7 @@ LLFAT_KERNEL_EX(llfatOneLink, RECONSTRUCT)(FloatN* sitelink_even, FloatN* siteli
   x2 += kparam.base_idx;
   x3 += kparam.base_idx;
   x4 += kparam.base_idx;
-  int X = x4*E3E2E1 + x3*E2E1 + x2*E2 + x1;
+  int X = x4*E3E2E1 + x3*E2E1 + x2*E1 + x1;
   int mem_idx = X/2;
 
   for(int dir=0;dir < 4; dir++){

@@ -617,6 +617,7 @@ void exchange_cpu_sitelink_ex(int* X, void** sitelink,
   void* ghost_sitelink_fwd[4];
   void* ghost_sitelink_back[4];  
   for(int i=0;i < 4;i++){    
+    if(!commDimPartitioned(i)) continue;
     ghost_sitelink_fwd_sendbuf[i] = malloc(len[i]);
     ghost_sitelink_back_sendbuf[i] = malloc(len[i]);
     if(ghost_sitelink_fwd_sendbuf[i] == NULL || ghost_sitelink_back_sendbuf[i] == NULL){
@@ -827,6 +828,7 @@ void exchange_cpu_sitelink_ex(int* X, void** sitelink,
     
   
   for(int dir=0;dir < 4;dir++){
+    if(!commDimPartitioned(dir)) continue;
     free(ghost_sitelink_fwd_sendbuf[dir]);
     free(ghost_sitelink_back_sendbuf[dir]);    
     free(ghost_sitelink_fwd[dir]);
