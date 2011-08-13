@@ -241,7 +241,7 @@ llfat_init(void)
   createSiteLinkCPU(sitelink, gaugeParam.cpu_prec, 1);
 
 
-  //FIXME:only work for one MPI process case
+  //FIXME:
   //assuming all dimension size is even
   //fill in the extended sitelink 
   for(i=0; i < V_ex; i++){
