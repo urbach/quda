@@ -283,7 +283,7 @@ llfat_init_cuda(QudaGaugeParam* param)
 }
 
 void
-llfat_init_cuda_ex(QudaGaugeParam* param)
+llfat_init_cuda_ex(QudaGaugeParam* param_ex)
 {
   static int llfat_init_cuda_flag = 0;
   if (llfat_init_cuda_flag){
@@ -292,12 +292,12 @@ llfat_init_cuda_ex(QudaGaugeParam* param)
   
   llfat_init_cuda_flag = 1;
   
-  init_kernel_cuda(param);
-  int Vh_ex = (param->X[0]+4)*(param->X[1]+4)*(param->X[2]+4)*(param->X[3]+4)/2;
-  int Vh = param->X[0]*param->X[1]*param->X[2]*param->X[3]/2;
-  int site_ga_stride = Vh_ex;
-  int staple_stride = Vh_ex;
-  int llfat_ga_stride = param->llfat_ga_pad + Vh;
+  init_kernel_cuda(param_ex);
+  int Vh_ex = param_ex->X[0]*param_ex->X[1]*param_ex->X[2]*param_ex->X[3]/2;
+  int Vh = (param_ex->X[0]-4)*(param_ex->X[1]-4)*(param_ex->X[2]-4)*(param_ex->X[3]-4)/2;
+  int site_ga_stride = param_ex->site_ga_pad + Vh_ex;
+  int staple_stride = param_ex->staple_pad + Vh_ex;
+  int llfat_ga_stride = param_ex->llfat_ga_pad + Vh;
   
   cudaMemcpyToSymbol("site_ga_stride", &site_ga_stride, sizeof(int));  
   cudaMemcpyToSymbol("staple_stride", &staple_stride, sizeof(int));  
@@ -316,11 +316,11 @@ llfat_init_cuda_ex(QudaGaugeParam* param)
   cudaMemcpyToSymbol("last_proc_in_tdim", &last_proc_in_tdim, sizeof(int));
   cudaMemcpyToSymbol("first_proc_in_tdim", &first_proc_in_tdim, sizeof(int));
 
-  int E1 = param->X[0]+4;
+  int E1 = param_ex->X[0];
   int E1h = E1/2;
-  int E2 = param->X[1]+4;
-  int E3 = param->X[2]+4;
-  int E4 = param->X[3]+4;
+  int E2 = param_ex->X[1];
+  int E3 = param_ex->X[2];
+  int E4 = param_ex->X[3];
   int E2E1 =E2*E1;
   int E3E2E1=E3*E2*E1;
   

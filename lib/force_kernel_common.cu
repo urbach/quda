@@ -1,7 +1,7 @@
 
 
 
-
+/*
 __constant__ int V;
 
 __constant__ int Vhx2;
@@ -13,6 +13,7 @@ __constant__ int Vhx7;
 __constant__ int Vhx8;
 __constant__ int Vhx9;
 
+*/
 
 static int init_kernel_cuda_flag = 0;
 void
@@ -22,7 +23,7 @@ init_kernel_cuda(QudaGaugeParam* param)
 	return;
     }
     init_kernel_cuda_flag =1; 
-
+    /*
     int Vh = param->X[0]*param->X[1]*param->X[2]*param->X[3]/2;
     int V = 2*Vh;
     int Vhx2 = 2*Vh;
@@ -43,6 +44,6 @@ init_kernel_cuda(QudaGaugeParam* param)
     cudaMemcpyToSymbol("Vhx7", &Vhx7, sizeof(int)); 
     cudaMemcpyToSymbol("Vhx8", &Vhx8, sizeof(int)); 
     cudaMemcpyToSymbol("Vhx9", &Vhx9, sizeof(int)); 
-
+    */
     return;
 }

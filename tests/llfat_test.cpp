@@ -313,11 +313,11 @@ llfat_init(void)
   gaugeParam_ex.X[1]= E2;
   gaugeParam_ex.X[2]= E3;
   gaugeParam_ex.X[3]= E4;
-  gaugeParam_ex.site_ga_pad = gaugeParam_ex.ga_pad=0;
+  gaugeParam_ex.site_ga_pad = gaugeParam_ex.ga_pad = E1*E2*E3/2*3;
   gaugeParam_ex.reconstruct = link_recon;
   createLinkQuda(&cudaSiteLink_ex, &gaugeParam_ex);
   
-  gaugeParam_ex.staple_pad = 0;
+  gaugeParam_ex.staple_pad =  E1*E2*E2/2;
   createStapleQuda(&cudaStaple_ex, &gaugeParam_ex);
   createStapleQuda(&cudaStaple1_ex, &gaugeParam_ex);
 
@@ -335,6 +335,8 @@ llfat_init(void)
   gaugeParam.reconstruct = QUDA_RECONSTRUCT_NO;
   createLinkQuda(&cudaFatLink, &gaugeParam);
 
+  //set llfat_ga_gad in gaugeParam.ex as well
+  gaugeParam_ex.llfat_ga_pad = gaugeParam.llfat_ga_pad;
 
   initDslashConstants(cudaFatLink, 0);
 
@@ -416,7 +418,7 @@ llfat_test(void)
 
 
   //llfat_init_cuda(&gaugeParam);
-  llfat_init_cuda_ex(&gaugeParam);
+  llfat_init_cuda_ex(&gaugeParam_ex);
  
   //The number comes from CPU implementation in MILC, fermion_links_helpers.c    
   int flops= 61632; 
