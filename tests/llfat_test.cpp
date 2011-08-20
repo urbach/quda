@@ -15,13 +15,13 @@
 #include "misc.h"
 #include <cuda.h>
 
-#ifdef MULTI_GPU
 #include "face_quda.h"
 #include "mpicomm.h"
 #include <mpi.h>
-#endif
 
 #define MAX(a,b) ((a)>(b)? (a):(b))
+#define TDIFF(a,b) (b.tv_sec - a.tv_sec + 0.000001*(b.tv_usec - a.tv_usec))
+
 
 static FullGauge cudaSiteLink, cudaSiteLink_ex;
 static FullGauge cudaFatLink;
@@ -127,7 +127,7 @@ setDims(int *X) {
 }
 
 static void
-llfat_init(void)
+llfat_init(int test)
 { 
   initQuda(device);
   //cudaSetDevice(dev); CUERR;
@@ -167,7 +167,58 @@ llfat_init(void)
     }
   }
 
-#ifdef MULTI_GPU
+  for(i=0;i < 4;i++){
+    reflink[i] = malloc(V*gaugeSiteSize* gSize);
+    if (reflink[i] == NULL){
+      fprintf(stderr, "ERROR: malloc failed for reflink[%d]\n", i);
+      exit(1);
+    }
+  }
+
+  //we need x,y,z site links in the back and forward T slice
+  // so it is 3*2*Vs_t
+  for(i=0;i < 4; i++){
+    ghost_sitelink[i] = malloc(8*Vs[i]*gaugeSiteSize*gSize);
+    if (ghost_sitelink[i] == NULL){
+	printf("ERROR: malloc failed for ghost_sitelink[%d] \n",i);
+	exit(1);
+    }
+  }
+  
+  /*
+   * nu |     |
+   *    |_____|
+   *      mu     
+   */
+  
+  for(int nu=0;nu < 4;nu++){
+    for(int mu=0; mu < 4;mu++){
+	if(nu == mu){
+	  ghost_sitelink_diag[nu*4+mu] = NULL;
+	}else{
+	  //the other directions
+	  int dir1, dir2;
+	  for(dir1= 0; dir1 < 4; dir1++){
+	    if(dir1 !=nu && dir1 != mu){
+	      break;
+	    }
+	  }
+	  for(dir2=0; dir2 < 4; dir2++){
+	    if(dir2 != nu && dir2 != mu && dir2 != dir1){
+	      break;
+	    }
+	  }
+	  ghost_sitelink_diag[nu*4+mu] = malloc(Z[dir1]*Z[dir2]*gaugeSiteSize*gSize);
+	  if(ghost_sitelink_diag[nu*4+mu] == NULL){
+	  errorQuda("malloc failed for ghost_sitelink_diag\n");
+	  }
+	  
+	  memset(ghost_sitelink_diag[nu*4+mu], 0, Z[dir1]*Z[dir2]*gaugeSiteSize*gSize);
+	}	
+    }
+  }
+
+  createSiteLinkCPU(sitelink, gaugeParam.cpu_prec, 1);
 
   for(i=0;i < 4;i++){
 #if (CUDA_VERSION >=4000)
@@ -183,64 +234,6 @@ llfat_init(void)
     memset(sitelink_ex[i], 0, V_ex*gaugeSiteSize*gSize);
   } 
   
-  //we need x,y,z site links in the back and forward T slice
-  // so it is 3*2*Vs_t
-  for(i=0;i < 4; i++){
-    ghost_sitelink[i] = malloc(8*Vs[i]*gaugeSiteSize*gSize);
-    if (ghost_sitelink[i] == NULL){
-      printf("ERROR: malloc failed for ghost_sitelink[%d] \n",i);
-      exit(1);
-    }
-  }
-
-  /*
-    nu |     |
-       |_____|
-          mu     
-  */
-  
-  for(int nu=0;nu < 4;nu++){
-    for(int mu=0; mu < 4;mu++){
-      if(nu == mu){
-	ghost_sitelink_diag[nu*4+mu] = NULL;
-      }else{
-	//the other directions
-	int dir1, dir2;
-	for(dir1= 0; dir1 < 4; dir1++){
-	  if(dir1 !=nu && dir1 != mu){
-	    break;
-	  }
-	}
-	for(dir2=0; dir2 < 4; dir2++){
-	  if(dir2 != nu && dir2 != mu && dir2 != dir1){
-	    break;
-	  }
-	}
-	ghost_sitelink_diag[nu*4+mu] = malloc(Z[dir1]*Z[dir2]*gaugeSiteSize*gSize);
-	if(ghost_sitelink_diag[nu*4+mu] == NULL){
-	  errorQuda("malloc failed for ghost_sitelink_diag\n");
-	}
-	
-	memset(ghost_sitelink_diag[nu*4+mu], 0, Z[dir1]*Z[dir2]*gaugeSiteSize*gSize);
-      }
-
-    }
-  }
-
-#endif
-
-  for(i=0;i < 4;i++){
-    reflink[i] = malloc(V*gaugeSiteSize* gSize);
-    if (reflink[i] == NULL){
-      fprintf(stderr, "ERROR: malloc failed for reflink[%d]\n", i);
-      exit(1);
-    }
-  }
-    
-  
-  createSiteLinkCPU(sitelink, gaugeParam.cpu_prec, 1);
-
-
   //FIXME:
   //assuming all dimension size is even
   //fill in the extended sitelink 
@@ -285,58 +278,56 @@ llfat_init(void)
 	char* dst = (char*)sitelink_ex[dir];	
 	memcpy(dst+i*gaugeSiteSize*gSize, src+idx*gaugeSiteSize*gSize, gaugeSiteSize*gSize);	
       }//dir
-
-      
-      
   }//i
-  
-
-  
-#ifdef MULTI_GPU
-  int Vh_2d_max = MAX(xdim*ydim/2, xdim*zdim/2);
-  Vh_2d_max = MAX(Vh_2d_max, xdim*tdim/2);
-  Vh_2d_max = MAX(Vh_2d_max, ydim*zdim/2);  
-  Vh_2d_max = MAX(Vh_2d_max, ydim*tdim/2);  
-  Vh_2d_max = MAX(Vh_2d_max, zdim*tdim/2);  
-  
-  gaugeParam.site_ga_pad = gaugeParam.ga_pad = 3*(Vsh_x+Vsh_y+Vsh_z+Vsh_t) + 4*Vh_2d_max;
-  gaugeParam.reconstruct = link_recon;
-  //createLinkQuda(&cudaSiteLink, &gaugeParam);
-
-  gaugeParam.staple_pad = 3*(Vsh_x + Vsh_y + Vsh_z+ Vsh_t);
-  //createStapleQuda(&cudaStaple, &gaugeParam);
-  //createStapleQuda(&cudaStaple1, &gaugeParam);
-  
-  //create extended sitelink/staple/stapl1 in gpu
-  memcpy(&gaugeParam_ex, &gaugeParam, sizeof(QudaGaugeParam));
-  gaugeParam_ex.X[0]= E1;
-  gaugeParam_ex.X[1]= E2;
-  gaugeParam_ex.X[2]= E3;
-  gaugeParam_ex.X[3]= E4;
-  gaugeParam_ex.site_ga_pad = gaugeParam_ex.ga_pad = E1*E2*E3/2*3;
-  gaugeParam_ex.reconstruct = link_recon;
-  createLinkQuda(&cudaSiteLink_ex, &gaugeParam_ex);
-  
-  gaugeParam_ex.staple_pad =  E1*E2*E2/2;
-  createStapleQuda(&cudaStaple_ex, &gaugeParam_ex);
-  createStapleQuda(&cudaStaple1_ex, &gaugeParam_ex);
-
-#else
-  gaugeParam.site_ga_pad = gaugeParam.ga_pad = Vsh_t;
-  gaugeParam.reconstruct = link_recon;
-  createLinkQuda(&cudaSiteLink, &gaugeParam);
-
-  gaugeParam.staple_pad = Vsh_t;
-  createStapleQuda(&cudaStaple, &gaugeParam);
-  createStapleQuda(&cudaStaple1, &gaugeParam);
-#endif
-   
+          
   gaugeParam.llfat_ga_pad = gaugeParam.ga_pad = Vsh_t;
   gaugeParam.reconstruct = QUDA_RECONSTRUCT_NO;
   createLinkQuda(&cudaFatLink, &gaugeParam);
+  
+  switch(test){
+  case 0:    
+    {
+      int Vh_2d_max = MAX(xdim*ydim/2, xdim*zdim/2);
+      Vh_2d_max = MAX(Vh_2d_max, xdim*tdim/2);
+      Vh_2d_max = MAX(Vh_2d_max, ydim*zdim/2);  
+      Vh_2d_max = MAX(Vh_2d_max, ydim*tdim/2);  
+      Vh_2d_max = MAX(Vh_2d_max, zdim*tdim/2);  
+      
+      gaugeParam.site_ga_pad = gaugeParam.ga_pad = 3*(Vsh_x+Vsh_y+Vsh_z+Vsh_t) + 4*Vh_2d_max;
+      gaugeParam.reconstruct = link_recon;
+      createLinkQuda(&cudaSiteLink, &gaugeParam);
+      
+      gaugeParam.staple_pad = 3*(Vsh_x + Vsh_y + Vsh_z+ Vsh_t);
+      createStapleQuda(&cudaStaple, &gaugeParam);
+      createStapleQuda(&cudaStaple1, &gaugeParam);
+      
+      break;
+    }
+  case 1:    
+    {
+      memcpy(&gaugeParam_ex, &gaugeParam, sizeof(QudaGaugeParam));
+      gaugeParam_ex.X[0]= E1;
+      gaugeParam_ex.X[1]= E2;
+      gaugeParam_ex.X[2]= E3;
+      gaugeParam_ex.X[3]= E4;
+      gaugeParam_ex.site_ga_pad = gaugeParam_ex.ga_pad = E1*E2*E3/2*3;
+      gaugeParam_ex.reconstruct = link_recon;
+      createLinkQuda(&cudaSiteLink_ex, &gaugeParam_ex);
+    
+      gaugeParam_ex.staple_pad =  E1*E2*E2/2;
+      createStapleQuda(&cudaStaple_ex, &gaugeParam_ex);
+      createStapleQuda(&cudaStaple1_ex, &gaugeParam_ex);
 
-  //set llfat_ga_gad in gaugeParam.ex as well
-  gaugeParam_ex.llfat_ga_pad = gaugeParam.llfat_ga_pad;
+      
+      //set llfat_ga_gad in gaugeParam.ex as well
+      gaugeParam_ex.llfat_ga_pad = gaugeParam.llfat_ga_pad;
+      break;
+    }
+    
+  default:
+    errorQuda("ERROR: wrong type of test in llfat\n");
+  }
+
 
   initDslashConstants(cudaFatLink, 0);
 
@@ -363,7 +354,6 @@ llfat_end()
 
 #endif
 
-#ifdef MULTI_GPU  
   for(i=0;i < 4;i++){
     free(ghost_sitelink[i]);
   }
@@ -375,7 +365,6 @@ llfat_end()
       free(ghost_sitelink_diag[i*4+j]);
     }    
   }
-#endif
 
   for(i=0;i < 4;i++){
     free(reflink[i]);
@@ -386,19 +375,17 @@ llfat_end()
   freeStapleQuda(&cudaStaple);
   freeStapleQuda(&cudaStaple1);
 
-#ifdef MULTI_GPU
   exchange_llfat_cleanup();
-#endif
-
+  
   endQuda();
 }
 
 
 
 static int
-llfat_test(void) 
+llfat_test(int test) 
 {
-  llfat_init();
+  llfat_init(test);
 
 
   float act_path_coeff_1[6];
@@ -417,40 +404,41 @@ llfat_test(void)
   }
 
 
-  //llfat_init_cuda(&gaugeParam);
-  llfat_init_cuda_ex(&gaugeParam_ex);
- 
   //The number comes from CPU implementation in MILC, fermion_links_helpers.c    
   int flops= 61632; 
 
   struct timeval t0, t1, t2, t3;
   gettimeofday(&t0, NULL);
-#ifdef MULTI_GPU
-  exchange_cpu_sitelink_ex(gaugeParam.X, sitelink_ex, gaugeParam.cpu_prec, 1);
 
-  gaugeParam.ga_pad = gaugeParam.site_ga_pad;
-  gaugeParam.reconstruct = link_recon;
-  //loadLinkToGPU(cudaSiteLink, sitelink, &gaugeParam);
-  
-  //load extended sitelink to GPU
-  gaugeParam_ex.ga_pad = gaugeParam_ex.site_ga_pad;
-  gaugeParam_ex.reconstruct = link_recon;
-  loadLinkToGPU_ex(cudaSiteLink_ex, sitelink_ex, &gaugeParam_ex);
-  
-#else
-  loadLinkToGPU(cudaSiteLink, sitelink, NULL, NULL, &gaugeParam);
-#endif
-  
-  gettimeofday(&t1, NULL);  
+  switch(test){
+  case 0:
+    llfat_init_cuda(&gaugeParam);
+    gaugeParam.ga_pad = gaugeParam.site_ga_pad;
+    gaugeParam.reconstruct = link_recon;
+    loadLinkToGPU(cudaSiteLink, sitelink, &gaugeParam);
+    gettimeofday(&t1, NULL);  
+    llfat_cuda(cudaFatLink, cudaSiteLink, cudaStaple, cudaStaple1, &gaugeParam, act_path_coeff_2);
 
-  //llfat_cuda(cudaFatLink, cudaSiteLink, cudaStaple, cudaStaple1, &gaugeParam, act_path_coeff_2);
-  llfat_cuda_ex(cudaFatLink, cudaSiteLink_ex, cudaStaple_ex, cudaStaple1_ex, &gaugeParam, act_path_coeff_2);
+    break;
+
+  case 1:
+    llfat_init_cuda_ex(&gaugeParam_ex);
+    exchange_cpu_sitelink_ex(gaugeParam.X, sitelink_ex, gaugeParam.cpu_prec, 1);    
+    gaugeParam_ex.ga_pad = gaugeParam_ex.site_ga_pad;
+    gaugeParam_ex.reconstruct = link_recon;
+    loadLinkToGPU_ex(cudaSiteLink_ex, sitelink_ex, &gaugeParam_ex);
+    gettimeofday(&t1, NULL);  
+    llfat_cuda_ex(cudaFatLink, cudaSiteLink_ex, cudaStaple_ex, cudaStaple1_ex, &gaugeParam, act_path_coeff_2);
+    
+    break;
+  default:
+    errorQuda("Error:wront test type for fatlink computing\n");
+  }    
   
   gettimeofday(&t2, NULL);
   storeLinkToCPU(fatlink, &cudaFatLink, &gaugeParam);
   gettimeofday(&t3, NULL);
 
-#define TDIFF(a,b) (b.tv_sec - a.tv_sec + 0.000001*(b.tv_usec - a.tv_usec))
   double secs = TDIFF(t0,t3);
  
   int i;
@@ -477,9 +465,9 @@ llfat_test(void)
    
    
 #ifdef MULTI_GPU
-   llfat_reference_mg(reflink, sitelink, ghost_sitelink, ghost_sitelink_diag, gaugeParam.cpu_prec, act_path_coeff);
+   //llfat_reference_mg(reflink, sitelink, ghost_sitelink, ghost_sitelink_diag, gaugeParam.cpu_prec, act_path_coeff);
    //llfat_reference_mg_nocomm(reflink, sitelink_ex, gaugeParam.cpu_prec, act_path_coeff);
-   //llfat_reference(reflink, sitelink, gaugeParam.cpu_prec, act_path_coeff);
+   llfat_reference(reflink, sitelink, gaugeParam.cpu_prec, act_path_coeff);
 #else
    llfat_reference(reflink, sitelink, gaugeParam.cpu_prec, act_path_coeff);
 #endif
@@ -520,16 +508,15 @@ llfat_test(void)
 
 
 static void
-display_test_info()
+display_test_info(int test)
 {
   printfQuda("running the following test:\n");
     
-  printfQuda("link_precision           link_reconstruct           space_dimension        T_dimension\n");
-  printfQuda("%s                       %s                         %d/%d/%d/                  %d\n", 
+  printfQuda("link_precision           link_reconstruct           space_dimension        T_dimension       Test\n");
+  printfQuda("%s                       %s                         %d/%d/%d/                  %d             %d\n", 
 	     get_prec_str(prec),
 	     get_recon_str(link_recon), 
-	     xdim, ydim, zdim,
-	     tdim);
+	     xdim, ydim, zdim, tdim, test);
   return ;
   
 }
@@ -553,7 +540,7 @@ int
 main(int argc, char **argv) 
 {
 
-
+  int test = 1;
   
   //default to 18 reconstruct, 8^3 x 8 
   link_recon = QUDA_RECONSTRUCT_NO;
@@ -575,7 +562,16 @@ main(int argc, char **argv)
       i++;
       continue;	    
     }	 
-
+    
+    if( strcmp(argv[i], "--test") == 0){
+      if (i+1 >= argc){
+	usage(argv);
+      }	    
+      test =  atoi(argv[i+1]);
+      i++;
+      continue;	    
+    }
+    
     if( strcmp(argv[i], "--verify") == 0){
       verify_results=1;
       continue;	    
@@ -599,17 +595,17 @@ main(int argc, char **argv)
   }
 
   initCommsQuda(argc, argv, gridsize_from_cmdline, 4);
-
-
-  display_test_info();
+  
+  
+  display_test_info(test);
 
     
-  int accuracy_level = llfat_test();
+  int accuracy_level = llfat_test(test);
     
   printfQuda("accuracy_level=%d\n", accuracy_level);
 
   endCommsQuda();
-
+  
   int ret;
   if(accuracy_level >=3 ){
     ret = 0; 
