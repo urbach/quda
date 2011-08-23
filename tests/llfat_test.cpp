@@ -465,7 +465,7 @@ llfat_test(int test)
    
    
 #ifdef MULTI_GPU
-   //llfat_reference_mg(reflink, sitelink, ghost_sitelink, ghost_sitelink_diag, gaugeParam.cpu_prec, act_path_coeff);
+   llfat_reference_mg(reflink, sitelink, ghost_sitelink, ghost_sitelink_diag, gaugeParam.cpu_prec, act_path_coeff);
    //llfat_reference_mg_nocomm(reflink, sitelink_ex, gaugeParam.cpu_prec, act_path_coeff);
    llfat_reference(reflink, sitelink, gaugeParam.cpu_prec, act_path_coeff);
 #else

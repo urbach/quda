@@ -116,7 +116,7 @@ llfat_cuda(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 	  cudaStreamSynchronize(stream[2*k+1]);
 	}	
 	//end
-
+	
 
 	//start of one call
         kparam.kernel_type = LLFAT_INTERIOR_KERNEL;
@@ -184,8 +184,7 @@ llfat_cuda(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 	    }	
 #endif	    
 	    //end
-	    return ;
-	    
+
 	    for(int sig = 0; sig < 4; sig++){
 	      if (sig != dir && sig != nu && sig != rho){						
 		

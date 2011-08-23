@@ -301,7 +301,7 @@ void llfat_cpu(void** fatlink, su3_matrix** sitelink, Float* act_path_coeff)
     }
   }
   
-
+  
   for (int dir=XUP; dir<=TUP; dir++){
     for(int nu=XUP; nu<=TUP; nu++){
       if(nu!=dir){
@@ -312,7 +312,7 @@ void llfat_cpu(void** fatlink, su3_matrix** sitelink, Float* act_path_coeff)
 	/* Note this also involves modifying c_1 (above) */
 		
 	llfat_compute_gen_staple_field((su3_matrix*)NULL,dir,nu,staple,sitelink, fatlink, act_path_coeff[5],1);
-		
+
 	for(int rho=XUP; rho<=TUP; rho++) {
 	  if((rho!=dir)&&(rho!=nu)){
 	    llfat_compute_gen_staple_field( tempmat1, dir, rho, staple,sitelink,fatlink, act_path_coeff[3], 1);
