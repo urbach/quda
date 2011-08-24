@@ -336,6 +336,63 @@ llfat_init_cuda_ex(QudaGaugeParam* param_ex)
   
 }
 
+
+void
+llfat_init_cuda_nl(QudaGaugeParam* param)
+{
+  static int llfat_init_cuda_flag = 0;
+  if (llfat_init_cuda_flag){
+    return;
+  }
+  
+  llfat_init_cuda_flag = 1;
+  
+  init_kernel_cuda(param);
+  int Vh_ex = (param->X[0]+4)*(param->X[1]+4)*(param->X[2]+4)*(param->X[3]+4)/2;
+  int Vh = param->X[0]*param->X[1]*param->X[2]*param->X[3]/2;
+  int site_ga_stride = param->site_ga_pad + Vh;
+  int staple_stride = param->staple_pad + Vh;
+  int llfat_ga_stride = param->llfat_ga_pad + Vh;
+  
+  cudaMemcpyToSymbol("site_ga_stride", &site_ga_stride, sizeof(int));  
+  cudaMemcpyToSymbol("staple_stride", &staple_stride, sizeof(int));  
+  cudaMemcpyToSymbol("llfat_ga_stride", &llfat_ga_stride, sizeof(int));
+  
+  int first_proc_in_tdim = 0;
+  int last_proc_in_tdim = 0;
+  if(commCoords(3) == (commDim(3) -1)){
+    last_proc_in_tdim =  1;
+  }
+  
+  if(commCoords(3) == 0){
+    first_proc_in_tdim =  1;    
+  }
+
+  cudaMemcpyToSymbol("last_proc_in_tdim", &last_proc_in_tdim, sizeof(int));
+  cudaMemcpyToSymbol("first_proc_in_tdim", &first_proc_in_tdim, sizeof(int));
+  
+  int E1 = param->X[0] + 4;
+  int E1h = E1/2;
+  int E2 = param->X[1] + 4;
+  int E3 = param->X[2] + 4;
+  int E4 = param->X[3] + 4;
+  int E2E1 =E2*E1;
+  int E3E2E1=E3*E2*E1;
+  
+  cudaMemcpyToSymbol("E1", &E1, sizeof(int));
+  cudaMemcpyToSymbol("E1h", &E1h, sizeof(int));
+  cudaMemcpyToSymbol("E2", &E2, sizeof(int));
+  cudaMemcpyToSymbol("E3", &E3, sizeof(int));
+  cudaMemcpyToSymbol("E4", &E4, sizeof(int));
+  cudaMemcpyToSymbol("E2E1", &E2E1, sizeof(int));
+  cudaMemcpyToSymbol("E3E2E1", &E3E2E1, sizeof(int));
+  
+  cudaMemcpyToSymbol("Vh_ex", &Vh_ex, sizeof(int));
+  
+}
+
+
+
 #define LLFAT_CONCAT(a,b) a##b##Kernel
 #define LLFAT_CONCAT_EX(a,b) a##b##Kernel_ex
 #define LLFAT_KERNEL(a,b) LLFAT_CONCAT(a,b)

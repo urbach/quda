@@ -23,19 +23,19 @@
 #define TDIFF(a,b) (b.tv_sec - a.tv_sec + 0.000001*(b.tv_usec - a.tv_usec))
 
 
-static FullGauge cudaSiteLink, cudaSiteLink_ex;
+static FullGauge cudaSiteLink, cudaSiteLink_ex, cudaSiteLink_nl;
 static FullGauge cudaFatLink;
-static FullStaple cudaStaple, cudaStaple_ex;
-static FullStaple cudaStaple1, cudaStaple1_ex;
+static FullStaple cudaStaple, cudaStaple_ex, cudaStaple_nl;
+static FullStaple cudaStaple1, cudaStaple1_ex, cudaStaple1_nl;
 QudaGaugeParam gaugeParam;
 QudaGaugeParam gaugeParam_ex;
 void *fatlink, *sitelink[4], *reflink[4];
 
-#ifdef MULTI_GPU
 void* ghost_sitelink[4];
 void* ghost_sitelink_diag[16];
 void* sitelink_ex[4];
-#endif
+void* sitelink_nl[4];
+
 
 int verify_results = 0;
 
@@ -234,6 +234,29 @@ llfat_init(int test)
     memset(sitelink_ex[i], 0, V_ex*gaugeSiteSize*gSize);
   } 
   
+  int nl_ghost_len[]= {
+    E4*E3*E2/2 * 4, // "divided by 2" comes from even/odd division, "*4" comes from 2 faces and back/fwd 
+    E4*E3*E1/2 * 4,
+    E4*E2*E1/2 * 4,
+    E3*E2*E1/2 * 4
+  };
+  int nl_tot_ghost_len = nl_ghost_len[0]+nl_ghost_len[1]+nl_ghost_len[2]+nl_ghost_len[3];
+  
+  for(i=0;i < 4;i++){
+#if (CUDA_VERSION >=4000)
+    cudaMallocHost((void**)&sitelink_nl[i], 2*(Vh+nl_tot_ghost_len)*gaugeSiteSize* gSize);
+#else
+    sitelink_nl[i] = malloc(2*(Vh+nl_tot_ghost_len)*gaugeSiteSize* gSize);
+#endif
+    if (sitelink_nl[i] == NULL){
+      fprintf(stderr, "ERROR: malloc failed for sitelink_nl[%d]\n", i);
+      exit(1);
+    }
+  } 
+
+
+
+
   //FIXME:
   //assuming all dimension size is even
   //fill in the extended sitelink 
@@ -323,7 +346,22 @@ llfat_init(int test)
       gaugeParam_ex.llfat_ga_pad = gaugeParam.llfat_ga_pad;
       break;
     }
-    
+  case 2:
+    {
+      gaugeParam.site_ga_pad = gaugeParam.ga_pad 
+	= 5*(E2*E3*E4/2+ E1*E3*E4/2+E1*E2*E4/2+E1*E2*E3/2);
+      gaugeParam.reconstruct = link_recon;
+      createLinkQuda(&cudaSiteLink_nl, &gaugeParam);
+      
+      gaugeParam.staple_pad
+	= 5*(E2*E3*E4/2+ E1*E3*E4/2+E1*E2*E4/2+E1*E2*E3/2);
+      createStapleQuda(&cudaStaple_nl, &gaugeParam);
+      createStapleQuda(&cudaStaple1_nl, &gaugeParam);
+      
+      break;   
+      
+      
+    }
   default:
     errorQuda("ERROR: wrong type of test in llfat\n");
   }
@@ -335,8 +373,8 @@ llfat_init(int test)
   return;
 }
 
-void 
-llfat_end()  
+static void 
+llfat_end(int test)  
 {  
   int i;
 #if (CUDA_VERSION >= 4000)
@@ -351,7 +389,7 @@ llfat_end()
     free(sitelink[i]);
     free(sitelink_ex[i]);
   }
-
+  
 #endif
 
   for(i=0;i < 4;i++){
@@ -365,16 +403,35 @@ llfat_end()
       free(ghost_sitelink_diag[i*4+j]);
     }    
   }
-
+  
   for(i=0;i < 4;i++){
     free(reflink[i]);
   }
   
-  freeLinkQuda(&cudaSiteLink);
-  freeLinkQuda(&cudaFatLink);
-  freeStapleQuda(&cudaStaple);
-  freeStapleQuda(&cudaStaple1);
+  switch(test){
+  case 0:
+    freeLinkQuda(&cudaSiteLink);
+    freeStapleQuda(&cudaStaple);
+    freeStapleQuda(&cudaStaple1);
+    break;
+    
+  case 1:
+    freeLinkQuda(&cudaSiteLink_ex);
+    freeStapleQuda(&cudaStaple_ex);
+    freeStapleQuda(&cudaStaple1_ex);
+    break;
 
+  case 2:
+    freeLinkQuda(&cudaSiteLink_nl);
+    freeStapleQuda(&cudaStaple_nl);
+    freeStapleQuda(&cudaStaple1_nl);
+    break;
+
+  default:
+    errorQuda("Error: invalid test type\n");
+  }
+
+  freeLinkQuda(&cudaFatLink);
   exchange_llfat_cleanup();
   
   endQuda();
@@ -418,7 +475,6 @@ llfat_test(int test)
     loadLinkToGPU(cudaSiteLink, sitelink, &gaugeParam);
     gettimeofday(&t1, NULL);  
     llfat_cuda(cudaFatLink, cudaSiteLink, cudaStaple, cudaStaple1, &gaugeParam, act_path_coeff_2);
-
     break;
 
   case 1:
@@ -428,9 +484,21 @@ llfat_test(int test)
     gaugeParam_ex.reconstruct = link_recon;
     loadLinkToGPU_ex(cudaSiteLink_ex, sitelink_ex, &gaugeParam_ex);
     gettimeofday(&t1, NULL);  
-    llfat_cuda_ex(cudaFatLink, cudaSiteLink_ex, cudaStaple_ex, cudaStaple1_ex, &gaugeParam, act_path_coeff_2);
-    
+    llfat_cuda_ex(cudaFatLink, cudaSiteLink_ex, cudaStaple_ex, cudaStaple1_ex, &gaugeParam, act_path_coeff_2);    
     break;
+
+  case 2:
+    llfat_init_cuda_nl(&gaugeParam);
+    exchange_cpu_sitelink_nl(gaugeParam.X, sitelink_ex, sitelink_nl, gaugeParam.cpu_prec, 1);    
+    gaugeParam.ga_pad = gaugeParam.site_ga_pad;
+    gaugeParam.reconstruct = link_recon;
+    //loadLinkToGPU_nl(cudaSiteLink_nl, sitelink_nl, &gaugeParam);
+    return 0;
+    gettimeofday(&t1, NULL);  
+    //llfat_cuda_ex(cudaFatLink, cudaSiteLink_ex, cudaStaple_ex, cudaStaple1_ex, &gaugeParam, act_path_coeff_2);    
+
+    break;
+    
   default:
     errorQuda("Error:wront test type for fatlink computing\n");
   }    
@@ -464,13 +532,9 @@ llfat_test(int test)
    exchange_cpu_sitelink(gaugeParam.X, sitelink, ghost_sitelink, ghost_sitelink_diag, gaugeParam.cpu_prec, optflag);
    
    
-#ifdef MULTI_GPU
    llfat_reference_mg(reflink, sitelink, ghost_sitelink, ghost_sitelink_diag, gaugeParam.cpu_prec, act_path_coeff);
    //llfat_reference_mg_nocomm(reflink, sitelink_ex, gaugeParam.cpu_prec, act_path_coeff);
-   llfat_reference(reflink, sitelink, gaugeParam.cpu_prec, act_path_coeff);
-#else
-   llfat_reference(reflink, sitelink, gaugeParam.cpu_prec, act_path_coeff);
-#endif
+   //llfat_reference(reflink, sitelink, gaugeParam.cpu_prec, act_path_coeff);
   }
   
 
@@ -491,7 +555,7 @@ llfat_test(int test)
   for(i=0;i < 4;i++){
 	free(myfatlink[i]);
   }
-  llfat_end();
+  llfat_end(test);
     
   if (res == 0){//failed
     printfQuda("\n");

@@ -38,6 +38,7 @@ typedef struct llfat_kernel_param_s{
 
   void llfat_init_cuda(QudaGaugeParam* param);
   void llfat_init_cuda_ex(QudaGaugeParam* param);
+  void llfat_init_cuda_nl(QudaGaugeParam* param);
 
   void computeGenStapleFieldParityKernel(void* staple_even, void* staple_odd, 
 					 void* sitelink_even, void* sitelink_odd,

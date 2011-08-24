@@ -838,7 +838,132 @@ void exchange_cpu_sitelink_ex(int* X, void** sitelink,
   
 }
 
+/*
+ * input data is in sitelink_ex
+ */
 
+void exchange_cpu_sitelink_nl(int* X, void** sitelink_ex, void** sitelink_nl,
+			      QudaPrecision gPrecision, int optflag)
+{
+
+  int gSize = (int)gPrecision;
+  int X1,X2,X3,X4, X1h;
+  int E1,E2,E3,E4, E1h;  
+  X1 = X[0]; X2 = X[1]; X3 = X[2]; X4 = X[3]; 
+  X1h = X1/2;
+  E1 = X[0]+4; E2 = X[1]+4; E3 = X[2]+4; E4 = X[3]+4; 
+  E1h = E1/2;
+  
+  int E3E2E1=E3*E2*E1;
+  int E2E1=E2*E1;
+  int E4E3E2=E4*E3*E2;
+  int E3E2=E3*E2;
+  int E4E3E1=E4*E3*E1;
+  int E3E1=E3*E1;
+  int E4E2E1=E4*E2*E1;
+  int V_ex = E4*E3*E2*E1;
+  int Vh_ex = V_ex /2;
+  
+  int ghost_len[]= {
+    E4E3E2/2 * 4, // "divided by 2" comes from even/odd division, "*4" comes from 2 faces and back/fwd 
+    E4E3E1/2 * 4,
+    E4E2E1/2 * 4,
+    E3E2E1/2 * 4
+  };
+  int ghost_tot_len = ghost_len[0]+ghost_len[1]+ghost_len[2]+ghost_len[3];
+  
+  exchange_cpu_sitelink_ex(X, sitelink_ex, gPrecision, optflag);
+
+  
+  for(int i=0; i < V_ex; i++){
+    
+    int sid = i;
+    int oddBit=0;
+    if(i >= Vh_ex){
+      sid = i - Vh_ex;
+      oddBit = 1;
+    }
+    
+    int za = sid/E1h;
+    int x1h = sid - za*E1h;
+    int zb = za/E2;
+    int x2 = za - zb*E2;
+    int x4 = zb/E3;
+    int x3 = zb - x4*E3;
+    int x1odd = (x2 + x3 + x4 + oddBit) & 1;
+    int x1 = 2*x1h + x1odd;      
+    
+#define COPY_SITELINK(dst_array, dst_idx, src_array, src_idx)		\
+    for(int dir= 0; dir < 4; dir++){					\
+      char* src = (char*)src_array[dir];				\
+      char* dst = (char*)dst_array[dir];				\
+      memcpy(dst+idx*gaugeSiteSize*gSize, src+i*gaugeSiteSize*gSize, gaugeSiteSize*gSize); \
+    }
+
+    int ox1, ox2, ox3, ox4;
+
+    if(x1 < 2){
+      int idx = (Vh+ghost_tot_len)*oddBit + Vh + (x1*E4E3E2 + x4*E3E2 + x3*E2 + x2)/2  ;
+      COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i);
+    }else if (x1 >= X1 + 2){
+      ox1 = x1 - (X1+2);
+      int idx = (Vh+ghost_tot_len)*oddBit + Vh + E4E3E2 + (ox1*E4E3E2 + x4*E3E2 + x3*E2 + x2)/2  ;
+      COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i) ;     
+    }
+    
+    if(x2 < 2){
+      int idx = (Vh+ghost_tot_len)*oddBit + Vh + ghost_len[0] + (x2*E4E3E1 + x4*E3E1 + x3*E1 + x1)/2  ;
+      COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i);
+    }else if (x2 >= X2 + 2){
+      ox2 = x2 - (X2+2);
+      int idx = (Vh+ghost_tot_len)*oddBit + Vh + ghost_len[0] + E4E3E1 + (ox2*E4E3E1 + x4*E3E1 + x3*E1 + x1)/2  ;
+      COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i) ;     
+    }
+    
+    if(x3 < 2){
+      int idx = (Vh+ghost_tot_len)*oddBit + Vh + ghost_len[0] + ghost_len[1] + (x3*E4E2E1 + x4*E2E1 + x2*E1 + x1)/2  ;
+      COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i);
+    }else if (x3 >= X3 + 2){
+      ox3 = x3 - (X3+2);
+      int idx = (Vh+ghost_tot_len)*oddBit + Vh + ghost_len[0] + ghost_len[1] +  E4E2E1 + (ox3*E4E2E1 + x4*E2E1 + x2*E1 + x1)/2  ;
+      COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i) ;     
+    }
+    
+    if(x4 < 2){
+      int idx = (Vh+ghost_tot_len)*oddBit + Vh + ghost_len[0] + ghost_len[1] + ghost_len[2] + (x4*E3E2E1 + x3*E2E1 + x2*E1 + x1)/2  ;
+      COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i);
+    }else if (x4 >= X4 + 2){
+      ox4 = x4 - (X4+2);
+      int idx = (Vh+ghost_tot_len)*oddBit + Vh + ghost_len[0] + ghost_len[1] +  ghost_len[2] + E3E2E1 + (ox4*E3E2E1 + x3*E2E1 + x2*E1 + x1)/2  ;
+      COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i) ;     
+    }
+
+    
+    if( x1< 2 || x1 >= X1 +2 
+	|| x2< 2 || x2 >= X2 +2 
+	|| x3< 2 || x3 >= X3 +2 
+	|| x4< 2 || x4 >= X4 +2){
+      continue;
+    }
+    
+    
+    ox1 = (x1 - 2 + X1) % X1;
+    ox2 = (x2 - 2 + X2) % X2;
+    ox3 = (x3 - 2 + X3) % X3;
+    ox4 = (x4 - 2 + X4) % X4;
+    
+    int idx = (ox4*X3*X2*X1+ox3*X2*X1+ox2*X1+ox1)>>1;
+    if(oddBit){
+      idx += Vh;
+    }
+    for(int dir= 0; dir < 4; dir++){
+      char* src = (char*)sitelink_ex[dir];	
+      char* dst = (char*)sitelink_nl[dir];
+      memcpy(dst+idx*gaugeSiteSize*gSize, src+i*gaugeSiteSize*gSize, gaugeSiteSize*gSize);	
+    }//dir
+  }//i
+  
+}
 
 template<typename Float>
 void
