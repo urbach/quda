@@ -1,99 +1,60 @@
-#if (REDUCE_TYPE == REDUCE_KAHAN)
-
-#define DSACC(c0, c1, a0, a1) dsadd((c0), (c1), (c0), (c1), (a0), (a1))
+#if (REDUCE_TYPE == REDUCE_KAHAN) // Kahan compensated summation
+#define SH_STRIDE 2 // stride is two elements
+#define SH_SUM(s, i, j) dsadd(s[i], s[i+1], s[i], s[i+1], s[2*j], s[2*j+1]) 
+#define SH_SET(s, i, x) s[i] = x##0, s[i+1] = x##1
+#define SH_EVAL(s, i) s[i] + s[i+1]
+#define REG_CREATE(x, value) QudaSumFloat x##0 = value, x##1 = value
+#define REDUCE(x, y) dsadd(x##0, x##1, x##0, x##1, y, 0)
+#else // Regular summation
+#define SH_STRIDE 1
+#define SH_SUM(s, i, j) s[i] += s[j]
+#define SH_SET(s, i, x) s[i] = x
+#define SH_EVAL(s, i) s[i]
+#define REG_CREATE(x, value) QudaSumFloat x = value
+#define REDUCE(x, y) x += y
+#endif
 
 __global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat *g_odata, unsigned int n) {
   unsigned int tid = threadIdx.x;
   unsigned int i = blockIdx.x*(reduce_threads) + threadIdx.x;
   unsigned int gridSize = reduce_threads*gridDim.x;
   
-  QudaSumFloat acc0 = 0;
-  QudaSumFloat acc1 = 0;
+  REG_CREATE(sum, 0); // QudaSumFloat sum = 0;
   
   while (i < n) {
     REDUCE_AUXILIARY(i);
-    DSACC(acc0, acc1, REDUCE_OPERATION(i), 0);
+    REDUCE(sum, REDUCE_OPERATION(i)); // sum += REDUCE_OPERATION(i);
     i += gridSize;
   }
   
   extern __shared__ QudaSumFloat sdata[];
-  QudaSumFloat *s = sdata + 2*tid;
-  s[0] = acc0;
-  s[1] = acc1;
-  
+  QudaSumFloat *s = sdata + SH_STRIDE*tid;
+  SH_SET(s, 0, sum); // s[0] = sum;
+
   __syncthreads();
   
-  if (reduce_threads >= 1024) { if (tid < 512) { DSACC(s[0],s[1],s[1024+0],s[1024+1]); } __syncthreads(); }
-  if (reduce_threads >= 512) { if (tid < 256) { DSACC(s[0],s[1],s[512+0],s[512+1]); } __syncthreads(); }    
-  if (reduce_threads >= 256) { if (tid < 128) { DSACC(s[0],s[1],s[256+0],s[256+1]); } __syncthreads(); }
-  if (reduce_threads >= 128) { if (tid <  64) { DSACC(s[0],s[1],s[128+0],s[128+1]); } __syncthreads(); }    
-
+  // do reduction in shared mem
+  if (reduce_threads>=1024){ if (tid<512) { SH_SUM(s, 0, 512); } __syncthreads(); }
+  if (reduce_threads>=512) { if (tid<256) { SH_SUM(s, 0, 256); } __syncthreads(); }
+  if (reduce_threads>=256) { if (tid<128) { SH_SUM(s, 0, 128); } __syncthreads(); }
+  if (reduce_threads>=128) { if (tid<64) { SH_SUM(s, 0, 64); } __syncthreads(); }
 
 #ifndef __DEVICE_EMULATION__
   if (tid < 32) 
 #endif
     {
       volatile QudaSumFloat *sv = s;
-      if (reduce_threads >=  64) { DSACC(sv[0],sv[1],sv[64+0],sv[64+1]); EMUSYNC; }
-      if (reduce_threads >=  32) { DSACC(sv[0],sv[1],sv[32+0],sv[32+1]); EMUSYNC; }
-      if (reduce_threads >=  16) { DSACC(sv[0],sv[1],sv[16+0],sv[16+1]); EMUSYNC; }
-      if (reduce_threads >=   8) { DSACC(sv[0],sv[1], sv[8+0], sv[8+1]); EMUSYNC; }
-      if (reduce_threads >=   4) { DSACC(sv[0],sv[1], sv[4+0], sv[4+1]); EMUSYNC; }
-      if (reduce_threads >=   2) { DSACC(sv[0],sv[1], sv[2+0], sv[2+1]); EMUSYNC; }
+      if (reduce_threads >=  64) { SH_SUM(sv, 0, 32); EMUSYNC; }
+      if (reduce_threads >=  32) { SH_SUM(sv, 0, 16); EMUSYNC; }
+      if (reduce_threads >=  16) { SH_SUM(sv, 0, 8); EMUSYNC; }
+      if (reduce_threads >=   8) { SH_SUM(sv, 0, 4); EMUSYNC; }
+      if (reduce_threads >=   4) { SH_SUM(sv, 0, 2); EMUSYNC; }
+      if (reduce_threads >=   2) { SH_SUM(sv, 0, 1); EMUSYNC; }
     }
   
   // write result for this block to global mem as single float
-  if (tid == 0) g_odata[blockIdx.x] = sdata[0]+sdata[1];
+  if (tid == 0) g_odata[blockIdx.x] = SH_EVAL(s, 0);
 }
-
-#else // true double precision kernel
-
-__global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat *g_odata, unsigned int n) {
-  unsigned int tid = threadIdx.x;
-  unsigned int i = blockIdx.x*reduce_threads + threadIdx.x;
-  unsigned int gridSize = reduce_threads*gridDim.x;
-  
-  QudaSumFloat sum = 0;
-
-  while (i < n) {
-    REDUCE_AUXILIARY(i);
-    sum += REDUCE_OPERATION(i);
-    i += gridSize;
-  }
-
-  extern __shared__ QudaSumFloat sdata[];
-  QudaSumFloat *s = sdata + tid;
-  
-  s[0] = sum;
-  __syncthreads();
-  
-  // do reduction in shared mem
-  if (reduce_threads >= 1024) { if (tid < 512) { s[0] += s[512]; } __syncthreads(); }
-  if (reduce_threads >= 512) { if (tid < 256) { s[0] += s[256]; } __syncthreads(); }
-  if (reduce_threads >= 256) { if (tid < 128) { s[0] += s[128]; } __syncthreads(); }
-  if (reduce_threads >= 128) { if (tid <  64) { s[0] += s[ 64]; } __syncthreads(); }
-  
-#ifndef __DEVICE_EMULATION__
-  if (tid < 32)
-#endif
-    {
-      volatile QudaSumFloat *sv = s;
-      if (reduce_threads >=  64) { sv[0] += sv[32]; EMUSYNC; }
-      if (reduce_threads >=  32) { sv[0] += sv[16]; EMUSYNC; }
-      if (reduce_threads >=  16) { sv[0] += sv[ 8]; EMUSYNC; }
-      if (reduce_threads >=   8) { sv[0] += sv[ 4]; EMUSYNC; }
-      if (reduce_threads >=   4) { sv[0] += sv[ 2]; EMUSYNC; }
-      if (reduce_threads >=   2) { sv[0] += sv[ 1]; EMUSYNC; }
-    }
-  
-  // write result for this block to global mem 
-  if (tid == 0) {
-    g_odata[blockIdx.x] = s[0];
-  }
-
-}
-
-#endif
 
 template <typename Float>
 double REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision precision) {
@@ -141,3 +102,9 @@ double REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision pr
   return cpu_sum;
 }
 
+#undef SH_STRIDE
+#undef SH_SUM
+#undef SH_SET
+#undef SH_EVAL
+#undef REG_CREATE
+#undef REDUCE
