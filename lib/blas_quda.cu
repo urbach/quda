@@ -33,13 +33,8 @@
 #endif
 
 // These are used for reduction kernels
-static QudaSumFloat *d_reduceFloat=0;
-static QudaSumFloat *d_reduceComplex=0;
-static QudaSumFloat *d_reduceFloat3=0;
-
-static QudaSumFloat *h_reduceFloat=0;
-static QudaSumFloat *h_reduceComplex=0;
-static QudaSumFloat *h_reduceFloat3=0;
+static QudaSumFloat *d_reduce=0;
+static QudaSumFloat *h_reduce=0;
 
 unsigned long long blas_quda_flops;
 unsigned long long blas_quda_bytes;
@@ -111,38 +106,15 @@ void zeroCuda(cudaColorSpinorField &a) { a.zero(); }
 
 void initBlas(void)
 {  
-  if (!d_reduceFloat) {
-    if (cudaMalloc((void**) &d_reduceFloat, REDUCE_MAX_BLOCKS*sizeof(QudaSumFloat)) == cudaErrorMemoryAllocation) {
+  // Set the reduction sub-array to largest we will use
+  if (!d_reduce) {
+    if (cudaMalloc((void**) &d_reduce, REDUCE_MAX_BLOCKS*sizeof(QudaSumFloat3)) == cudaErrorMemoryAllocation) {
       errorQuda("Error allocating device reduction array");
     }
   }
 
-  if (!d_reduceComplex) {
-    if (cudaMalloc((void**) &d_reduceComplex, REDUCE_MAX_BLOCKS*sizeof(QudaSumComplex)) == cudaErrorMemoryAllocation) {
-      errorQuda("Error allocating device reduction array");
-    }
-  }
-  
-  if (!d_reduceFloat3) {
-    if (cudaMalloc((void**) &d_reduceFloat3, REDUCE_MAX_BLOCKS*sizeof(QudaSumFloat3)) == cudaErrorMemoryAllocation) {
-      errorQuda("Error allocating device reduction array");
-    }
-  }
-
-  if (!h_reduceFloat) {
-    if (cudaMallocHost((void**) &h_reduceFloat, REDUCE_MAX_BLOCKS*sizeof(QudaSumFloat)) == cudaErrorMemoryAllocation) {
-      errorQuda("Error allocating host reduction array");
-    }
-  }
-
-  if (!h_reduceComplex) {
-    if (cudaMallocHost((void**) &h_reduceComplex, REDUCE_MAX_BLOCKS*sizeof(QudaSumComplex)) == cudaErrorMemoryAllocation) {
-      errorQuda("Error allocating host reduction array");
-    }
-  }
-  
-  if (!h_reduceFloat3) {
-    if (cudaMallocHost((void**) &h_reduceFloat3, REDUCE_MAX_BLOCKS*sizeof(QudaSumFloat3)) == cudaErrorMemoryAllocation) {
+  if (!h_reduce) {
+    if (cudaMallocHost((void**) &h_reduce, REDUCE_MAX_BLOCKS*sizeof(QudaSumFloat3)) == cudaErrorMemoryAllocation) {
       errorQuda("Error allocating host reduction array");
     }
   }
@@ -150,12 +122,8 @@ void initBlas(void)
 
 void endBlas(void)
 {
-  if (d_reduceFloat) cudaFree(d_reduceFloat);
-  if (d_reduceComplex) cudaFree(d_reduceComplex);
-  if (d_reduceFloat3) cudaFree(d_reduceFloat3);
-  if (h_reduceFloat) cudaFreeHost(h_reduceFloat);
-  if (h_reduceComplex) cudaFreeHost(h_reduceComplex);
-  if (h_reduceFloat3) cudaFreeHost(h_reduceFloat3);
+  if (d_reduce) cudaFree(d_reduce);
+  if (h_reduce) cudaFreeHost(h_reduce);
 }
 
 // blasTuning = 1 turns off error checking

@@ -112,29 +112,29 @@ double REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision pr
 #endif
 
   if (blasBlock.x == 32) {
-    REDUCE_FUNC_NAME(Kernel)<32><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduceFloat, n);
+    REDUCE_FUNC_NAME(Kernel)<32><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduce, n);
   } else if (blasBlock.x == 64) {
-    REDUCE_FUNC_NAME(Kernel)<64><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduceFloat, n);
+    REDUCE_FUNC_NAME(Kernel)<64><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduce, n);
   } else if (blasBlock.x == 128) {
-    REDUCE_FUNC_NAME(Kernel)<128><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduceFloat, n);
+    REDUCE_FUNC_NAME(Kernel)<128><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduce, n);
   } else if (blasBlock.x == 256) {
-    REDUCE_FUNC_NAME(Kernel)<256><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduceFloat, n);
+    REDUCE_FUNC_NAME(Kernel)<256><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduce, n);
   } else if (blasBlock.x == 512) {
-    REDUCE_FUNC_NAME(Kernel)<512><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduceFloat, n);
+    REDUCE_FUNC_NAME(Kernel)<512><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduce, n);
   } else if (blasBlock.x == 1024) {
-    REDUCE_FUNC_NAME(Kernel)<1024><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduceFloat, n);
+    REDUCE_FUNC_NAME(Kernel)<1024><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduce, n);
   } else {
     errorQuda("Reduction not implemented for %d threads", blasBlock.x);
   }
 
   // copy result from device to host, and perform final reduction on CPU
-  cudaMemcpy(h_reduceFloat, d_reduceFloat, blasGrid.x*sizeof(QudaSumFloat), cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_reduce, d_reduce, blasGrid.x*sizeof(QudaSumFloat), cudaMemcpyDeviceToHost);
 
   // for a tuning run, let blas_test check the error condition
   if (!blasTuning) checkCudaError();
 
   double cpu_sum = 0;
-  for (unsigned int i = 0; i < blasGrid.x; i++) cpu_sum += h_reduceFloat[i];
+  for (unsigned int i = 0; i < blasGrid.x; i++) cpu_sum += h_reduce[i];
 
   reduceDouble(cpu_sum);
 

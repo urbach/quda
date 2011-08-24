@@ -154,23 +154,23 @@ double3 REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision p
 #endif
 
   if (blasBlock.x == 32) {
-    REDUCE_FUNC_NAME(Kernel)<32><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduceFloat3, n);
+    REDUCE_FUNC_NAME(Kernel)<32><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduce, n);
   } else if (blasBlock.x == 64) {
-    REDUCE_FUNC_NAME(Kernel)<64><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduceFloat3, n);
+    REDUCE_FUNC_NAME(Kernel)<64><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduce, n);
   } else if (blasBlock.x == 128) {
-    REDUCE_FUNC_NAME(Kernel)<128><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduceFloat3, n);
+    REDUCE_FUNC_NAME(Kernel)<128><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduce, n);
   } else if (blasBlock.x == 256) {
-    REDUCE_FUNC_NAME(Kernel)<256><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduceFloat3, n);
+    REDUCE_FUNC_NAME(Kernel)<256><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduce, n);
   } else if (blasBlock.x == 512) {
-    REDUCE_FUNC_NAME(Kernel)<512><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduceFloat3, n);
+    REDUCE_FUNC_NAME(Kernel)<512><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduce, n);
   } else if (blasBlock.x == 1024) {
-    REDUCE_FUNC_NAME(Kernel)<1024><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduceFloat3, n);
+    REDUCE_FUNC_NAME(Kernel)<1024><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduce, n);
   } else {
     errorQuda("Reduction not implemented for %d threads", blasBlock.x);
   }
 
   // copy result from device to host, and perform final reduction on CPU
-  cudaMemcpy(h_reduceFloat3, d_reduceFloat3, blasGrid.x*sizeof(QudaSumFloat3), cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_reduce, d_reduce, blasGrid.x*sizeof(QudaSumFloat3), cudaMemcpyDeviceToHost);
 
   // for a tuning run, let blas_test check the error condition
   if (!blasTuning) checkCudaError();
@@ -180,9 +180,9 @@ double3 REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision p
   gpu_result.y = 0;
   gpu_result.z = 0;
   for (unsigned int i = 0; i < blasGrid.x; i++) {
-    gpu_result.x += h_reduceFloat3[0*blasGrid.x + i];
-    gpu_result.y += h_reduceFloat3[1*blasGrid.x + i];
-    gpu_result.z += h_reduceFloat3[2*blasGrid.x + i];
+    gpu_result.x += h_reduce[0*blasGrid.x + i];
+    gpu_result.y += h_reduce[1*blasGrid.x + i];
+    gpu_result.z += h_reduce[2*blasGrid.x + i];
   }
 
   reduceDoubleArray(&(gpu_result.x), 3);
