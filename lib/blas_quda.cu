@@ -34,12 +34,12 @@
 
 // These are used for reduction kernels
 static QudaSumFloat *d_reduceFloat=0;
-static QudaSumComplex *d_reduceComplex=0;
-static QudaSumFloat3 *d_reduceFloat3=0;
+static QudaSumFloat *d_reduceComplex=0;
+static QudaSumFloat *d_reduceFloat3=0;
 
 static QudaSumFloat *h_reduceFloat=0;
-static QudaSumComplex *h_reduceComplex=0;
-static QudaSumFloat3 *h_reduceFloat3=0;
+static QudaSumFloat *h_reduceComplex=0;
+static QudaSumFloat *h_reduceFloat3=0;
 
 unsigned long long blas_quda_flops;
 unsigned long long blas_quda_bytes;

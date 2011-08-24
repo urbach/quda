@@ -4,7 +4,7 @@
 #define DSACC(c0, c1, a0, a1) dsadd((c0), (c1), (c0), (c1), (a0), (a1))
 #define DSACC3(c0, c1, a0, a1) dsadd3((c0), (c1), (c0), (c1), (a0), (a1))
 
-__global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat3 *g_odata, unsigned int n) {
+__global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat *g_odata, unsigned int n) {
   unsigned int tid = threadIdx.x;
   unsigned int i = blockIdx.x*(reduce_threads) + threadIdx.x;
   unsigned int gridSize = reduce_threads*gridDim.x;
@@ -55,11 +55,11 @@ __global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat3 *g_odata, 
       if (reduce_threads >=   2) { DSACC3(sv[0],sv[1], sv[2+0], sv[2+1]); EMUSYNC; }
     }
     
-  // write result for this block to global mem as single QudaSumFloat3
+  // write result for this block to global mem
   if (tid == 0) {
-    g_odata[blockIdx.x].x = tdata[0].x+tdata[1].x;
-    g_odata[blockIdx.x].y = tdata[0].y+tdata[1].y;
-    g_odata[blockIdx.x].z = tdata[0].z+tdata[1].z;
+    g_odata[0*gridDim.x + blockIdx.x] = tdata[0].x+tdata[1].x;
+    g_odata[1*gridDim.x + blockIdx.x] = tdata[0].y+tdata[1].y;
+    g_odata[2*gridDim.x + blockIdx.x] = tdata[0].z+tdata[1].z;
   }
 }
 
@@ -75,7 +75,7 @@ __global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat3 *g_odata, 
   s##y[i] += s##y[j];				\
   s##z[i] += s##z[j];
 
-__global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat3 *g_odata, unsigned int n) {
+__global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat *g_odata, unsigned int n) {
   unsigned int tid = threadIdx.x;
   unsigned int i = blockIdx.x*reduce_threads + threadIdx.x;
   unsigned int gridSize = reduce_threads*gridDim.x;
@@ -128,9 +128,9 @@ __global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat3 *g_odata, 
     
   // write result for this block to global mem 
   if (tid == 0) {
-    g_odata[blockIdx.x].x = sx[0];
-    g_odata[blockIdx.x].y = sy[0];
-    g_odata[blockIdx.x].z = sz[0];
+    g_odata[0*gridDim.x + blockIdx.x] = sx[0];
+    g_odata[1*gridDim.x + blockIdx.x] = sy[0];
+    g_odata[2*gridDim.x + blockIdx.x] = sz[0];
   }
 }
 
@@ -180,9 +180,9 @@ double3 REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision p
   gpu_result.y = 0;
   gpu_result.z = 0;
   for (unsigned int i = 0; i < blasGrid.x; i++) {
-    gpu_result.x += h_reduceFloat3[i].x;
-    gpu_result.y += h_reduceFloat3[i].y;
-    gpu_result.z += h_reduceFloat3[i].z;
+    gpu_result.x += h_reduceFloat3[0*blasGrid.x + i];
+    gpu_result.y += h_reduceFloat3[1*blasGrid.x + i];
+    gpu_result.z += h_reduceFloat3[2*blasGrid.x + i];
   }
 
   reduceDoubleArray(&(gpu_result.x), 3);

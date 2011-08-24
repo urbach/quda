@@ -5,7 +5,7 @@
 #define DSACC(c0, c1, a0, a1) dsadd((c0), (c1), (c0), (c1), (a0), (a1))
 #define ZCACC(c0, c1, a0, a1) zcadd((c0), (c1), (c0), (c1), (a0), (a1))
 
-__global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumComplex *g_odata, unsigned int n) {
+__global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat *g_odata, unsigned int n) {
   unsigned int tid = threadIdx.x;
   unsigned int i = blockIdx.x*(reduce_threads) + threadIdx.x;
   unsigned int gridSize = reduce_threads*gridDim.x;
@@ -50,16 +50,16 @@ __global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumComplex *g_odata,
       if (reduce_threads >=   2) { ZCACC(sv[0],sv[1], sv[2+0], sv[2+1]); EMUSYNC; }
     }
   
-  // write result for this block to global mem as single QudaSumComplex
+  // write result for this block to global mem
   if (tid == 0) {
-    g_odata[blockIdx.x].x = cdata[0].x+cdata[1].x;
-    g_odata[blockIdx.x].y = cdata[0].y+cdata[1].y;
+    g_odata[blockIdx.x] = cdata[0].x+cdata[1].x;
+    g_odata[gridDim.x + blockIdx.x] = cdata[0].y+cdata[1].y;
   }
 }
 
 #else
 
-__global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumComplex *g_odata, unsigned int n) {
+__global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat *g_odata, unsigned int n) {
   unsigned int tid = threadIdx.x;
   unsigned int i = blockIdx.x*reduce_threads + threadIdx.x;
   unsigned int gridSize = reduce_threads*gridDim.x;
@@ -107,8 +107,8 @@ __global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumComplex *g_odata,
   
   // write result for this block to global mem 
   if (tid == 0) {
-    g_odata[blockIdx.x].x = sx[0];
-    g_odata[blockIdx.x].y = sy[0];
+    g_odata[blockIdx.x] = sx[0];
+    g_odata[gridDim.x + blockIdx.x] = sy[0];
   }
 }
 
@@ -155,8 +155,8 @@ cuDoubleComplex REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPre
   gpu_result.x = 0;
   gpu_result.y = 0;
   for (unsigned int i = 0; i < blasGrid.x; i++) {
-    gpu_result.x += h_reduceComplex[i].x;
-    gpu_result.y += h_reduceComplex[i].y;
+    gpu_result.x += h_reduceComplex[i];
+    gpu_result.y += h_reduceComplex[i + blasGrid.x];
   }
 
   reduceDoubleArray(&(gpu_result.x), 2);
