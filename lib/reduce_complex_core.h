@@ -1,118 +1,72 @@
 
+#define AUXILIARY(i) REDUCE_REAL_AUXILIARY(i); REDUCE_IMAG_AUXILIARY(i);
+#define SUMFLOAT_P(x, y) QudaSumFloat *s##_r = y, *s##_i = y + reduce_threads;
+
 #if (REDUCE_TYPE == REDUCE_KAHAN)
 
+#define SH_STRIDE 2
+#define REG_CREATE(x, value) QudaSumFloat x##0_r = value, x##1_r = value, x##0_i = value, x##1_i = value, 
+#define REDUCE(x, i) dsadd(x##0_r, x##1_r, x##0_r, x##1_r, REDUCE_REAL_OPERATION(i), 0); \
+  dsadd(x##0_i, x##1_i, x##0_i, x##1_i, REDUCE_IMAG_OPERATION(i), 0)
+#define SH_SUM(s, i, j) dsadd(s##_r[i], s##_r[i+1], s##_r[i], s##_r[i+1], s##_r[2*j], s##_r[2*j+1]); \
+  dsadd(s##_i[i], s##_i[i+1], s##_i[i], s##_i[i+1], s##_i[2*j], s##_i[2*j+1]);
+#define SH_SET(s, i, x) s##_r[i] = x##0_r, s##_r[i+1] = x##1_r, s##_i[i] = x##0_i, s##_i[i+1] = x##1_i
+#define SH_EVAL(s, i) s[i] + s[i+1]
 
-#define DSACC(c0, c1, a0, a1) dsadd((c0), (c1), (c0), (c1), (a0), (a1))
-#define ZCACC(c0, c1, a0, a1) zcadd((c0), (c1), (c0), (c1), (a0), (a1))
+#else
+
+#define SH_STRIDE 1
+#define REG_CREATE(x, value) QudaSumFloat x##_r = value, x##_i = value
+#define REDUCE(x, i) x##_r += REDUCE_REAL_OPERATION(i), x##_i += REDUCE_IMAG_OPERATION(i)
+#define SH_SUM(s, i, j) s##_r[i] += s##_r[j], s##_i[i] += s##_i[j]
+#define SH_SET(s, i, x) s##_r[i] = x##_r, s##_i[i] = x##_i
+#define SH_EVAL(s, i) s[i]
+
+#endif
+
+#define WRITE_GLOBAL(array, i, s, j) array[i] = SH_EVAL(s##_r, j), array[i+gridDim.x] = SH_EVAL(s##_i, j)
 
 __global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat *g_odata, unsigned int n) {
   unsigned int tid = threadIdx.x;
   unsigned int i = blockIdx.x*(reduce_threads) + threadIdx.x;
   unsigned int gridSize = reduce_threads*gridDim.x;
   
-  QudaSumFloat acc0 = 0;
-  QudaSumFloat acc1 = 0;
-  QudaSumFloat acc2 = 0;
-  QudaSumFloat acc3 = 0;
+  REG_CREATE(sum, 0);
   
   while (i < n) {
-    REDUCE_REAL_AUXILIARY(i);
-    REDUCE_IMAG_AUXILIARY(i);
-    DSACC(acc0, acc1, REDUCE_REAL_OPERATION(i), 0);
-    DSACC(acc2, acc3, REDUCE_IMAG_OPERATION(i), 0);
+    AUXILIARY(i)
+    REDUCE(sum, i); // sum_r += REDUCE_REAL_OPERATION(i)
     i += gridSize;
   }
   
-  extern __shared__ QudaSumComplex cdata[];
-  QudaSumComplex *s = cdata + 2*tid;
-  s[0].x = acc0;
-  s[1].x = acc1;
-  s[0].y = acc2;
-  s[1].y = acc3;
+  extern __shared__ QudaSumFloat sdata[];
+  SUMFLOAT_P(s, sdata + SH_STRIDE*tid);
+
+  SH_SET(s, 0, sum);
   
   __syncthreads();
   
-  if (reduce_threads >= 1024) { if (tid < 512) { ZCACC(s[0],s[1],s[1024+0],s[1024+1]); } __syncthreads(); }
-  if (reduce_threads >= 512) { if (tid < 256) { ZCACC(s[0],s[1],s[512+0],s[512+1]); } __syncthreads(); }    
-  if (reduce_threads >= 256) { if (tid < 128) { ZCACC(s[0],s[1],s[256+0],s[256+1]); } __syncthreads(); }
-  if (reduce_threads >= 128) { if (tid <  64) { ZCACC(s[0],s[1],s[128+0],s[128+1]); } __syncthreads(); }    
+  if (reduce_threads >= 1024) { if (tid < 512) { SH_SUM(s, 0, 512); } __syncthreads(); }
+  if (reduce_threads >= 512) { if (tid < 256) { SH_SUM(s, 0, 256); } __syncthreads(); }    
+  if (reduce_threads >= 256) { if (tid < 128) { SH_SUM(s, 0, 128); } __syncthreads(); }
+  if (reduce_threads >= 128) { if (tid <  64) { SH_SUM(s, 0, 64); } __syncthreads(); }    
 
 #ifndef __DEVICE_EMULATION__
   if (tid < 32) 
 #endif
     {
-      volatile QudaSumComplex *sv = s;
-      if (reduce_threads >=  64) { ZCACC(sv[0],sv[1],sv[64+0],sv[64+1]); EMUSYNC; }
-      if (reduce_threads >=  32) { ZCACC(sv[0],sv[1],sv[32+0],sv[32+1]); EMUSYNC; }
-      if (reduce_threads >=  16) { ZCACC(sv[0],sv[1],sv[16+0],sv[16+1]); EMUSYNC; }
-      if (reduce_threads >=   8) { ZCACC(sv[0],sv[1], sv[8+0], sv[8+1]); EMUSYNC; }
-      if (reduce_threads >=   4) { ZCACC(sv[0],sv[1], sv[4+0], sv[4+1]); EMUSYNC; }
-      if (reduce_threads >=   2) { ZCACC(sv[0],sv[1], sv[2+0], sv[2+1]); EMUSYNC; }
+      volatile QudaSumFloat *sv_r = s_r, *sv_i = s_i;
+      if (reduce_threads >=  64) { SH_SUM(sv, 0, 32); EMUSYNC; }
+      if (reduce_threads >=  32) { SH_SUM(sv, 0, 16); EMUSYNC; }
+      if (reduce_threads >=  16) { SH_SUM(sv, 0, 8); EMUSYNC; }
+      if (reduce_threads >=   8) { SH_SUM(sv, 0, 4); EMUSYNC; }
+      if (reduce_threads >=   4) { SH_SUM(sv, 0, 2); EMUSYNC; }
+      if (reduce_threads >=   2) { SH_SUM(sv, 0, 1); EMUSYNC; }
     }
   
   // write result for this block to global mem
-  if (tid == 0) {
-    g_odata[blockIdx.x] = cdata[0].x+cdata[1].x;
-    g_odata[gridDim.x + blockIdx.x] = cdata[0].y+cdata[1].y;
-  }
+  if (tid == 0) { WRITE_GLOBAL(g_odata, blockIdx.x, s, 0); }
 }
-
-#else
-
-__global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat *g_odata, unsigned int n) {
-  unsigned int tid = threadIdx.x;
-  unsigned int i = blockIdx.x*reduce_threads + threadIdx.x;
-  unsigned int gridSize = reduce_threads*gridDim.x;
-  
-  QudaSumComplex sum;
-  sum.x = 0.0;
-  sum.y = 0.0;
-  
-  while (i < n) {
-    REDUCE_REAL_AUXILIARY(i);
-    REDUCE_IMAG_AUXILIARY(i);
-    sum.x += REDUCE_REAL_OPERATION(i);
-    sum.y += REDUCE_IMAG_OPERATION(i);
-    i += gridSize;
-  }
-
-  // all real then imaginary to avoid bank conflicts
-  extern __shared__ QudaSumFloat cdata[];
-  QudaSumFloat *sx = cdata + tid;
-  QudaSumFloat *sy = cdata + tid + reduce_threads;
-
-  sx[0] = sum.x;
-  sy[0] = sum.y;
-  __syncthreads();
-  
-  // do reduction in shared mem
-  if (reduce_threads >= 1024) { if (tid < 512) { sx[0] += sx[512]; sy[0] += sy[512]; } __syncthreads(); }
-  if (reduce_threads >= 512) { if (tid < 256) { sx[0] += sx[256]; sy[0] += sy[256]; } __syncthreads(); }
-  if (reduce_threads >= 256) { if (tid < 128) { sx[0] += sx[128]; sy[0] += sy[128]; } __syncthreads(); }
-  if (reduce_threads >= 128) { if (tid <  64) { sx[0] += sx[ 64]; sy[0] += sy[ 64]; } __syncthreads(); }
-  
-#ifndef __DEVICE_EMULATION__
-  if (tid < 32) 
-#endif
-    {
-      volatile QudaSumFloat *svx = sx;
-      volatile QudaSumFloat *svy = sy;
-      if (reduce_threads >=  64) { svx[0] += svx[32]; svy[0] += svy[32]; EMUSYNC; }
-      if (reduce_threads >=  32) { svx[0] += svx[16]; svy[0] += svy[16]; EMUSYNC; }
-      if (reduce_threads >=  16) { svx[0] += svx[ 8]; svy[0] += svy[ 8]; EMUSYNC; }
-      if (reduce_threads >=   8) { svx[0] += svx[ 4]; svy[0] += svy[ 4]; EMUSYNC; }
-      if (reduce_threads >=   4) { svx[0] += svx[ 2]; svy[0] += svy[ 2]; EMUSYNC; }
-      if (reduce_threads >=   2) { svx[0] += svx[ 1]; svy[0] += svy[ 1]; EMUSYNC; }
-    }
-  
-  // write result for this block to global mem 
-  if (tid == 0) {
-    g_odata[blockIdx.x] = sx[0];
-    g_odata[gridDim.x + blockIdx.x] = sy[0];
-  }
-}
-
-#endif
 
 template <typename Float, typename Float2>
 cuDoubleComplex REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision precision) {
@@ -164,4 +118,13 @@ cuDoubleComplex REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPre
   return gpu_result;
 }
 
+#undef SH_STRIDE
+#undef SH_SUM
+#undef SH_SET
+#undef SH_EVAL
+#undef REG_CREATE
+#undef REDUCE
 
+#undef AUXILIARY
+#undef SUMFLOAT_P
+#undef WRITE_GLOBAL

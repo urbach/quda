@@ -1,18 +1,27 @@
+#define AUXILIARY(i) REDUCE_AUXILIARY(i);
+#define SUMFLOAT_P(x, y) QudaSumFloat *s = y;
+
 #if (REDUCE_TYPE == REDUCE_KAHAN) // Kahan compensated summation
+
 #define SH_STRIDE 2 // stride is two elements
 #define SH_SUM(s, i, j) dsadd(s[i], s[i+1], s[i], s[i+1], s[2*j], s[2*j+1]) 
 #define SH_SET(s, i, x) s[i] = x##0, s[i+1] = x##1
 #define SH_EVAL(s, i) s[i] + s[i+1]
 #define REG_CREATE(x, value) QudaSumFloat x##0 = value, x##1 = value
-#define REDUCE(x, y) dsadd(x##0, x##1, x##0, x##1, y, 0)
+#define REDUCE(x, i) dsadd(x##0, x##1, x##0, x##1, REDUCE_OPERATION(i), 0)
+
 #else // Regular summation
+
 #define SH_STRIDE 1
 #define SH_SUM(s, i, j) s[i] += s[j]
 #define SH_SET(s, i, x) s[i] = x
 #define SH_EVAL(s, i) s[i]
 #define REG_CREATE(x, value) QudaSumFloat x = value
-#define REDUCE(x, y) x += y
+#define REDUCE(x, i) x += REDUCE_OPERATION(i)
+
 #endif
+
+#define WRITE_GLOBAL(x, i, s, j) x[i] = SH_EVAL(s,j)
 
 __global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat *g_odata, unsigned int n) {
   unsigned int tid = threadIdx.x;
@@ -22,13 +31,14 @@ __global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat *g_odata, u
   REG_CREATE(sum, 0); // QudaSumFloat sum = 0;
   
   while (i < n) {
-    REDUCE_AUXILIARY(i);
-    REDUCE(sum, REDUCE_OPERATION(i)); // sum += REDUCE_OPERATION(i);
+    AUXILIARY(i);
+    REDUCE(sum, i); // sum += REDUCE_OPERATION(i);
     i += gridSize;
   }
   
   extern __shared__ QudaSumFloat sdata[];
-  QudaSumFloat *s = sdata + SH_STRIDE*tid;
+  SUMFLOAT_P(s, sdata + SH_STRIDE*tid);
+
   SH_SET(s, 0, sum); // s[0] = sum;
 
   __syncthreads();
@@ -53,7 +63,7 @@ __global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat *g_odata, u
     }
   
   // write result for this block to global mem as single float
-  if (tid == 0) g_odata[blockIdx.x] = SH_EVAL(s, 0);
+  if (tid == 0) { WRITE_GLOBAL(g_odata, blockIdx.x, s, 0); }
 }
 
 template <typename Float>
@@ -108,3 +118,7 @@ double REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision pr
 #undef SH_EVAL
 #undef REG_CREATE
 #undef REDUCE
+
+#undef AUXILIARY
+#undef SUMFLOAT_P
+#undef WRITE_GLOBAL
