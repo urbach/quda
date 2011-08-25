@@ -2217,7 +2217,7 @@ template <unsigned int reduce_threads, typename Float>
 #define REDUCE_PARAMS a
 #define REDUCE_AUXILIARY(i)
 #define REDUCE_OPERATION(i) (a[i]*a[i])
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2230,7 +2230,7 @@ template <unsigned int reduce_threads, typename Float>
 #define REDUCE_PARAMS a
 #define REDUCE_AUXILIARY(i)
 #define REDUCE_OPERATION(i) (a[i].x*a[i].x + a[i].y*a[i].y)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2254,7 +2254,7 @@ template <unsigned int reduce_threads, typename Float>
   REAL_DOT_FLOAT4(norm5, a5, a5);					\
   norm0 += norm1; norm2 += norm3; norm4 += norm5; norm0 += norm2, norm0 += norm4;
 #define REDUCE_OPERATION(i) (ac*ac*norm0)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2272,7 +2272,7 @@ template <unsigned int reduce_threads, typename Float>
     REAL_DOT_FLOAT2(norm2, a2, a2);					\
     norm0 += norm1; norm0 += norm2; 
 #define REDUCE_OPERATION(i) (ac*ac*norm0)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2316,7 +2316,7 @@ template <unsigned int reduce_threads, typename Float>
 #define REDUCE_PARAMS a, b
 #define REDUCE_AUXILIARY(i)
 #define REDUCE_OPERATION(i) (a[i]*b[i])
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2329,7 +2329,7 @@ template <unsigned int reduce_threads, typename Float>
 #define REDUCE_PARAMS a, b
 #define REDUCE_AUXILIARY(i)
 #define REDUCE_OPERATION(i) (a[i].x*b[i].x + a[i].y*b[i].y)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2354,7 +2354,7 @@ template <unsigned int reduce_threads, typename Float>
   REAL_DOT_FLOAT4(rdot5, a5, b5);					\
   rdot0 += rdot1; rdot2 += rdot3; rdot4 += rdot5; rdot0 += rdot2; rdot0 += rdot4;
 #define REDUCE_OPERATION(i) (ac*bc*rdot0)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2373,7 +2373,7 @@ template <unsigned int reduce_threads, typename Float>
   REAL_DOT_FLOAT2(rdot2, a2, b2);					\
   rdot0 += rdot1; rdot0 += rdot2; 
 #define REDUCE_OPERATION(i) (ac*bc*rdot0)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2428,7 +2428,7 @@ template <unsigned int reduce_threads, typename Float>
 #define REDUCE_PARAMS a, x, y
 #define REDUCE_AUXILIARY(i) y[i] = a*x[i] + y[i]
 #define REDUCE_OPERATION(i) (y[i]*y[i])
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2457,7 +2457,7 @@ template <unsigned int reduce_threads, typename Float>
   norm0 += norm1; norm2 += norm3; norm4 += norm5; norm0 += norm2; norm0 += norm4; \
   CONSTRUCT_HALF_SPINOR_FROM_SINGLE(yH, yN, y, stride);
 #define REDUCE_OPERATION(i) (norm0)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2480,7 +2480,7 @@ template <unsigned int reduce_threads, typename Float>
   norm0 += norm1; norm0 += norm2;					\
   CONSTRUCT_HALF_SPINOR_FROM_SINGLE_ST(yH, yN, y, stride);
 #define REDUCE_OPERATION(i) (norm0)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2533,7 +2533,7 @@ template <unsigned int reduce_threads, typename Float>
 #define REDUCE_PARAMS x, y
 #define REDUCE_AUXILIARY(i) y[i] = x[i] - y[i]
 #define REDUCE_OPERATION(i) (y[i]*y[i])
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2562,7 +2562,7 @@ template <unsigned int reduce_threads, typename Float>
   norm0 += norm1; norm2 += norm3; norm4 += norm5; norm0 += norm2; norm0 += norm4; \
   CONSTRUCT_HALF_SPINOR_FROM_SINGLE(yH, yN, y, stride);
 #define REDUCE_OPERATION(i) (norm0)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2585,7 +2585,7 @@ template <unsigned int reduce_threads, typename Float>
   norm0 += norm1; norm0 += norm2;					\
   CONSTRUCT_HALF_SPINOR_FROM_SINGLE_ST(yH, yN, y, stride);
 #define REDUCE_OPERATION(i) (norm0)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2638,7 +2638,7 @@ template <unsigned int reduce_threads, typename Float, typename Float2>
 #define REDUCE_IMAG_AUXILIARY(i) Float2 b = READ_DOUBLE2_TEXTURE(y, i);
 #define REDUCE_REAL_OPERATION(i) (a.x*b.x + a.y*b.y)
 #define REDUCE_IMAG_OPERATION(i) (a.x*b.y - a.y*b.x)
-#include "reduce_complex_core.h"
+#include "reduce_complex.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2655,7 +2655,7 @@ template <unsigned int reduce_threads, typename Float, typename Float2>
 #define REDUCE_IMAG_AUXILIARY(i) Float2 b = read_Float2(y, i);
 #define REDUCE_REAL_OPERATION(i) (a.x*b.x + a.y*b.y)
 #define REDUCE_IMAG_OPERATION(i) (a.x*b.y - a.y*b.x)
-#include "reduce_complex_core.h"
+#include "reduce_complex.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2688,7 +2688,7 @@ template <unsigned int reduce_threads, typename Float, typename Float2>
   idot0 += idot1; idot2 += idot3; idot4 += idot5; idot0 += idot2; idot0 += idot4;
 #define REDUCE_REAL_OPERATION(i) (ac*bc*rdot0)
 #define REDUCE_IMAG_OPERATION(i) (ac*bc*idot0)
-#include "reduce_complex_core.h"
+#include "reduce_complex.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2715,7 +2715,7 @@ template <unsigned int reduce_threads, typename Float, typename Float2>
   idot0 += idot1; idot0 += idot2;
 #define REDUCE_REAL_OPERATION(i) (ac*bc*rdot0)
 #define REDUCE_IMAG_OPERATION(i) (ac*bc*idot0)
-#include "reduce_complex_core.h"
+#include "reduce_complex.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2787,7 +2787,7 @@ template <unsigned int reduce_threads, typename Float, typename Float2>
 #define REDUCE_IMAG_AUXILIARY(i) y[i].x = X.x + a*Y.x; y[i].y = X.y + a*Y.y
 #define REDUCE_REAL_OPERATION(i) (Z.x*y[i].x + Z.y*y[i].y)
 #define REDUCE_IMAG_OPERATION(i) (Z.x*y[i].y - Z.y*y[i].x)
-#include "reduce_complex_core.h"
+#include "reduce_complex.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2804,7 +2804,7 @@ template <unsigned int reduce_threads, typename Float, typename Float2>
 #define REDUCE_IMAG_AUXILIARY(i) y[i].y = x[i].y + a*y[i].y
 #define REDUCE_REAL_OPERATION(i) (z[i].x*y[i].x + z[i].y*y[i].y)
 #define REDUCE_IMAG_OPERATION(i) (z[i].x*y[i].y - z[i].y*y[i].x)
-#include "reduce_complex_core.h"
+#include "reduce_complex.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2845,7 +2845,7 @@ template <unsigned int reduce_threads, typename Float, typename Float2>
   CONSTRUCT_HALF_SPINOR_FROM_SINGLE(yH, yN, y, stride);
 #define REDUCE_REAL_OPERATION(i) (rdot0)
 #define REDUCE_IMAG_OPERATION(i) (idot0)
-#include "reduce_complex_core.h"
+#include "reduce_complex.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2877,7 +2877,7 @@ template <unsigned int reduce_threads, typename Float, typename Float2>
   CONSTRUCT_HALF_SPINOR_FROM_SINGLE_ST(yH, yN, y, stride);
 #define REDUCE_REAL_OPERATION(i) (rdot0)
 #define REDUCE_IMAG_OPERATION(i) (idot0)
-#include "reduce_complex_core.h"
+#include "reduce_complex.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2945,7 +2945,7 @@ template <unsigned int reduce_threads, typename Float2>
 #define REDUCE_X_OPERATION(i) (a.x*b.x + a.y*b.y)
 #define REDUCE_Y_OPERATION(i) (a.x*b.y - a.y*b.x)
 #define REDUCE_Z_OPERATION(i) (a.x*a.x + a.y*a.y)
-#include "reduce_triple_core.h"
+#include "reduce_triple.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -2966,7 +2966,7 @@ template <unsigned int reduce_threads, typename Float2>
 #define REDUCE_X_OPERATION(i) (a[i].x*b[i].x + a[i].y*b[i].y)
 #define REDUCE_Y_OPERATION(i) (a[i].x*b[i].y - a[i].y*b[i].x)
 #define REDUCE_Z_OPERATION(i) (a[i].x*a[i].x + a[i].y*a[i].y)
-#include "reduce_triple_core.h"
+#include "reduce_triple.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3010,7 +3010,7 @@ template <unsigned int reduce_threads, typename Float2>
 #define REDUCE_X_OPERATION(i) (xc*yc*rdot0)
 #define REDUCE_Y_OPERATION(i) (xc*yc*idot0)
 #define REDUCE_Z_OPERATION(i) (xc*xc*norm0)
-#include "reduce_triple_core.h"
+#include "reduce_triple.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3045,7 +3045,7 @@ template <unsigned int reduce_threads, typename Float2>
 #define REDUCE_X_OPERATION(i) (xc*yc*rdot0)
 #define REDUCE_Y_OPERATION(i) (xc*yc*idot0)
 #define REDUCE_Z_OPERATION(i) (xc*xc*norm0)
-#include "reduce_triple_core.h"
+#include "reduce_triple.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3108,7 +3108,7 @@ template <unsigned int reduce_threads, typename Float2>
 #define REDUCE_X_OPERATION(i) (a.x*b.x + a.y*b.y)
 #define REDUCE_Y_OPERATION(i) (a.x*b.y - a.y*b.x)
 #define REDUCE_Z_OPERATION(i) (b.x*b.x + b.y*b.y)
-#include "reduce_triple_core.h"
+#include "reduce_triple.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3129,7 +3129,7 @@ template <unsigned int reduce_threads, typename Float2>
 #define REDUCE_X_OPERATION(i) (a[i].x*b[i].x + a[i].y*b[i].y)
 #define REDUCE_Y_OPERATION(i) (a[i].x*b[i].y - a[i].y*b[i].x)
 #define REDUCE_Z_OPERATION(i) (b[i].x*b[i].x + b[i].y*b[i].y)
-#include "reduce_triple_core.h"
+#include "reduce_triple.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3173,7 +3173,7 @@ template <unsigned int reduce_threads, typename Float2>
 #define REDUCE_X_OPERATION(i) (xc*yc*rdot0)
 #define REDUCE_Y_OPERATION(i) (xc*yc*idot0)
 #define REDUCE_Z_OPERATION(i) (yc*yc*norm0)
-#include "reduce_triple_core.h"
+#include "reduce_triple.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3208,7 +3208,7 @@ template <unsigned int reduce_threads, typename Float2>
 #define REDUCE_X_OPERATION(i) (xc*yc*rdot0)
 #define REDUCE_Y_OPERATION(i) (xc*yc*idot0)
 #define REDUCE_Z_OPERATION(i) (yc*yc*norm0)
-#include "reduce_triple_core.h"
+#include "reduce_triple.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3285,7 +3285,7 @@ template <unsigned int reduce_threads, typename Float2>
 #define REDUCE_X_OPERATION(i) (u[i].x*y[i].x + u[i].y*y[i].y)
 #define REDUCE_Y_OPERATION(i) (u[i].x*y[i].y - u[i].y*y[i].x)
 #define REDUCE_Z_OPERATION(i) (y[i].x*y[i].x + y[i].y*y[i].y)
-#include "reduce_triple_core.h"
+#include "reduce_triple.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3318,7 +3318,7 @@ template <unsigned int reduce_threads, typename Float2>
 #define REDUCE_X_OPERATION(i) (u[i].x*y[i].x + u[i].y*y[i].y)
 #define REDUCE_Y_OPERATION(i) (u[i].x*y[i].y - u[i].y*y[i].x)
 #define REDUCE_Z_OPERATION(i) (y[i].x*y[i].x + y[i].y*y[i].y)
-#include "reduce_triple_core.h"
+#include "reduce_triple.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3386,7 +3386,7 @@ template <unsigned int reduce_threads, typename Float2>
 #define REDUCE_Y_OPERATION(i) (uc*idot0)
 #define REDUCE_Z_OPERATION(i) (norm0)
 
-#include "reduce_triple_core.h"
+#include "reduce_triple.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3436,7 +3436,7 @@ template <unsigned int reduce_threads, typename Float2>
 #define REDUCE_Y_OPERATION(i) (uc*idot0)
 #define REDUCE_Z_OPERATION(i) (norm0)
 
-#include "reduce_triple_core.h"
+#include "reduce_triple.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3652,7 +3652,7 @@ template <unsigned int reduce_threads, typename Float>
   y[i].x += a.x*x[i].x - a.y*x[i].y;				\
   y[i].y += a.y*x[i].x + a.x*x[i].y
 #define REDUCE_OPERATION(i) (y[i].x*y[i].x + y[i].y*y[i].y)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3681,7 +3681,7 @@ template <unsigned int reduce_threads, typename Float>
   norm0 += norm1; norm2 += norm3; norm4 += norm5; norm0 += norm2; norm0 += norm4; \
   CONSTRUCT_HALF_SPINOR_FROM_SINGLE(yH, yN, y, stride);
 #define REDUCE_OPERATION(i) (norm0)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3704,7 +3704,7 @@ template <unsigned int reduce_threads, typename Float>
   norm0 += norm1; norm0 += norm2;					\
   CONSTRUCT_HALF_SPINOR_FROM_SINGLE_ST(yH, yN, y, stride);
 #define REDUCE_OPERATION(i) (norm0)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3766,7 +3766,7 @@ template <unsigned int reduce_threads, typename Float>
   x[i].x += a.y*z[i].y - a.x*z[i].x;				\
   x[i].y -= (a.x*z[i].y + a.y*z[i].x);
 #define REDUCE_OPERATION(i) (x[i].x*x[i].x + x[i].y*x[i].y)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3804,7 +3804,7 @@ template <unsigned int reduce_threads, typename Float>
   CONSTRUCT_HALF_SPINOR_FROM_SINGLE(yH, yN, y, stride);			\
   CONSTRUCT_HALF_SPINOR_FROM_SINGLE(xH, xN, x, stride);
 #define REDUCE_OPERATION(i) (norm0)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3832,7 +3832,7 @@ template <unsigned int reduce_threads, typename Float>
   CONSTRUCT_HALF_SPINOR_FROM_SINGLE_ST(yH, yN, y, stride);		\
   CONSTRUCT_HALF_SPINOR_FROM_SINGLE_ST(xH, xN, x, stride);
 #define REDUCE_OPERATION(i) (norm0)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3899,7 +3899,7 @@ template <unsigned int reduce_threads, typename Float>
   y[i].x += b.x*x[i].x - b.y*x[i].y;					\
   y[i].y += b.y*x[i].x + b.x*x[i].y;
 #define REDUCE_OPERATION(i) (y[i].x*y[i].x + y[i].y*y[i].y)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3935,7 +3935,7 @@ template <unsigned int reduce_threads, typename Float>
   norm0 += norm1; norm2 += norm3; norm4 += norm5; norm0 += norm2; norm0 += norm4; \
   CONSTRUCT_HALF_SPINOR_FROM_SINGLE(yH, yN, y, stride);
 #define REDUCE_OPERATION(i) (norm0)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -3962,7 +3962,7 @@ template <unsigned int reduce_threads, typename Float>
   norm0 += norm1; norm0 += norm2;					\
   CONSTRUCT_HALF_SPINOR_FROM_SINGLE_ST(yH, yN, y, stride);
 #define REDUCE_OPERATION(i) (norm0)
-#include "reduce_core.h"
+#include "reduce_real.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -4350,7 +4350,7 @@ template <unsigned int reduce_threads, typename Float, typename Float2>
 #define REDUCE_IMAG_AUXILIARY(i) y[i].y += a.y*x[i].x + a.x*x[i].y;
 #define REDUCE_REAL_OPERATION(i) (z[i].x*y[i].x + z[i].y*y[i].y)
 #define REDUCE_IMAG_OPERATION(i) (z[i].x*y[i].y - z[i].y*y[i].x)
-#include "reduce_complex_core.h"
+#include "reduce_complex.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -4391,7 +4391,7 @@ template <unsigned int reduce_threads, typename Float, typename Float2>
   idot0 += idot1; idot2 += idot3; idot4 += idot5; idot0 += idot2; idot0 += idot4;
 #define REDUCE_REAL_OPERATION(i) (rdot0)
 #define REDUCE_IMAG_OPERATION(i) (idot0)
-#include "reduce_complex_core.h"
+#include "reduce_complex.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS
@@ -4423,7 +4423,7 @@ template <unsigned int reduce_threads, typename Float, typename Float2>
   idot0 += idot1; idot0 += idot2; 
 #define REDUCE_REAL_OPERATION(i) (rdot0)
 #define REDUCE_IMAG_OPERATION(i) (idot0)	
-#include "reduce_complex_core.h"
+#include "reduce_complex.h"
 #undef REDUCE_FUNC_NAME
 #undef REDUCE_TYPES
 #undef REDUCE_PARAMS

@@ -1,51 +1,57 @@
-
-#define AUXILIARY(i) REDUCE_REAL_AUXILIARY(i); REDUCE_IMAG_AUXILIARY(i);
-#define SUMFLOAT_P(x, y) QudaSumFloat *s##_r = y, *s##_i = y + reduce_threads;
-
 #if (REDUCE_TYPE == REDUCE_KAHAN)
 
 #define SH_STRIDE 2
-#define REG_CREATE(x, value) QudaSumFloat x##0_r = value, x##1_r = value, x##0_i = value, x##1_i = value, 
-#define REDUCE(x, i) dsadd(x##0_r, x##1_r, x##0_r, x##1_r, REDUCE_REAL_OPERATION(i), 0); \
-  dsadd(x##0_i, x##1_i, x##0_i, x##1_i, REDUCE_IMAG_OPERATION(i), 0)
-#define SH_SUM(s, i, j) dsadd(s##_r[i], s##_r[i+1], s##_r[i], s##_r[i+1], s##_r[2*j], s##_r[2*j+1]); \
-  dsadd(s##_i[i], s##_i[i+1], s##_i[i], s##_i[i+1], s##_i[2*j], s##_i[2*j+1]);
-#define SH_SET(s, i, x) s##_r[i] = x##0_r, s##_r[i+1] = x##1_r, s##_i[i] = x##0_i, s##_i[i+1] = x##1_i
+#define REG_CREATE(s, value) QudaSumFloat s##0_x = value, s##1_x = value, s##0_y = value, s##1_y = value, \
+    s##0_z = value, s##1_z = value
+#define REDUCE(s, i) dsadd(s##0_x, s##1_x, s##0_x, s##1_x, REDUCE_X_OPERATION(i), 0); \
+  dsadd(s##0_y, s##1_y, s##0_y, s##1_y, REDUCE_Y_OPERATION(i), 0) \
+  dsadd(s##0_z, s##1_z, s##0_z, s##1_z, REDUCE_Z_OPERATION(i), 0)   
+#define SH_SUM(s, i, j) dsadd(s##_x[i], s##_x[i+1], s##_x[i], s##_x[i+1], s##_x[2*j], s##_x[2*j+1]); \
+  dsadd(s##_y[i], s##_y[i+1], s##_y[i], s##_y[i+1], s##_y[2*j], s##_y[2*j+1]); \
+  dsadd(s##_z[i], s##_z[i+1], s##_z[i], s##_z[i+1], s##_z[2*j], s##_z[2*j+1]);
+#define SH_SET(s, i, t) s##_x[i] = t##0_x, s##_x[i+1] = t##1_x, s##_y[i] = t##0_y, s##_y[i+1] = t##1_y \
+    s##_z[i] = t##0_z, s##_z[i+1] = z##1_t
 #define SH_EVAL(s, i) s[i] + s[i+1]
 
 #else
 
 #define SH_STRIDE 1
-#define REG_CREATE(x, value) QudaSumFloat x##_r = value, x##_i = value
-#define REDUCE(x, i) x##_r += REDUCE_REAL_OPERATION(i), x##_i += REDUCE_IMAG_OPERATION(i)
-#define SH_SUM(s, i, j) s##_r[i] += s##_r[j], s##_i[i] += s##_i[j]
-#define SH_SET(s, i, x) s##_r[i] = x##_r, s##_i[i] = x##_i
+#define REG_CREATE(s, value) QudaSumFloat s##_x = value, s##_y = value, s##_z = value
+#define REDUCE(s, i)							\
+  s##_x += REDUCE_X_OPERATION(i), s##_y += REDUCE_Y_OPERATION(i), s##_z += REDUCE_Z_OPERATION(i)
+#define SH_SUM(s, i, j) s##_x[i] += s##_x[j], s##_y[i] += s##_y[j], s##_z[i] += s##_z[j]
+#define SH_SET(s, i, t) s##_x[i] = t##_x, s##_y[i] = t##_y, s##_z[i] = t##_z
 #define SH_EVAL(s, i) s[i]
 
 #endif
 
-#define WRITE_GLOBAL(array, i, s, j) array[i] = SH_EVAL(s##_r, j), array[i+gridDim.x] = SH_EVAL(s##_i, j)
+#define AUXILIARY(i) REDUCE_X_AUXILIARY(i); REDUCE_Y_AUXILIARY(i); REDUCE_Z_AUXILIARY(i)
+#define SUMFLOAT_P(s, t) QudaSumFloat *s##_x = t, *s##_y = t + SH_STRIDE*reduce_threads, \
+    *s##_z = t + 2*SH_STRIDE*reduce_threads
+#define SUMFLOAT_EQ_SUMFLOAT(a, b) QudaSumFloat a##_x = b##_x, a##_y = b##_y, a##_z = b##_z 
+#define WRITE_GLOBAL(array, i, s, j)					\
+  array[i] = SH_EVAL(s##_x, j), array[i+gridDim.x] = SH_EVAL(s##_y, j), array[i+2*gridDim.x] = SH_EVAL(s##_z, j)
 
 __global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat *g_odata, unsigned int n) {
   unsigned int tid = threadIdx.x;
   unsigned int i = blockIdx.x*(reduce_threads) + threadIdx.x;
   unsigned int gridSize = reduce_threads*gridDim.x;
-  
+    
   REG_CREATE(sum, 0);
-  
+
   while (i < n) {
-    AUXILIARY(i)
-    REDUCE(sum, i); // sum_r += REDUCE_REAL_OPERATION(i)
+    AUXILIARY(i);
+    REDUCE(sum, i);
     i += gridSize;
   }
-  
+
   extern __shared__ QudaSumFloat sdata[];
   SUMFLOAT_P(s, sdata + SH_STRIDE*tid);
 
   SH_SET(s, 0, sum);
-  
+
   __syncthreads();
-  
+    
   if (reduce_threads >= 1024) { if (tid < 512) { SH_SUM(s, 0, 512); } __syncthreads(); }
   if (reduce_threads >= 512) { if (tid < 256) { SH_SUM(s, 0, 256); } __syncthreads(); }    
   if (reduce_threads >= 256) { if (tid < 128) { SH_SUM(s, 0, 128); } __syncthreads(); }
@@ -55,7 +61,7 @@ __global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat *g_odata, u
   if (tid < 32) 
 #endif
     {
-      volatile QudaSumFloat *sv_r = s_r, *sv_i = s_i;
+      volatile SUMFLOAT_EQ_SUMFLOAT(*sv, s);
       if (reduce_threads >=  64) { SH_SUM(sv, 0, 32); EMUSYNC; }
       if (reduce_threads >=  32) { SH_SUM(sv, 0, 16); EMUSYNC; }
       if (reduce_threads >=  16) { SH_SUM(sv, 0, 8); EMUSYNC; }
@@ -63,24 +69,24 @@ __global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat *g_odata, u
       if (reduce_threads >=   4) { SH_SUM(sv, 0, 2); EMUSYNC; }
       if (reduce_threads >=   2) { SH_SUM(sv, 0, 1); EMUSYNC; }
     }
-  
+    
   // write result for this block to global mem
   if (tid == 0) { WRITE_GLOBAL(g_odata, blockIdx.x, s, 0); }
 }
 
-template <typename Float, typename Float2>
-cuDoubleComplex REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision precision) {
+template <typename Float2>
+double3 REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision precision) {
 
   setBlock(kernel, n, precision);
   
   if (blasGrid.x > REDUCE_MAX_BLOCKS) {
-    errorQuda("reduce_complex: grid size %d must be smaller than %d", blasGrid.x, REDUCE_MAX_BLOCKS);
+    errorQuda("reduce_triple_core: grid size %d must be smaller than %d", blasGrid.x, REDUCE_MAX_BLOCKS);
   }
   
 #if (REDUCE_TYPE == REDUCE_KAHAN)
-  size_t smemSize = (blasBlock.x <= 32) ? blasBlock.x * 4 * sizeof(QudaSumComplex) : blasBlock.x * 2 * sizeof(QudaSumComplex);
+  size_t smemSize = (blasBlock.x <= 32) ? blasBlock.x * 4 * sizeof(QudaSumFloat3) : blasBlock.x * 2 * sizeof(QudaSumFloat3);
 #else
-  size_t smemSize = (blasBlock.x <= 32) ? blasBlock.x * 2 * sizeof(QudaSumComplex) : blasBlock.x * sizeof(QudaSumComplex);
+  size_t smemSize = (blasBlock.x <= 32) ? blasBlock.x * 2 * sizeof(QudaSumFloat3) : blasBlock.x * sizeof(QudaSumFloat3);
 #endif
 
   if (blasBlock.x == 32) {
@@ -100,20 +106,22 @@ cuDoubleComplex REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPre
   }
 
   // copy result from device to host, and perform final reduction on CPU
-  cudaMemcpy(h_reduce, d_reduce, blasGrid.x*sizeof(QudaSumComplex), cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_reduce, d_reduce, blasGrid.x*sizeof(QudaSumFloat3), cudaMemcpyDeviceToHost);
 
   // for a tuning run, let blas_test check the error condition
   if (!blasTuning) checkCudaError();
   
-  cuDoubleComplex gpu_result;
+  double3 gpu_result;
   gpu_result.x = 0;
   gpu_result.y = 0;
+  gpu_result.z = 0;
   for (unsigned int i = 0; i < blasGrid.x; i++) {
-    gpu_result.x += h_reduce[i];
-    gpu_result.y += h_reduce[i + blasGrid.x];
+    gpu_result.x += h_reduce[0*blasGrid.x + i];
+    gpu_result.y += h_reduce[1*blasGrid.x + i];
+    gpu_result.z += h_reduce[2*blasGrid.x + i];
   }
 
-  reduceDoubleArray(&(gpu_result.x), 2);
+  reduceDoubleArray(&(gpu_result.x), 3);
 
   return gpu_result;
 }
@@ -128,3 +136,4 @@ cuDoubleComplex REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPre
 #undef AUXILIARY
 #undef SUMFLOAT_P
 #undef WRITE_GLOBAL
+#undef SUMFLOAT_EQ_SUMFLOAT

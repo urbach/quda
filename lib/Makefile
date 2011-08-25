@@ -15,8 +15,8 @@ QUDA_HDRS = blas_quda.h clover_quda.h color_spinor_field.h dirac_quda.h	     \
 	invert_quda.h llfat_quda.h quda.h quda_internal.h util_quda.h        \
 	face_quda.h tune_quda.h mpicomm.h exchange_face.h
 
-# These are only inlined into blas_quad.cu
-BLAS_INLN = blas_param.h reduce_complex_core.h reduce_core.h reduce_triple_core.h 
+# These are only inlined into blas_quda.cu
+BLAS_INLN = blas_param.h reduce_real.h reduce_complex.h reduce_triple.h 
 
 # files containing complex macros and other code fragments to be inlined,
 # found in lib/

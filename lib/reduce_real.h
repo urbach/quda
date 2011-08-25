@@ -1,6 +1,3 @@
-#define AUXILIARY(i) REDUCE_AUXILIARY(i);
-#define SUMFLOAT_P(x, y) QudaSumFloat *s = y;
-
 #if (REDUCE_TYPE == REDUCE_KAHAN) // Kahan compensated summation
 
 #define SH_STRIDE 2 // stride is two elements
@@ -21,6 +18,9 @@
 
 #endif
 
+#define AUXILIARY(i) REDUCE_AUXILIARY(i);
+#define SUMFLOAT_P(x, y) QudaSumFloat *s = y;
+#define SUMFLOAT_EQ_SUMFLOAT(a, b) QudaSumFloat a = b
 #define WRITE_GLOBAL(x, i, s, j) x[i] = SH_EVAL(s,j)
 
 __global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat *g_odata, unsigned int n) {
@@ -53,7 +53,7 @@ __global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat *g_odata, u
   if (tid < 32) 
 #endif
     {
-      volatile QudaSumFloat *sv = s;
+      volatile SUMFLOAT_EQ_SUMFLOAT(*sv, s);
       if (reduce_threads >=  64) { SH_SUM(sv, 0, 32); EMUSYNC; }
       if (reduce_threads >=  32) { SH_SUM(sv, 0, 16); EMUSYNC; }
       if (reduce_threads >=  16) { SH_SUM(sv, 0, 8); EMUSYNC; }
@@ -122,3 +122,4 @@ double REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision pr
 #undef AUXILIARY
 #undef SUMFLOAT_P
 #undef WRITE_GLOBAL
+#undef SUMFLOAT_EQ_SUMFLOAT
