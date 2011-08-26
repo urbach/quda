@@ -1,15 +1,4 @@
-#if (REDUCE_TYPE == REDUCE_KAHAN) // Kahan compensated summation
-
-#define SH_STRIDE 2 // stride is two elements
-#define REG_CREATE(x, value) QudaSumFloat x(value, value)
-
-#else // Regular summation
-
-#define SH_STRIDE 1
 #define REG_CREATE(x, value) QudaSumFloat x = value
-
-#endif
-
 #define SH_SET(s, i, t) s[i] = t
 #define REDUCE(x, i) x += REDUCE_OPERATION(i)
 #define SH_SUM(s, i, j) s[i] += s[j]
@@ -30,11 +19,7 @@ double REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision pr
   
   // when there is only one warp per block, we need to allocate two warps 
   // worth of shared memory so that we don't index shared memory out of bounds
-#if (REDUCE_TYPE == REDUCE_KAHAN)
-  size_t smemSize = (blasBlock.x <= 32) ? blasBlock.x * 4 * sizeof(QudaSumFloat) : blasBlock.x * 2 * sizeof(QudaSumFloat);
-#else
-  size_t smemSize = (blasBlock.x <= 32) ? blasBlock.x * 2 * sizeof(QudaSumFloat) : blasBlock.x * sizeof(QudaSumFloat);
-#endif
+  size_t smemSize = blasBlock.x * sizeof(QudaSumFloat) * (blasBlock.x <= 32 ? 2 : 1);
 
   if (blasBlock.x == 32) {
     REDUCE_FUNC_NAME(Kernel)<32><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduce, n);
@@ -66,7 +51,6 @@ double REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision pr
   return cpu_sum;
 }
 
-#undef SH_STRIDE
 #undef SH_SUM
 #undef SH_SET
 #undef REG_CREATE

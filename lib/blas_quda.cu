@@ -16,19 +16,20 @@
 #if (__CUDA_ARCH__ >= 130)
 #define REDUCE_TYPE REDUCE_DOUBLE
 #define QudaSumFloat double
-#define QudaSumComplex cuDoubleComplex
-#define QudaSumFloat3 double3
 #else
 #define REDUCE_TYPE REDUCE_KAHAN
 
 struct doublesingle {
   float x;
   float y;
+  doublesingle(const int &x) : x(x), y(0) {;}
   doublesingle(const float &x, const int &y) : x(x), y(y) {;}
   doublesingle(const int &x, const int &y) : x(x), y(y) {;}
   doublesingle(const float &x, const float &y) : x(x), y(y) {;}
   doublesingle(const doublesingle &ds) : x(ds.x), y(ds.y) {;}
   doublesingle(const volatile doublesingle &ds) : x(ds.x), y(ds.y) {;}
+
+  doublesingle& operator=(const int &z) { x = (float)z; y = 0.0f; return *this; }
 };
 
 __host__ __device__ double operator+=(double &x, const doublesingle y) {
@@ -38,8 +39,6 @@ __host__ __device__ double operator+=(double &x, const doublesingle y) {
 }
 
 #define QudaSumFloat doublesingle
-#define QudaSumComplex cuComplex
-#define QudaSumFloat3 float3
 
 // Computes c = a + b in "double single" precision.
 __device__ void dsadd(volatile doublesingle &c, const volatile doublesingle &a, const doublesingle b) {

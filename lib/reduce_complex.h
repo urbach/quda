@@ -1,22 +1,11 @@
-#if (REDUCE_TYPE == REDUCE_KAHAN)
-
-#define SH_STRIDE 2
-#define REG_CREATE(x, value) QudaSumFloat x##_r(value, value), x##_i(value, value)
-
-#else
-
-#define SH_STRIDE 1
 #define REG_CREATE(x, value) QudaSumFloat x##_r = value, x##_i = value
-
-#endif
-
-#define SH_SET(s, i, t) s##_r[i] = t##_r, s##_i[i] = t##_i
-#define REDUCE(x, i) x##_r += REDUCE_REAL_OPERATION(i), x##_i += REDUCE_IMAG_OPERATION(i)
-#define SH_SUM(s, i, j) s##_r[i] += s##_r[j], s##_i[i] += s##_i[j]
+#define SH_SET(s, j, t) s##_r[j] = t##_r, s##_i[j] = t##_i
+#define REDUCE(x, j) x##_r += REDUCE_REAL_OPERATION(j), x##_i += REDUCE_IMAG_OPERATION(j)
+#define SH_SUM(s, j, k) s##_r[j] += s##_r[k], s##_i[j] += s##_i[k]
 #define AUXILIARY(i) REDUCE_REAL_AUXILIARY(i); REDUCE_IMAG_AUXILIARY(i)
-#define SUMFLOAT_P(x, y) QudaSumFloat *x##_r = y, *x##_i = y + SH_STRIDE*reduce_threads
+#define SUMFLOAT_P(x, y) QudaSumFloat *x##_r = y, *x##_i = y + reduce_threads
 #define SUMFLOAT_EQ_SUMFLOAT(a, b) QudaSumFloat a##_r = b##_r, a##_i = b##_i
-#define WRITE_GLOBAL(array, i, s, j) array[i] = s##_r[j], array[i+gridDim.x] = s##_i[j]
+#define WRITE_GLOBAL(array, j, s, k) array[j] = s##_r[k], array[j+gridDim.x] = s##_i[k]
 
 #include "reduce_core.h"
 
@@ -29,11 +18,7 @@ cuDoubleComplex REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPre
     errorQuda("reduce_complex: grid size %d must be smaller than %d", blasGrid.x, REDUCE_MAX_BLOCKS);
   }
   
-#if (REDUCE_TYPE == REDUCE_KAHAN)
-  size_t smemSize = (blasBlock.x <= 32) ? blasBlock.x * 4 * sizeof(QudaSumComplex) : blasBlock.x * 2 * sizeof(QudaSumComplex);
-#else
-  size_t smemSize = (blasBlock.x <= 32) ? blasBlock.x * 2 * sizeof(QudaSumComplex) : blasBlock.x * sizeof(QudaSumComplex);
-#endif
+  size_t smemSize = blasBlock.x * 2 * sizeof(QudaSumFloat) * (blasBlock.x <= 32 ? 2 : 1);
 
   if (blasBlock.x == 32) {
     REDUCE_FUNC_NAME(Kernel)<32><<< blasGrid, blasBlock, smemSize >>>(REDUCE_PARAMS, d_reduce, n);
@@ -52,7 +37,7 @@ cuDoubleComplex REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPre
   }
 
   // copy result from device to host, and perform final reduction on CPU
-  cudaMemcpy(h_reduce, d_reduce, blasGrid.x*sizeof(QudaSumComplex), cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_reduce, d_reduce, blasGrid.x*2*sizeof(QudaSumFloat), cudaMemcpyDeviceToHost);
 
   // for a tuning run, let blas_test check the error condition
   if (!blasTuning) checkCudaError();
@@ -70,7 +55,6 @@ cuDoubleComplex REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPre
   return gpu_result;
 }
 
-#undef SH_STRIDE
 #undef SH_SUM
 #undef SH_SET
 #undef SH_EVAL

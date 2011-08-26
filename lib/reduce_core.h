@@ -12,7 +12,7 @@ __global__ void REDUCE_FUNC_NAME(Kernel) (REDUCE_TYPES, QudaSumFloat *g_odata, u
   }
   
   extern __shared__ QudaSumFloat sdata[];
-  SUMFLOAT_P(s, sdata + SH_STRIDE*tid);
+  SUMFLOAT_P(s, sdata + tid);
 
   SH_SET(s, 0, sum); // s[0] = sum;
 
