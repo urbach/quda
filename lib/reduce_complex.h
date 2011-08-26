@@ -9,7 +9,8 @@
 
 #include "reduce_core.h"
 
-template <typename Float, typename Float2>
+//template <typename Float, typename Float2>
+template <typename Float2>
 cuDoubleComplex REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision precision) {
 
   setBlock(kernel, n, precision);
