@@ -35,6 +35,9 @@ typedef struct llfat_kernel_param_s{
   void llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink, 
 		     FullStaple cudaStaple, FullStaple cudaStaple1,
 		     QudaGaugeParam* param, double* act_path_coeff);
+  void llfat_cuda_nl(FullGauge cudaFatLink, FullGauge cudaSiteLink, 
+		     FullStaple cudaStaple, FullStaple cudaStaple1,
+		     QudaGaugeParam* param, double* act_path_coeff);
 
   void llfat_init_cuda(QudaGaugeParam* param);
   void llfat_init_cuda_ex(QudaGaugeParam* param);
@@ -58,6 +61,14 @@ typedef struct llfat_kernel_param_s{
 					    double mycoeff,
 					    QudaReconstructType recon, QudaPrecision prec,
 					    llfat_kernel_param_t kparam);
+  void computeGenStapleFieldParityKernel_nl(void* staple_even, void* staple_odd, 
+					    void* sitelink_even, void* sitelink_odd,
+					    void* fatlink_even, void* fatlink_odd,			    
+					    void* mulink_even, void* mulink_odd, 
+					    int mu, int nu, int save_staple,
+					    double mycoeff,
+					    QudaReconstructType recon, QudaPrecision prec,
+					    llfat_kernel_param_t kparam);
 
   void siteComputeGenStapleParityKernel(void* staple_even, void* staple_odd, 
 					void* sitelink_even, void* sitelink_odd, 
@@ -72,11 +83,21 @@ typedef struct llfat_kernel_param_s{
 					   int mu, int nu,	double mycoeff,
 					   QudaReconstructType recon, QudaPrecision prec,
 					   llfat_kernel_param_t kparam);
+  void siteComputeGenStapleParityKernel_nl(void* staple_even, void* staple_odd, 
+					   void* sitelink_even, void* sitelink_odd, 
+					   void* fatlink_even, void* fatlink_odd,	
+					   int mu, int nu,	double mycoeff,
+					   QudaReconstructType recon, QudaPrecision prec,
+					   llfat_kernel_param_t kparam);
 
   void llfatOneLinkKernel(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 			  FullStaple cudaStaple, FullStaple cudaStaple1,
 			  QudaGaugeParam* param, double* act_path_coeff);
   void llfatOneLinkKernel_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
+			     FullStaple cudaStaple, FullStaple cudaStaple1,
+			     QudaGaugeParam* param, double* act_path_coeff,
+			     llfat_kernel_param_t kparam);
+  void llfatOneLinkKernel_nl(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 			     FullStaple cudaStaple, FullStaple cudaStaple1,
 			     QudaGaugeParam* param, double* act_path_coeff,
 			     llfat_kernel_param_t kparam);

@@ -854,6 +854,7 @@ void exchange_cpu_sitelink_nl(int* X, void** sitelink_ex, void** sitelink_nl,
   E1 = X[0]+4; E2 = X[1]+4; E3 = X[2]+4; E4 = X[3]+4; 
   E1h = E1/2;
   
+  int Vh=X4*X3*X2*X1/2;
   int E3E2E1=E3*E2*E1;
   int E2E1=E2*E1;
   int E4E3E2=E4*E3*E2;
@@ -946,7 +947,10 @@ void exchange_cpu_sitelink_nl(int* X, void** sitelink_ex, void** sitelink_nl,
       continue;
     }
     
-    
+ 
+
+
+   
     ox1 = (x1 - 2 + X1) % X1;
     ox2 = (x2 - 2 + X2) % X2;
     ox3 = (x3 - 2 + X3) % X3;
@@ -954,15 +958,44 @@ void exchange_cpu_sitelink_nl(int* X, void** sitelink_ex, void** sitelink_nl,
     
     int idx = (ox4*X3*X2*X1+ox3*X2*X1+ox2*X1+ox1)>>1;
     if(oddBit){
-      idx += Vh;
+      idx += (Vh+ghost_tot_len);
     }
+
     for(int dir= 0; dir < 4; dir++){
       char* src = (char*)sitelink_ex[dir];	
       char* dst = (char*)sitelink_nl[dir];
       memcpy(dst+idx*gaugeSiteSize*gSize, src+i*gaugeSiteSize*gSize, gaugeSiteSize*gSize);	
     }//dir
+    /*
+    if( ox1 == 0 && ox2 == 0 && ox3 == 0 && ox4 == 0)
+      {
+	double* data = (double*)sitelink_nl[0];
+	printf("face sitelink is \n");
+	printf("(%f %f) (%f %f) (%f %f)\n"
+	       "(%f %f) (%f %f) (%f %f)\n"
+	       "(%f %f) (%f %f) (%f %f)\n",
+	       data[0], data[1], data[2], data[3], data[4], data[5], 
+	       data[6], data[7], data[8], data[9], data[10], data[11], 
+	       data[12], data[13], data[14], data[15], data[16], data[17]); 
+      }
+    */
   }//i
   
+  /*
+  {
+    double* data = (double*)sitelink_nl[3];
+    data += (Vh+ghost_tot_len) * 18;
+    printf("face sitelink is \n");
+    printf("(%f %f) (%f %f) (%f %f)\n"
+	   "(%f %f) (%f %f) (%f %f)\n"
+	   "(%f %f) (%f %f) (%f %f)\n",
+	   data[0], data[1], data[2], data[3], data[4], data[5], 
+	   data[6], data[7], data[8], data[9], data[10], data[11], 
+	   data[12], data[13], data[14], data[15], data[16], data[17]); 
+  }
+  */
+
+
 }
 
 template<typename Float>

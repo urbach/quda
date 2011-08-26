@@ -220,6 +220,21 @@ llfat_init(int test)
 
   createSiteLinkCPU(sitelink, gaugeParam.cpu_prec, 1);
 
+  /*
+  {
+    double* data = (double*)sitelink[3];
+    data += Vh * gaugeSiteSize;
+    printf("cpu sitelink=\n");
+    printf("(%f %f) (%f %f) (%f %f)\n"
+	   "(%f %f) (%f %f) (%f %f)\n"
+	   "(%f %f) (%f %f) (%f %f)\n",
+	   data[0], data[1], data[2], data[3], data[4], data[5], 
+	   data[6], data[7], data[8], data[9], data[10], data[11], 
+	   data[12], data[13], data[14], data[15], data[16], data[17]); 
+  }
+  */
+
+
   for(i=0;i < 4;i++){
 #if (CUDA_VERSION >=4000)
     cudaMallocHost((void**)&sitelink_ex[i], V_ex*gaugeSiteSize* gSize);
@@ -492,10 +507,9 @@ llfat_test(int test)
     exchange_cpu_sitelink_nl(gaugeParam.X, sitelink_ex, sitelink_nl, gaugeParam.cpu_prec, 1);    
     gaugeParam.ga_pad = gaugeParam.site_ga_pad;
     gaugeParam.reconstruct = link_recon;
-    //loadLinkToGPU_nl(cudaSiteLink_nl, sitelink_nl, &gaugeParam);
-    return 0;
+    loadLinkToGPU_nl(cudaSiteLink_nl, sitelink_nl, &gaugeParam);
     gettimeofday(&t1, NULL);  
-    //llfat_cuda_ex(cudaFatLink, cudaSiteLink_ex, cudaStaple_ex, cudaStaple1_ex, &gaugeParam, act_path_coeff_2);    
+    llfat_cuda_nl(cudaFatLink, cudaSiteLink_nl, cudaStaple_nl, cudaStaple1_nl, &gaugeParam, act_path_coeff_2);    
 
     break;
     
@@ -532,9 +546,9 @@ llfat_test(int test)
    exchange_cpu_sitelink(gaugeParam.X, sitelink, ghost_sitelink, ghost_sitelink_diag, gaugeParam.cpu_prec, optflag);
    
    
-   llfat_reference_mg(reflink, sitelink, ghost_sitelink, ghost_sitelink_diag, gaugeParam.cpu_prec, act_path_coeff);
+   //llfat_reference_mg(reflink, sitelink, ghost_sitelink, ghost_sitelink_diag, gaugeParam.cpu_prec, act_path_coeff);
    //llfat_reference_mg_nocomm(reflink, sitelink_ex, gaugeParam.cpu_prec, act_path_coeff);
-   //llfat_reference(reflink, sitelink, gaugeParam.cpu_prec, act_path_coeff);
+   llfat_reference(reflink, sitelink, gaugeParam.cpu_prec, act_path_coeff);
   }
   
 

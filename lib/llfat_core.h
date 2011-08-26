@@ -403,6 +403,24 @@
     UPDATE_COOR_PLUS(mydir, idx);					\
   }while(0)
 
+#define LLFAT_COMPUTE_NEW_IDX_PLUS_NL(mydir, idx) do {			\
+    switch(mydir){                                                      \
+    case 0:                                                             \
+      new_mem_idx = (x1==X1m1)? ((Vh+ E4E3E2+ spacecon_x)*xcomm+(idx - X1m1)/2*(1-xcomm)):((idx+1)>>1); \
+      break;                                                            \
+    case 1:                                                             \
+      new_mem_idx = (x2==X2m1)? ((Vh+2*E4E3E2+E4E3E1+ spacecon_y)*ycomm+(idx-X2X1mX1)/2*(1-ycomm)):((idx+X1)>>1); \
+      break;                                                            \
+    case 2:                                                             \
+      new_mem_idx = (x3==X3m1)? ((Vh+2*(E4E3E2+E4E3E1)+E4E2E1+ spacecon_z)*zcomm+(idx-X3X2X1mX2X1)/2*(1-zcomm)):((idx+X2X1)>>1); \
+      break;								\
+    case 3:								\
+      new_mem_idx = (x4==X4m1)? ((Vh+2*(E4E3E2+E4E3E1+E4E2E1)+E3E2E1+spacecon_t))*tcomm+(idx-X4X3X2X1mX3X2X1)/2*(1-tcomm): ((idx+X3X2X1)>>1); \
+      break;                                                            \
+    }                                                                   \
+    UPDATE_COOR_PLUS(mydir, idx);					\
+  }while(0)
+
 #define LLFAT_COMPUTE_NEW_IDX_MINUS(mydir, idx) do {			\
     switch(mydir){                                                      \
     case 0:                                                             \
@@ -438,6 +456,26 @@
     }									\
     UPDATE_COOR_MINUS(mydir, idx);					\
   }while(0)
+
+
+#define LLFAT_COMPUTE_NEW_IDX_MINUS_NL(mydir, idx) do {			\
+    switch(mydir){                                                      \
+    case 0:                                                             \
+      new_mem_idx = (x1==0)?( (Vh+spacecon_x)*xcomm+(idx+X1m1)/2*(1-xcomm)):((idx-1) >> 1); \
+      break;                                                            \
+    case 1:                                                             \
+      new_mem_idx = (x2==0)?( (Vh+2*E4E3E2+spacecon_y)*ycomm+(idx+X2X1mX1)/2*(1-ycomm)):((idx-X1) >> 1); \
+      break;                                                            \
+    case 2:                                                             \
+      new_mem_idx = (x3==0)?((Vh+2*(E4E3E2+E4E3E1)+spacecon_z)*zcomm+(idx+X3X2X1mX2X1)/2*(1-zcomm)):((idx-X2X1) >> 1); \
+      break;                                                            \
+    case 3:                                                             \
+      new_mem_idx = (x4==0)?((Vh+2*(E4E3E2+E4E3E1+E4E2E1)+ spacecon_t)*tcomm + (idx+X4X3X2X1mX3X2X1)/2*(1-tcomm)):((idx-X3X2X1) >> 1); \
+      break;                                                            \
+    }                                                                   \
+    UPDATE_COOR_MINUS(mydir, idx);					\
+  }while(0)
+
 
 #define LLFAT_COMPUTE_NEW_IDX_LOWER_STAPLE(mydir1, mydir2) do {		\
     int local_new_x1=x1;						\
@@ -551,6 +589,87 @@
   }while(0)
 
 
+
+#define LLFAT_COMPUTE_NEW_IDX_LOWER_STAPLE_NL(mydir1, mydir2) do {	\
+    int local_new_x1=x1;						\
+    int local_new_x2=x2;						\
+    int local_new_x3=x3;						\
+    int local_new_x4=x4;						\
+    new_mem_idx=X;							\
+    if(dimcomm[mydir1] == 0 || x[mydir1] > 0){				\
+      switch(mydir1){/*mydir1 is not partitioned or x[mydir1]!=  0*/	\
+      case 0:								\
+	new_mem_idx = (x1==0)?(new_mem_idx+X1m1):(new_mem_idx-1);	\
+	local_new_x1 = (x1==0)?X1m1:(x1 - 1);				\
+	break;								\
+      case 1:								\
+	new_mem_idx = (x2==0)?(new_mem_idx+X2X1mX1):(new_mem_idx-X1);	\
+	local_new_x2 = (x2==0)?X2m1:(x2 - 1);				\
+	break;								\
+      case 2:								\
+	new_mem_idx = (x3==0)?(new_mem_idx+X3X2X1mX2X1):(new_mem_idx-X2X1); \
+	local_new_x3 = (x3==0)?X3m1:(x3 -1);				\
+	break;								\
+      case 3:								\
+	new_mem_idx = (x4==0)?(new_mem_idx+X4X3X2X1mX3X2X1):(new_mem_idx-X3X2X1); \
+	local_new_x4 = (x4==0)?X4m1:(x4 - 1);				\
+	break;								\
+      }									\
+      switch(mydir2){							\
+      case 0:								\
+	new_mem_idx = (x1==X1m1)?(2*(Vh+Vsh_x)+((local_new_x4*X3X2+local_new_x3*X2+local_new_x2)))*xcomm+(new_mem_idx-X1m1)*(1-xcomm):(new_mem_idx+1); \
+	break;								\
+      case 1:								\
+	new_mem_idx = (x2==X2m1)?(2*(Vh+2*(Vsh_x)+Vsh_y)+((local_new_x4*X3X1+local_new_x3*X1+local_new_x1)))*ycomm+(new_mem_idx-X2X1mX1)*(1-ycomm):(new_mem_idx+X1); \
+	break;								\
+      case 2:								\
+	new_mem_idx = (x3==X3m1)?(2*(Vh+2*(Vsh_x+Vsh_y)+Vsh_z)+((local_new_x4*X2X1+local_new_x2*X1+local_new_x1)))*zcomm+(new_mem_idx-X3X2X1mX2X1)*(1-zcomm):(new_mem_idx+X2X1); \
+	break;								\
+      case 3:								\
+	new_mem_idx = (x4==X4m1)?(2*(Vh+2*(Vsh_x+Vsh_y+Vsh_z)+Vsh_t)+((local_new_x3*X2X1+local_new_x2*X1+local_new_x1)))*tcomm+(new_mem_idx-X4X3X2X1mX3X2X1)*(1-tcomm):(new_mem_idx+X3X2X1); \
+	break;								\
+      }									\
+    }else{								\
+      /*the case where both dir1/dir2 are out of boundary are dealed with a different macro (_DIAG)*/ \
+      switch(mydir2){	/*mydir2 is not partitioned or x[mydir2]!=  0*/	\
+      case 0:								\
+	new_mem_idx = (x1==X1m1)?(new_mem_idx-X1m1):(new_mem_idx+1);	\
+	local_new_x1 = (x1==X1m1)?0:(x1+1);				\
+	break;								\
+      case 1:								\
+	new_mem_idx = (x2==X2m1)?(new_mem_idx-X2X1mX1):(new_mem_idx+X1); \
+	local_new_x2 = (x2==X2m1)?0:(x2+1);				\
+	break;								\
+      case 2:								\
+	new_mem_idx = (x3==X3m1)?(new_mem_idx-X3X2X1mX2X1):(new_mem_idx+X2X1); \
+	local_new_x3 = (x3==X3m1)?0:(x3+1);				\
+	break;								\
+      case 3:								\
+	new_mem_idx = (x4==X4m1)?(new_mem_idx-X4X3X2X1mX3X2X1):(new_mem_idx+X3X2X1); \
+	local_new_x4 = (x4==X4m1)?0:(x4+1);				\
+	break;								\
+      }									\
+      switch(mydir1){/*mydir1 is 0 here */				\
+      case 0:								\
+	new_mem_idx = (x1==0)?(2*(Vh)+(local_new_x4*X3X2+local_new_x3*X2+local_new_x2))*xcomm+(new_mem_idx+X1m1)*(1-xcomm):(new_mem_idx -1); \
+	break;								\
+      case 1:								\
+	new_mem_idx = (x2==0)?(2*(Vh+2*Vsh_x)+(local_new_x4*X3X1+local_new_x3*X1+local_new_x1))*ycomm+(new_mem_idx+X2X1mX1)*(1-ycomm):(new_mem_idx-X1); \
+	break;								\
+      case 2:								\
+	new_mem_idx = (x3==0)?(2*(Vh+2*(Vsh_x+Vsh_y))+(local_new_x4*X2X1+local_new_x2*X1+local_new_x1))*zcomm+(new_mem_idx+X3X2X1mX2X1)*(1-zcomm):(new_mem_idx-X2X1); \
+	break;								\
+      case 3:								\
+	new_mem_idx = (x4==0)?(2*(Vh+2*(Vsh_x+Vsh_y+Vsh_z))+(local_new_x3*X2X1+local_new_x2*X1+local_new_x1))*tcomm+(new_mem_idx+X4X3X2X1mX3X2X1)*(1-tcomm):(new_mem_idx-X3X2X1); \
+	break;								\
+      }									\
+    }									\
+    new_mem_idx = new_mem_idx >> 1;					\
+    UPDATE_COOR_LOWER_STAPLE(mydir1, mydir2);				\
+  }while(0)
+
+
+
 #define LLFAT_COMPUTE_NEW_IDX_LOWER_STAPLE_DIAG(nu, mu, dir1, dir2) do { \
     new_mem_idx = Vh+2*(Vsh_x+Vsh_y+Vsh_z+Vsh_t) + mu*Vh_2d_max + ((x[dir2]*Z[dir1] + x[dir1])>>1); \
     UPDATE_COOR_LOWER_STAPLE_DIAG(nu, mu, dir1, dir2);			\
@@ -649,6 +768,9 @@ template<int mu, int nu, int odd_bit>
 							   FloatM* fatlink_even, FloatM* fatlink_odd,	
 							   Float mycoeff, llfat_kernel_param_t kparam)
 {
+
+#if 0
+  
   __shared__ FloatM sd_data[NUM_FLOATS*64];
   
   //FloatM TEMPA0, TEMPA1, TEMPA2, TEMPA3, TEMPA4, TEMPA5, TEMPA6, TEMPA7, TEMPA8;
@@ -779,6 +901,8 @@ template<int mu, int nu, int odd_bit>
   }
   WRITE_STAPLE_MATRIX(staple_even, mem_idx);	
     
+#endif
+
   return;
 }
 
@@ -790,6 +914,8 @@ template<int mu, int nu, int odd_bit, int save_staple>
 							   FloatM* mulink_even, FloatM* mulink_odd, 
 							   Float mycoeff, llfat_kernel_param_t kparam)
 {
+#if 0
+
   __shared__ FloatM sd_data[NUM_FLOATS*64];
   //FloatM TEMPA0, TEMPA1, TEMPA2, TEMPA3, TEMPA4, TEMPA5, TEMPA6, TEMPA7, TEMPA8;  
   FloatM  TEMPA5, TEMPA6, TEMPA7, TEMPA8;  
@@ -931,6 +1057,8 @@ template<int mu, int nu, int odd_bit, int save_staple>
 
   WRITE_FAT_MATRIX(fatlink_even, mu,  mem_idx);	
   
+#endif
+
   return;
 }
 
@@ -939,6 +1067,9 @@ LLFAT_KERNEL(llfatOneLink, RECONSTRUCT)(FloatN* sitelink_even, FloatN* sitelink_
 					FloatM* fatlink_even, FloatM* fatlink_odd,
 					Float coeff0, Float coeff5)
 {
+
+#if 0
+
   FloatN* my_sitelink;
   FloatM* my_fatlink;
   int sid = blockIdx.x*blockDim.x + threadIdx.x;
@@ -984,6 +1115,9 @@ LLFAT_KERNEL(llfatOneLink, RECONSTRUCT)(FloatN* sitelink_even, FloatN* sitelink_
   }
     
   return;
+
+#endif
+
 }
 
 
@@ -996,6 +1130,7 @@ template<int mu, int nu, int odd_bit>
 							      FloatM* fatlink_even, FloatM* fatlink_odd,	
 							      Float mycoeff, llfat_kernel_param_t kparam)
 {
+#if 0
   __shared__ FloatM sd_data[NUM_FLOATS*64];
   
   //FloatM TEMPA0, TEMPA1, TEMPA2, TEMPA3, TEMPA4, TEMPA5, TEMPA6, TEMPA7, TEMPA8;
@@ -1112,6 +1247,8 @@ template<int mu, int nu, int odd_bit>
     WRITE_FAT_MATRIX(fatlink_even,mu,  orig_idx);	
   }
   WRITE_STAPLE_MATRIX(staple_even, mem_idx);	
+
+#endif
     
   return;
 }
@@ -1124,6 +1261,7 @@ template<int mu, int nu, int odd_bit, int save_staple>
 							      FloatM* mulink_even, FloatM* mulink_odd, 
 							      Float mycoeff, llfat_kernel_param_t kparam)
 {
+#if 0
   __shared__ FloatM sd_data[NUM_FLOATS*64];
   //FloatM TEMPA0, TEMPA1, TEMPA2, TEMPA3, TEMPA4, TEMPA5, TEMPA6, TEMPA7, TEMPA8;  
   FloatM  TEMPA5, TEMPA6, TEMPA7, TEMPA8;  
@@ -1237,6 +1375,7 @@ template<int mu, int nu, int odd_bit, int save_staple>
   if(save_staple){
     WRITE_STAPLE_MATRIX(staple_even, mem_idx);		    
   }
+#endif
   
   return;
 }
@@ -1247,6 +1386,8 @@ LLFAT_KERNEL_EX(llfatOneLink, RECONSTRUCT)(FloatN* sitelink_even, FloatN* siteli
 					   FloatM* fatlink_even, FloatM* fatlink_odd,
 					   Float coeff0, Float coeff5, llfat_kernel_param_t kparam)
 {
+#if 0
+
   FloatN* my_sitelink;
   FloatM* my_fatlink;
   int sid = blockIdx.x*blockDim.x + threadIdx.x;
@@ -1293,9 +1434,220 @@ LLFAT_KERNEL_EX(llfatOneLink, RECONSTRUCT)(FloatN* sitelink_even, FloatN* siteli
     
     WRITE_FAT_MATRIX(my_fatlink,dir, idx);	 
   }
+#endif
     
   return;
 }
+
+__global__ void 
+LLFAT_KERNEL_NL(llfatOneLink, RECONSTRUCT)(FloatN* sitelink_even, FloatN* sitelink_odd,
+					   FloatM* fatlink_even, FloatM* fatlink_odd,
+					   Float coeff0, Float coeff5, llfat_kernel_param_t kparam)
+{
+  FloatN* my_sitelink;
+  FloatM* my_fatlink;
+  int sid = blockIdx.x*blockDim.x + threadIdx.x;
+  int idx = sid;
+  
+  if(sid >= 2*kparam.threads) return;
+  
+  short odd_bit= 0;
+  
+  my_sitelink = sitelink_even;
+  my_fatlink = fatlink_even;
+  if (idx >= Vh){
+    odd_bit=1;
+    idx = idx - Vh;
+    my_sitelink = sitelink_odd;
+    my_fatlink = fatlink_odd;
+  }
+  
+  int z1 = FAST_INT_DIVIDE(idx, X1h);
+  short x1h = idx - z1*X1h;
+  int z2 = FAST_INT_DIVIDE(z1, X2);
+  short x2 = z1 - z2*X2;
+  int x4 = FAST_INT_DIVIDE(z2, X3);
+  short x3 = z2 - x4*X3;
+  short x1odd = (x2 + x3 + x4 + odd_bit) & 1;
+  short x1 = 2*x1h + x1odd; 
+  short sign =1;   	
+  
+  int mem_idx = idx;
+
+  for(int dir=0;dir < 4; dir++){
+    LOAD_SITE_MATRIX(my_sitelink, dir, mem_idx, A);
+    COMPUTE_RECONSTRUCT_SIGN(sign, dir, x1, x2, x3, x4);
+    RECONSTRUCT_SITE_LINK(dir, mem_idx, sign, a);
+
+    LOAD_FAT_MATRIX(my_fatlink, dir, idx);
+    
+    SCALAR_MULT_SU3_MATRIX((coeff0 - 6.0*coeff5), a, fat); 
+    
+    WRITE_FAT_MATRIX(my_fatlink,dir, idx);	 
+    /*
+    if(idx == 0 && dir == 3 && odd_bit == 1){
+      printf("gpu gauge is (site_ga_stride=%d)\n", site_ga_stride);
+      printf("(%f %f) (%f %f) (%f %f)\n" 
+	     "(%f %f) (%f %f) (%f %f)\n" 
+	     "(%f %f) (%f %f) (%f %f)\n",
+	     a00_re, a00_im, a01_re, a01_im, a02_re, a02_im, 
+	     a10_re, a10_im, a11_re, a11_im, a12_re, a12_im,
+ 	     a20_re, a20_im, a21_re, a21_im, a22_re, a22_im);
+    }
+    */
+
+  }
+    
+  return;
+}
+
+
+
+
+template<int mu, int nu, int odd_bit>
+  __global__ void
+  LLFAT_KERNEL_NL(do_siteComputeGenStapleParity, RECONSTRUCT)(FloatM* staple_even, FloatM* staple_odd, 
+							      FloatN* sitelink_even, FloatN* sitelink_odd, 
+							      FloatM* fatlink_even, FloatM* fatlink_odd,	
+							      Float mycoeff, llfat_kernel_param_t kparam)
+{
+#if 0
+  __shared__ FloatM sd_data[NUM_FLOATS*64];
+  
+  //FloatM TEMPA0, TEMPA1, TEMPA2, TEMPA3, TEMPA4, TEMPA5, TEMPA6, TEMPA7, TEMPA8;
+  FloatM TEMPA5, TEMPA6, TEMPA7, TEMPA8;
+  FloatM STAPLE0, STAPLE1, STAPLE2, STAPLE3, STAPLE4, STAPLE5, STAPLE6, STAPLE7, STAPLE8;
+    
+  int mem_idx = blockIdx.x*blockDim.x + threadIdx.x;
+  if(mem_idx >= kparam.threads) return;
+
+  int z1 = FAST_INT_DIVIDE(mem_idx, D1h);
+  short x1h = mem_idx - z1*D1h;
+  int z2 = FAST_INT_DIVIDE(z1, D2);
+  short x2 = z1 - z2*D2;
+  short x4 = FAST_INT_DIVIDE(z2, D3);
+  short x3 = z2 - x4*D3;
+  
+  short x1odd = (x2 + x3 + x4 + odd_bit) & 1;
+  short x1 = 2*x1h + x1odd;
+  
+  x1 += kparam.base_idx;
+  x2 += kparam.base_idx;
+  x3 += kparam.base_idx;
+  x4 += kparam.base_idx;
+   
+  int ox1, ox2, ox3, ox4;
+
+  ox1 = x1 -2 ;
+  ox2 = x2 -2 ;
+  ox3 = x3 -2 ;
+  ox4 = x4 -2 ;
+  int X = ox4*X3X2X1 + ox3*X2X1 + ox2*X1 + ox1;
+  mem_idx = X/2;
+  
+  int new_mem_idx;
+  float sign =1;    
+  short new_x1 = x1;
+  short new_x2 = x2;
+  short new_x3 = x3;
+  short new_x4 = x4;
+
+
+  int spacecon_x = x4*E3E2 + x3*E2 + x2;
+  int spacecon_y = x4*E3E1 + x3*E1 + x1;
+  int spacecon_z = x4*E2E1 + x2*E1 + x1;
+  int spacecon_t = x3*E2E1 + x3*E2 + x1;
+  
+  /* Upper staple */
+  /* Computes the staple :
+   *                 mu (B)
+   *               +-------+
+   *       nu	   |	   | 
+   *	     (A)   |	   |(C)
+   *		   X	   X
+   *
+   */
+    
+  {
+    /* load matrix A*/
+    LOAD_EVEN_SITE_MATRIX(nu, mem_idx, A);   
+    COMPUTE_RECONSTRUCT_SIGN(sign, nu, x1, x2, x3, x4);
+    RECONSTRUCT_SITE_LINK(nu, mem_idx, sign, a);
+
+
+
+    /* load matrix B*/  
+    LLFAT_COMPUTE_NEW_IDX_PLUS_NL(nu, X);    
+    LOAD_ODD_SITE_MATRIX(mu, new_mem_idx, B);
+    COMPUTE_RECONSTRUCT_SIGN(sign, mu, new_x1, new_x2, new_x3, new_x4);    
+    RECONSTRUCT_SITE_LINK(mu, new_mem_idx, sign, b);
+    
+
+    MULT_SU3_NN(a, b, tempa);    
+    
+    /* load matrix C*/
+    
+    LLFAT_COMPUTE_NEW_IDX_PLUS_NL(mu, X);    
+    LOAD_ODD_SITE_MATRIX(nu, new_mem_idx, C);
+    COMPUTE_RECONSTRUCT_SIGN(sign, nu, new_x1, new_x2, new_x3, new_x4);    
+    RECONSTRUCT_SITE_LINK(nu, new_mem_idx, sign, c);
+
+    MULT_SU3_NA(tempa, c, staple);		   
+  }
+
+  /***************lower staple****************
+   *
+   *                   X       X
+   *             nu    |       | 
+   *	         (A)   |       | (C)
+   *		       +-------+
+   *                  mu (B)
+   *
+   *********************************************/
+  {
+    /* load matrix A*/
+    LLFAT_COMPUTE_NEW_IDX_MINUS_NL(nu,X);    
+    
+    LOAD_ODD_SITE_MATRIX(nu, (new_mem_idx), A);
+    COMPUTE_RECONSTRUCT_SIGN(sign, nu, new_x1, new_x2, new_x3, new_x4);        
+    RECONSTRUCT_SITE_LINK(nu, (new_mem_idx), sign, a);
+    
+    /* load matrix B*/				
+    LOAD_ODD_SITE_MATRIX(mu, (new_mem_idx), B);
+    COMPUTE_RECONSTRUCT_SIGN(sign, mu, new_x1, new_x2, new_x3, new_x4);    
+    RECONSTRUCT_SITE_LINK(mu, (new_mem_idx), sign, b);
+    
+    MULT_SU3_AN(a, b, tempa);
+    
+    /* load matrix C*/
+    LLFAT_COMPUTE_NEW_IDX_LOWER_STAPLE_NL(nu, mu);
+    LOAD_EVEN_SITE_MATRIX(nu, new_mem_idx, C);
+   
+    COMPUTE_RECONSTRUCT_SIGN(sign, nu, new_x1, new_x2, new_x3, new_x4);        
+    RECONSTRUCT_SITE_LINK(nu, new_mem_idx, sign, c);
+    
+    
+    MULT_SU3_NN(tempa, c, b);		
+    LLFAT_ADD_SU3_MATRIX(b, staple, staple);
+  }
+   
+  
+  if( !(x1 == 1 || x1 == X1 + 2 || x2 == 1 || x2 == X2 + 2
+	|| x3 == 1 || x3 == X3 + 2 || x4 == 1 || x4 == X4 + 2)){
+    int orig_idx = ((x4-2)* X3X2X1 + (x3-2)*X2X1 + (x2-2)*X1 + (x1-2))>>1;
+    
+    LOAD_EVEN_FAT_MATRIX(mu, orig_idx);
+    SCALAR_MULT_ADD_SU3_MATRIX(fat, staple, mycoeff, fat);
+    WRITE_FAT_MATRIX(fatlink_even,mu,  orig_idx);	
+  }
+  WRITE_STAPLE_MATRIX(staple_even, mem_idx);	
+
+#endif    
+  return;
+}
+
+
+
 
 
 #undef a00_re 

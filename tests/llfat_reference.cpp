@@ -301,12 +301,12 @@ void llfat_cpu(void** fatlink, su3_matrix** sitelink, Float* act_path_coeff)
     }
   }
   
-  
+  return;
+
   for (int dir=XUP; dir<=TUP; dir++){
     for(int nu=XUP; nu<=TUP; nu++){
       if(nu!=dir){
 	llfat_compute_gen_staple_field(staple,dir,nu,sitelink[dir], sitelink,fatlink, act_path_coeff[2], 0);
-
 
 	/* The Lepage term */
 	/* Note this also involves modifying c_1 (above) */

@@ -22,6 +22,7 @@ extern "C" {
   
   void loadLinkToGPU(FullGauge cudaGauge, void **cpuGauge, QudaGaugeParam* param);
   void loadLinkToGPU_ex(FullGauge cudaGauge, void **cpuGauge, QudaGaugeParam* param);
+  void loadLinkToGPU_nl(FullGauge cudaGauge, void **cpuGauge, QudaGaugeParam* param);
   void storeLinkToCPU(void* cpuGauge, FullGauge *cudaGauge, QudaGaugeParam* param);
   void createLinkQuda(FullGauge* cudaGauge, QudaGaugeParam* param);
   void createStapleQuda(FullStaple* cudaStaple, QudaGaugeParam* param);
