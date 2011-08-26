@@ -4,13 +4,13 @@
 #define REG_CREATE(s, value) QudaSumFloat s##0_x = value, s##1_x = value, s##0_y = value, s##1_y = value, \
     s##0_z = value, s##1_z = value
 #define REDUCE(s, i) dsadd(s##0_x, s##1_x, s##0_x, s##1_x, REDUCE_X_OPERATION(i), 0); \
-  dsadd(s##0_y, s##1_y, s##0_y, s##1_y, REDUCE_Y_OPERATION(i), 0) \
+  dsadd(s##0_y, s##1_y, s##0_y, s##1_y, REDUCE_Y_OPERATION(i), 0);	\
   dsadd(s##0_z, s##1_z, s##0_z, s##1_z, REDUCE_Z_OPERATION(i), 0)   
 #define SH_SUM(s, i, j) dsadd(s##_x[i], s##_x[i+1], s##_x[i], s##_x[i+1], s##_x[2*j], s##_x[2*j+1]); \
   dsadd(s##_y[i], s##_y[i+1], s##_y[i], s##_y[i+1], s##_y[2*j], s##_y[2*j+1]); \
   dsadd(s##_z[i], s##_z[i+1], s##_z[i], s##_z[i+1], s##_z[2*j], s##_z[2*j+1]);
-#define SH_SET(s, i, t) s##_x[i] = t##0_x, s##_x[i+1] = t##1_x, s##_y[i] = t##0_y, s##_y[i+1] = t##1_y \
-    s##_z[i] = t##0_z, s##_z[i+1] = z##1_t
+#define SH_SET(s, i, t) s##_x[i] = t##0_x, s##_x[i+1] = t##1_x, s##_y[i] = t##0_y, \
+    s##_y[i+1] = t##1_y, s##_z[i] = t##0_z, s##_z[i+1] = t##1_z
 #define SH_EVAL(s, i) s[i] + s[i+1]
 
 #else
