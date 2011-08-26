@@ -20,9 +20,46 @@
 #define QudaSumFloat3 double3
 #else
 #define REDUCE_TYPE REDUCE_KAHAN
-#define QudaSumFloat float
+
+struct doublesingle {
+  float x;
+  float y;
+  doublesingle(const float &x, const int &y) : x(x), y(y) {;}
+  doublesingle(const int &x, const int &y) : x(x), y(y) {;}
+  doublesingle(const float &x, const float &y) : x(x), y(y) {;}
+  doublesingle(const doublesingle &ds) : x(ds.x), y(ds.y) {;}
+  doublesingle(const volatile doublesingle &ds) : x(ds.x), y(ds.y) {;}
+};
+
+__host__ __device__ double operator+=(double &x, const doublesingle y) {
+  x += y.x;
+  x += y.y;
+  return x;
+}
+
+#define QudaSumFloat doublesingle
 #define QudaSumComplex cuComplex
 #define QudaSumFloat3 float3
+
+// Computes c = a + b in "double single" precision.
+__device__ void dsadd(volatile doublesingle &c, const volatile doublesingle &a, const doublesingle b) {
+  float t1 = a.x + b.x;
+  float e = t1 - a.x;
+  float t2 = ((b.x-e) + (a.x - (t1 - e))) + a.y + b.y;
+  // The result is t1 + t2, after normalization
+  c.x = e = t1 + t2;
+  c.y = t2 - (e - t1);
+}
+
+__device__ doublesingle operator+=(volatile doublesingle &a, const doublesingle b) {
+  dsadd(a, a, b); 
+  return a;
+}
+
+__device__ doublesingle operator+=(volatile doublesingle &a, const float b) {
+  dsadd(a, a, doublesingle(b, 0)); 
+  return a;
+}
 #endif
 
 // Required for the reduction kernels
@@ -108,13 +145,13 @@ void initBlas(void)
 {  
   // Set the reduction sub-array to largest we will use
   if (!d_reduce) {
-    if (cudaMalloc((void**) &d_reduce, REDUCE_MAX_BLOCKS*sizeof(QudaSumFloat3)) == cudaErrorMemoryAllocation) {
+    if (cudaMalloc((void**) &d_reduce, 3*REDUCE_MAX_BLOCKS*sizeof(QudaSumFloat)) == cudaErrorMemoryAllocation) {
       errorQuda("Error allocating device reduction array");
     }
   }
 
   if (!h_reduce) {
-    if (cudaMallocHost((void**) &h_reduce, REDUCE_MAX_BLOCKS*sizeof(QudaSumFloat3)) == cudaErrorMemoryAllocation) {
+    if (cudaMallocHost((void**) &h_reduce, 3*REDUCE_MAX_BLOCKS*sizeof(QudaSumFloat)) == cudaErrorMemoryAllocation) {
       errorQuda("Error allocating host reduction array");
     }
   }
@@ -2166,47 +2203,6 @@ void caxpbypzYmbwCuda(const Complex &a, cudaColorSpinorField &x, const Complex &
   if (!blasTuning) checkCudaError();
 }
 
-#if (__CUDA_ARCH__ < 130)
-// Computes c = a + b in "double single" precision.
-__device__ void dsadd(volatile QudaSumFloat &c0, volatile QudaSumFloat &c1, const volatile QudaSumFloat &a0, 
-		      const volatile QudaSumFloat &a1, const float b0, const float b1) {
-  // Compute dsa + dsb using Knuth's trick.
-  QudaSumFloat t1 = a0 + b0;
-  QudaSumFloat e = t1 - a0;
-  QudaSumFloat t2 = ((b0 - e) + (a0 - (t1 - e))) + a1 + b1;
-  // The result is t1 + t2, after normalization.
-  c0 = e = t1 + t2;
-  c1 = t2 - (e - t1);
-}
-
-// Computes c = a + b in "double single" precision (float3 version)
-__device__ void dsadd3(volatile QudaSumFloat3 &c0, volatile QudaSumFloat3 &c1, const volatile QudaSumFloat3 &a0, 
-		       const volatile QudaSumFloat3 &a1, const volatile QudaSumFloat3 &b0, const volatile QudaSumFloat3 &b1) {
-  // Compute dsa + dsb using Knuth's trick.
-  QudaSumFloat t1 = a0.x + b0.x;
-  QudaSumFloat e = t1 - a0.x;
-  QudaSumFloat t2 = ((b0.x - e) + (a0.x - (t1 - e))) + a1.x + b1.x;
-  // The result is t1 + t2, after normalization.
-  c0.x = e = t1 + t2;
-  c1.x = t2 - (e - t1);
-  
-  // Compute dsa + dsb using Knuth's trick.
-  t1 = a0.y + b0.y;
-  e = t1 - a0.y;
-  t2 = ((b0.y - e) + (a0.y - (t1 - e))) + a1.y + b1.y;
-  // The result is t1 + t2, after normalization.
-  c0.y = e = t1 + t2;
-  c1.y = t2 - (e - t1);
-  
-  // Compute dsa + dsb using Knuth's trick.
-  t1 = a0.z + b0.z;
-  e = t1 - a0.z;
-  t2 = ((b0.z - e) + (a0.z - (t1 - e))) + a1.z + b1.z;
-  // The result is t1 + t2, after normalization.
-  c0.z = e = t1 + t2;
-  c1.z = t2 - (e - t1);
-}
-#endif
 
 //
 // double normCuda(float *a, int n) {}

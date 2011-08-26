@@ -1,27 +1,22 @@
 #if (REDUCE_TYPE == REDUCE_KAHAN) // Kahan compensated summation
 
 #define SH_STRIDE 2 // stride is two elements
-#define SH_SUM(s, i, j) dsadd(s[i], s[i+1], s[i], s[i+1], s[2*j], s[2*j+1]) 
-#define SH_SET(s, i, x) s[i] = x##0, s[i+1] = x##1
-#define SH_EVAL(s, i) s[i] + s[i+1]
-#define REG_CREATE(x, value) QudaSumFloat x##0 = value, x##1 = value
-#define REDUCE(x, i) dsadd(x##0, x##1, x##0, x##1, REDUCE_OPERATION(i), 0)
+#define REG_CREATE(x, value) QudaSumFloat x(value, value)
 
 #else // Regular summation
 
 #define SH_STRIDE 1
-#define SH_SUM(s, i, j) s[i] += s[j]
-#define SH_SET(s, i, x) s[i] = x
-#define SH_EVAL(s, i) s[i]
 #define REG_CREATE(x, value) QudaSumFloat x = value
-#define REDUCE(x, i) x += REDUCE_OPERATION(i)
 
 #endif
 
+#define SH_SET(s, i, t) s[i] = t
+#define REDUCE(x, i) x += REDUCE_OPERATION(i)
+#define SH_SUM(s, i, j) s[i] += s[j]
 #define AUXILIARY(i) REDUCE_AUXILIARY(i);
 #define SUMFLOAT_P(x, y) QudaSumFloat *s = y;
 #define SUMFLOAT_EQ_SUMFLOAT(a, b) QudaSumFloat a = b
-#define WRITE_GLOBAL(x, i, s, j) x[i] = SH_EVAL(s,j)
+#define WRITE_GLOBAL(x, i, s, j) x[i] = s[j]
 
 #include "reduce_core.h"
 
@@ -74,7 +69,6 @@ double REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision pr
 #undef SH_STRIDE
 #undef SH_SUM
 #undef SH_SET
-#undef SH_EVAL
 #undef REG_CREATE
 #undef REDUCE
 

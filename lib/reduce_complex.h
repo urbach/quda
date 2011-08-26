@@ -1,29 +1,22 @@
 #if (REDUCE_TYPE == REDUCE_KAHAN)
 
 #define SH_STRIDE 2
-#define REG_CREATE(x, value) QudaSumFloat x##0_r = value, x##1_r = value, x##0_i = value, x##1_i = value
-#define REDUCE(x, i) dsadd(x##0_r, x##1_r, x##0_r, x##1_r, REDUCE_REAL_OPERATION(i), 0); \
-  dsadd(x##0_i, x##1_i, x##0_i, x##1_i, REDUCE_IMAG_OPERATION(i), 0)
-#define SH_SUM(s, i, j) dsadd(s##_r[i], s##_r[i+1], s##_r[i], s##_r[i+1], s##_r[2*j], s##_r[2*j+1]); \
-  dsadd(s##_i[i], s##_i[i+1], s##_i[i], s##_i[i+1], s##_i[2*j], s##_i[2*j+1]);
-#define SH_SET(s, i, x) s##_r[i] = x##0_r, s##_r[i+1] = x##1_r, s##_i[i] = x##0_i, s##_i[i+1] = x##1_i
-#define SH_EVAL(s, i) s[i] + s[i+1]
+#define REG_CREATE(x, value) QudaSumFloat x##_r(value, value), x##_i(value, value)
 
 #else
 
 #define SH_STRIDE 1
 #define REG_CREATE(x, value) QudaSumFloat x##_r = value, x##_i = value
-#define REDUCE(x, i) x##_r += REDUCE_REAL_OPERATION(i), x##_i += REDUCE_IMAG_OPERATION(i)
-#define SH_SUM(s, i, j) s##_r[i] += s##_r[j], s##_i[i] += s##_i[j]
-#define SH_SET(s, i, x) s##_r[i] = x##_r, s##_i[i] = x##_i
-#define SH_EVAL(s, i) s[i]
 
 #endif
 
+#define SH_SET(s, i, t) s##_r[i] = t##_r, s##_i[i] = t##_i
+#define REDUCE(x, i) x##_r += REDUCE_REAL_OPERATION(i), x##_i += REDUCE_IMAG_OPERATION(i)
+#define SH_SUM(s, i, j) s##_r[i] += s##_r[j], s##_i[i] += s##_i[j]
 #define AUXILIARY(i) REDUCE_REAL_AUXILIARY(i); REDUCE_IMAG_AUXILIARY(i)
 #define SUMFLOAT_P(x, y) QudaSumFloat *x##_r = y, *x##_i = y + SH_STRIDE*reduce_threads
 #define SUMFLOAT_EQ_SUMFLOAT(a, b) QudaSumFloat a##_r = b##_r, a##_i = b##_i
-#define WRITE_GLOBAL(array, i, s, j) array[i] = SH_EVAL(s##_r, j), array[i+gridDim.x] = SH_EVAL(s##_i, j)
+#define WRITE_GLOBAL(array, i, s, j) array[i] = s##_r[j], array[i+gridDim.x] = s##_i[j]
 
 #include "reduce_core.h"
 
