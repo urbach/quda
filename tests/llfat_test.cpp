@@ -29,6 +29,7 @@ static FullStaple cudaStaple, cudaStaple_ex, cudaStaple_nl;
 static FullStaple cudaStaple1, cudaStaple1_ex, cudaStaple1_nl;
 QudaGaugeParam gaugeParam;
 QudaGaugeParam gaugeParam_ex;
+QudaGaugeParam gaugeParam_nl;
 void *fatlink, *sitelink[4], *reflink[4];
 
 void* ghost_sitelink[4];
@@ -63,7 +64,8 @@ int Vsh_ex_x, Vsh_ex_y, Vsh_ex_z, Vsh_ex_t;
 
 int X1, X1h, X2, X3, X4;
 int E1, E1h, E2, E3, E4;
-
+int L1, L1h, L2, L3, L4;
+int Vh_nl;
 
 extern int xdim, ydim, zdim, tdim;
 extern int gridsize_from_cmdline[];
@@ -124,6 +126,13 @@ setDims(int *X) {
   E1=X1+4; E2=X2+4; E3=X3+4; E4=X4+4;
   E1h=E1/2;
   
+  L1 = X[0] + 2;
+  L2 = X[0] + 2;
+  L3 = X[0] + 2;
+  L4 = X[0] + 2;
+  L1h = L1/2;
+  
+  Vh_nl = L1*L2*L3*L4/2;
 }
 
 static void
@@ -219,11 +228,10 @@ llfat_init(int test)
   }
 
   createSiteLinkCPU(sitelink, gaugeParam.cpu_prec, 1);
-
   /*
   {
-    double* data = (double*)sitelink[3];
-    data += Vh * gaugeSiteSize;
+    double* data = (double*)sitelink[0];
+    //data += Vh * gaugeSiteSize;
     printf("cpu sitelink=\n");
     printf("(%f %f) (%f %f) (%f %f)\n"
 	   "(%f %f) (%f %f) (%f %f)\n"
@@ -233,7 +241,6 @@ llfat_init(int test)
 	   data[12], data[13], data[14], data[15], data[16], data[17]); 
   }
   */
-
 
   for(i=0;i < 4;i++){
 #if (CUDA_VERSION >=4000)
@@ -250,18 +257,18 @@ llfat_init(int test)
   } 
   
   int nl_ghost_len[]= {
-    E4*E3*E2/2 * 4, // "divided by 2" comes from even/odd division, "*4" comes from 2 faces and back/fwd 
-    E4*E3*E1/2 * 4,
-    E4*E2*E1/2 * 4,
-    E3*E2*E1/2 * 4
+    E4*E3*E2/2 * 2, // "divided by 2" comes from even/odd division, "*4" comes from back/fwd 
+    E4*E3*E1/2 * 2,
+    E4*E2*E1/2 * 2,
+    E3*E2*E1/2 * 2
   };
   int nl_tot_ghost_len = nl_ghost_len[0]+nl_ghost_len[1]+nl_ghost_len[2]+nl_ghost_len[3];
   
   for(i=0;i < 4;i++){
 #if (CUDA_VERSION >=4000)
-    cudaMallocHost((void**)&sitelink_nl[i], 2*(Vh+nl_tot_ghost_len)*gaugeSiteSize* gSize);
+    cudaMallocHost((void**)&sitelink_nl[i], 2*(Vh_nl+nl_tot_ghost_len)*gaugeSiteSize* gSize);
 #else
-    sitelink_nl[i] = malloc(2*(Vh+nl_tot_ghost_len)*gaugeSiteSize* gSize);
+    sitelink_nl[i] = malloc(2*(Vh_nl+nl_tot_ghost_len)*gaugeSiteSize* gSize);
 #endif
     if (sitelink_nl[i] == NULL){
       fprintf(stderr, "ERROR: malloc failed for sitelink_nl[%d]\n", i);
@@ -363,15 +370,20 @@ llfat_init(int test)
     }
   case 2:
     {
-      gaugeParam.site_ga_pad = gaugeParam.ga_pad 
-	= 5*(E2*E3*E4/2+ E1*E3*E4/2+E1*E2*E4/2+E1*E2*E3/2);
-      gaugeParam.reconstruct = link_recon;
-      createLinkQuda(&cudaSiteLink_nl, &gaugeParam);
+      memcpy(&gaugeParam_nl, &gaugeParam, sizeof(QudaGaugeParam));
+      gaugeParam_nl.X[0]= L1;
+      gaugeParam_nl.X[1]= L2;
+      gaugeParam_nl.X[2]= L3;
+      gaugeParam_nl.X[3]= L4;
+      gaugeParam_nl.site_ga_pad = gaugeParam_nl.ga_pad 
+	= 3*(E2*E3*E4/2+ E1*E3*E4/2+E1*E2*E4/2+E1*E2*E3/2);
+      gaugeParam_nl.reconstruct = link_recon;
+      createLinkQuda(&cudaSiteLink_nl, &gaugeParam_nl);
       
-      gaugeParam.staple_pad
-	= 5*(E2*E3*E4/2+ E1*E3*E4/2+E1*E2*E4/2+E1*E2*E3/2);
-      createStapleQuda(&cudaStaple_nl, &gaugeParam);
-      createStapleQuda(&cudaStaple1_nl, &gaugeParam);
+      gaugeParam_nl.staple_pad
+	= 3*(E2*E3*E4/2+ E1*E3*E4/2+E1*E2*E4/2+E1*E2*E3/2);
+      createStapleQuda(&cudaStaple_nl, &gaugeParam_nl);
+      createStapleQuda(&cudaStaple1_nl, &gaugeParam_nl);
       
       break;   
       
@@ -503,11 +515,11 @@ llfat_test(int test)
     break;
 
   case 2:
-    llfat_init_cuda_nl(&gaugeParam);
+    llfat_init_cuda_nl(&gaugeParam_nl);
     exchange_cpu_sitelink_nl(gaugeParam.X, sitelink_ex, sitelink_nl, gaugeParam.cpu_prec, 1);    
     gaugeParam.ga_pad = gaugeParam.site_ga_pad;
     gaugeParam.reconstruct = link_recon;
-    loadLinkToGPU_nl(cudaSiteLink_nl, sitelink_nl, &gaugeParam);
+    loadLinkToGPU_nl(cudaSiteLink_nl, sitelink_nl, &gaugeParam_nl);
     gettimeofday(&t1, NULL);  
     llfat_cuda_nl(cudaFatLink, cudaSiteLink_nl, cudaStaple_nl, cudaStaple1_nl, &gaugeParam, act_path_coeff_2);    
 

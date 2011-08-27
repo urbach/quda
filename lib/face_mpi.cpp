@@ -848,11 +848,14 @@ void exchange_cpu_sitelink_nl(int* X, void** sitelink_ex, void** sitelink_nl,
 
   int gSize = (int)gPrecision;
   int X1,X2,X3,X4, X1h;
-  int E1,E2,E3,E4, E1h;  
+  int E1,E2,E3,E4, E1h;
+  int L1,L2,L3,L4, L1h;
   X1 = X[0]; X2 = X[1]; X3 = X[2]; X4 = X[3]; 
   X1h = X1/2;
   E1 = X[0]+4; E2 = X[1]+4; E3 = X[2]+4; E4 = X[3]+4; 
   E1h = E1/2;
+  L1 = X[0]+2; L2 = X[1]+2; L3 = X[2]+2; L4 = X[3]+2; 
+  L1h = L1/2;
   
   int Vh=X4*X3*X2*X1/2;
   int E3E2E1=E3*E2*E1;
@@ -864,12 +867,15 @@ void exchange_cpu_sitelink_nl(int* X, void** sitelink_ex, void** sitelink_nl,
   int E4E2E1=E4*E2*E1;
   int V_ex = E4*E3*E2*E1;
   int Vh_ex = V_ex /2;
-  
+  int Vh_nl=L4*L3*L2*L1/2;
+
+
+
   int ghost_len[]= {
-    E4E3E2/2 * 4, // "divided by 2" comes from even/odd division, "*4" comes from 2 faces and back/fwd 
-    E4E3E1/2 * 4,
-    E4E2E1/2 * 4,
-    E3E2E1/2 * 4
+    E4E3E2/2 * 2, // "divided by 2" comes from even/odd division, "*2" comes from back/fwd 
+    E4E3E1/2 * 2,
+    E4E2E1/2 * 2,
+    E3E2E1/2 * 2
   };
   int ghost_tot_len = ghost_len[0]+ghost_len[1]+ghost_len[2]+ghost_len[3];
   
@@ -902,7 +908,7 @@ void exchange_cpu_sitelink_nl(int* X, void** sitelink_ex, void** sitelink_nl,
     }
 
     int ox1, ox2, ox3, ox4;
-
+#if 0
     if(x1 < 2){
       int idx = (Vh+ghost_tot_len)*oddBit + Vh + (x1*E4E3E2 + x4*E3E2 + x3*E2 + x2)/2  ;
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i);
@@ -939,26 +945,27 @@ void exchange_cpu_sitelink_nl(int* X, void** sitelink_ex, void** sitelink_nl,
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i) ;     
     }
 
+#endif
     
-    if( x1< 2 || x1 >= X1 +2 
-	|| x2< 2 || x2 >= X2 +2 
-	|| x3< 2 || x3 >= X3 +2 
-	|| x4< 2 || x4 >= X4 +2){
+    if( x1< 1 || x1 >= X1 +3 
+	|| x2< 1 || x2 >= X2 +3 
+	|| x3< 1 || x3 >= X3 +3 
+	|| x4< 1 || x4 >= X4 +3){
       continue;
     }
     
  
-
-
-   
-    ox1 = (x1 - 2 + X1) % X1;
-    ox2 = (x2 - 2 + X2) % X2;
-    ox3 = (x3 - 2 + X3) % X3;
-    ox4 = (x4 - 2 + X4) % X4;
     
-    int idx = (ox4*X3*X2*X1+ox3*X2*X1+ox2*X1+ox1)>>1;
+    
+   
+    ox1 = x1 - 1;
+    ox2 = x2 - 1;
+    ox3 = x3 - 1;
+    ox4 = x4 - 1;
+    
+    int idx = (ox4*L3*L2*L1+ox3*L2*L1+ox2*L1+ox1)>>1;
     if(oddBit){
-      idx += (Vh+ghost_tot_len);
+      idx += (Vh_nl+ghost_tot_len);
     }
 
     for(int dir= 0; dir < 4; dir++){
@@ -967,10 +974,10 @@ void exchange_cpu_sitelink_nl(int* X, void** sitelink_ex, void** sitelink_nl,
       memcpy(dst+idx*gaugeSiteSize*gSize, src+i*gaugeSiteSize*gSize, gaugeSiteSize*gSize);	
     }//dir
     /*
-    if( ox1 == 0 && ox2 == 0 && ox3 == 0 && ox4 == 0)
+    if( ox1 == 1 && ox2 == 1 && ox3 == 1 && ox4 == 1)
       {
-	double* data = (double*)sitelink_nl[0];
-	printf("face sitelink is \n");
+	double* data = ((double*)sitelink_nl[0]+idx*18);
+	printf("face sitelink inloop is  \n");
 	printf("(%f %f) (%f %f) (%f %f)\n"
 	       "(%f %f) (%f %f) (%f %f)\n"
 	       "(%f %f) (%f %f) (%f %f)\n",
@@ -979,12 +986,13 @@ void exchange_cpu_sitelink_nl(int* X, void** sitelink_ex, void** sitelink_nl,
 	       data[12], data[13], data[14], data[15], data[16], data[17]); 
       }
     */
+
   }//i
   
   /*
   {
-    double* data = (double*)sitelink_nl[3];
-    data += (Vh+ghost_tot_len) * 18;
+    double* data = (double*)sitelink_nl[0];
+    //data += (Vh+ghost_tot_len) * 18;
     printf("face sitelink is \n");
     printf("(%f %f) (%f %f) (%f %f)\n"
 	   "(%f %f) (%f %f) (%f %f)\n"

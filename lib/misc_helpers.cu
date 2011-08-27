@@ -32,7 +32,7 @@ do_link_format_cpu_to_gpu(FloatN* dst, Float* src,
 {
   int tid = blockIdx.x * blockDim.x +  threadIdx.x;
   int thread0_tid = blockIdx.x * blockDim.x;
-  __shared__ FloatN buf[M/N*BLOCKSIZE];
+  __shared__ FloatN buf[M/N*8];
   
   int dir;
   int j;
@@ -73,7 +73,7 @@ link_format_cpu_to_gpu(void* dst, void* src,
 		       int ghostV,
 		       QudaPrecision prec, cudaStream_t stream)
 {
-  dim3 blockDim(BLOCKSIZE);
+  dim3 blockDim(8);
 #ifdef MULTI_GPU  
   dim3 gridDim((Vh+ghostV)/blockDim.x);
 #else
@@ -81,7 +81,7 @@ link_format_cpu_to_gpu(void* dst, void* src,
 #endif
   //(Vh+ghostV) must be multipl of BLOCKSIZE or the kernel does not work
   if ((Vh+ghostV) % blockDim.x != 0){
-    printf("ERROR: Vh(%d) is not multiple of blocksize(%d), exitting\n", Vh, blockDim.x);
+    errorQuda("ERROR: Vh+ghostV(%d) is not multiple of blocksize(%d), exitting\n", Vh+ghostV, blockDim.x);
     exit(1);
   }
   

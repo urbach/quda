@@ -1472,20 +1472,25 @@ LLFAT_KERNEL_NL(llfatOneLink, RECONSTRUCT)(FloatN* sitelink_even, FloatN* siteli
   short x1 = 2*x1h + x1odd; 
   short sign =1;   	
   
-  int mem_idx = idx;
+  x1 += 1;
+  x2 += 1;
+  x3 += 1;
+  x4 += 1;
 
+  int mem_idx = (x4*L3L2L1+x3*L2L1+x2*L1+x1)/2;
+  
   for(int dir=0;dir < 4; dir++){
     LOAD_SITE_MATRIX(my_sitelink, dir, mem_idx, A);
     COMPUTE_RECONSTRUCT_SIGN(sign, dir, x1, x2, x3, x4);
     RECONSTRUCT_SITE_LINK(dir, mem_idx, sign, a);
-
+    
     LOAD_FAT_MATRIX(my_fatlink, dir, idx);
     
     SCALAR_MULT_SU3_MATRIX((coeff0 - 6.0*coeff5), a, fat); 
     
     WRITE_FAT_MATRIX(my_fatlink,dir, idx);	 
     /*
-    if(idx == 0 && dir == 3 && odd_bit == 1){
+    if(idx == 0 && dir == 0 && odd_bit == 0){
       printf("gpu gauge is (site_ga_stride=%d)\n", site_ga_stride);
       printf("(%f %f) (%f %f) (%f %f)\n" 
 	     "(%f %f) (%f %f) (%f %f)\n" 

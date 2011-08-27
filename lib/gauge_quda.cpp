@@ -2213,7 +2213,7 @@ loadLinkToGPU_ex(FullGauge cudaGauge, void **cpuGauge, QudaGaugeParam* param_ex)
 
 template<typename FloatN, typename Float>
 static void 
-do_loadLinkToGPU_nl(int* X, FloatN *even, FloatN *odd, Float **cpuGauge, 
+do_loadLinkToGPU_nl(int* L, FloatN *even, FloatN *odd, Float **cpuGauge, 
 		    ReconstructType reconstruct, int bytes, int Vh, int pad, 
 		    QudaPrecision prec) 
 {
@@ -2221,17 +2221,17 @@ do_loadLinkToGPU_nl(int* X, FloatN *even, FloatN *odd, Float **cpuGauge,
   for(int i=0;i < 2; i++){
     cudaStreamCreate(&streams[i]);
   }
-
-  int E4E3E2 = (X[3]+4)*(X[2]+4)*(X[1]+4);
-  int E4E3E1 = (X[3]+4)*(X[2]+4)*(X[0]+4);
-  int E4E2E1 = (X[3]+4)*(X[1]+4)*(X[0]+4);
-  int E3E2E1 = (X[2]+4)*(X[1]+4)*(X[1]+4);
+  int Vh_nl = L[0]*L[1]*L[2]*L[3]/2;
+  int E4E3E2 = (L[3]+2)*(L[2]+2)*(L[1]+2);
+  int E4E3E1 = (L[3]+2)*(L[2]+2)*(L[0]+2);
+  int E4E2E1 = (L[3]+2)*(L[1]+2)*(L[0]+2);
+  int E3E2E1 = (L[2]+2)*(L[1]+2)*(L[1]+2);
 
   int i;
   char* tmp_even;
   char* tmp_odd;
-  int len = Vh*gaugeSiteSize*sizeof(Float);
-  int ghostV = 2*(E4E3E2+E4E3E1+E4E2E1+E3E2E1);
+  int len = Vh_nl*gaugeSiteSize*sizeof(Float);
+  int ghostV = E4E3E2+E4E3E1+E4E2E1+E3E2E1;
   int glen_sum = ghostV *gaugeSiteSize*sizeof(Float);
   cudaMalloc(&tmp_even, 4*(len+glen_sum)); CUERR;
   cudaMalloc(&tmp_odd, 4*(len+glen_sum)); CUERR;
@@ -2243,7 +2243,7 @@ do_loadLinkToGPU_nl(int* X, FloatN *even, FloatN *odd, Float **cpuGauge,
 #else
     cudaMemcpy(tmp_even + i*(len+glen_sum), cpuGauge[i], len+glen_sum, cudaMemcpyHostToDevice); 
 #endif
-  
+    
   }
   
   link_format_cpu_to_gpu((void*)even, (void*)tmp_even,  reconstruct, bytes, Vh, pad, ghostV, prec, streams[0]); CUERR;
@@ -2274,14 +2274,14 @@ do_loadLinkToGPU_nl(int* X, FloatN *even, FloatN *odd, Float **cpuGauge,
 
 
 void 
-loadLinkToGPU_nl(FullGauge cudaGauge, void **cpuGauge, QudaGaugeParam* param)
+loadLinkToGPU_nl(FullGauge cudaGauge, void **cpuGauge, QudaGaugeParam* param_nl)
 {
   
   /*
   {
-    double* data = (double*)cpuGauge[3];
-    data += (cudaGauge.volumeCB+param->ga_pad)*18;
-    printf("gauge_quda sitelink is (cudaGauge.volumeCB=%d, pad=%d)\n", cudaGauge.volumeCB, param->ga_pad);
+    double* data = (double*)cpuGauge[0];
+    //data += (cudaGauge.volumeCB+param_nl->ga_pad)*18;
+    printf("gauge_quda sitelink is (cudaGauge.volumeCB=%d, pad=%d)\n", cudaGauge.volumeCB, param_nl->ga_pad);
     printf("(%f %f) (%f %f) (%f %f)\n"
 	   "(%f %f) (%f %f) (%f %f)\n"
 	   "(%f %f) (%f %f) (%f %f)\n",
@@ -2289,26 +2289,27 @@ loadLinkToGPU_nl(FullGauge cudaGauge, void **cpuGauge, QudaGaugeParam* param)
 	   data[6], data[7], data[8], data[9], data[10], data[11], 
 	   data[12], data[13], data[14], data[15], data[16], data[17]); 
   }
+  
   */
 
 
-  if (param->cpu_prec  != param->cuda_prec){
+  if (param_nl->cpu_prec  != param_nl->cuda_prec){
     printf("ERROR: cpu precision and cuda precision must be the same in this function %s\n", __FUNCTION__);
     exit(1);
   }
-  QudaPrecision prec= param->cpu_prec;
+  QudaPrecision prec= param_nl->cpu_prec;
   
-  int* X = param->X;
-  int pad = param->ga_pad;
+  int* L = param_nl->X;
+  int pad = param_nl->ga_pad;
   
   int optflag=1;
   
   if (prec == QUDA_DOUBLE_PRECISION) {
-    do_loadLinkToGPU_nl(X, (double2*)(cudaGauge.even), (double2*)(cudaGauge.odd), (double**)cpuGauge, 
+    do_loadLinkToGPU_nl(L, (double2*)(cudaGauge.even), (double2*)(cudaGauge.odd), (double**)cpuGauge, 
 			cudaGauge.reconstruct, cudaGauge.bytes, cudaGauge.volumeCB, pad, 
 			prec);
   } else if (prec == QUDA_SINGLE_PRECISION) {
-    do_loadLinkToGPU_nl(X, (float2*)(cudaGauge.even), (float2*)(cudaGauge.odd), (float**)cpuGauge, 
+    do_loadLinkToGPU_nl(L, (float2*)(cudaGauge.even), (float2*)(cudaGauge.odd), (float**)cpuGauge, 
 			cudaGauge.reconstruct, cudaGauge.bytes, cudaGauge.volumeCB, pad, 
 			prec);    
   }else{
