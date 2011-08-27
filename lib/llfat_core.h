@@ -406,16 +406,16 @@
 #define LLFAT_COMPUTE_NEW_IDX_PLUS_NL(mydir, idx) do {			\
     switch(mydir){                                                      \
     case 0:                                                             \
-      new_mem_idx = (x1==X1m1)? ((Vh+ E4E3E2+ spacecon_x)*xcomm+(idx - X1m1)/2*(1-xcomm)):((idx+1)>>1); \
+      new_mem_idx = (x1==L1m1)? ((Vh_nl+ E4E3E2/2+ spacecon_x)*xcomm+(idx - L1m1)/2*(1-xcomm)):((idx+1)>>1); \
       break;                                                            \
     case 1:                                                             \
-      new_mem_idx = (x2==X2m1)? ((Vh+2*E4E3E2+E4E3E1+ spacecon_y)*ycomm+(idx-X2X1mX1)/2*(1-ycomm)):((idx+X1)>>1); \
+      new_mem_idx = (x2==L2m1)? ((Vh_nl+E4E3E2+E4E3E1/2+ spacecon_y)*ycomm+(idx-L2L1mL1)/2*(1-ycomm)):((idx+L1)>>1); \
       break;                                                            \
     case 2:                                                             \
-      new_mem_idx = (x3==X3m1)? ((Vh+2*(E4E3E2+E4E3E1)+E4E2E1+ spacecon_z)*zcomm+(idx-X3X2X1mX2X1)/2*(1-zcomm)):((idx+X2X1)>>1); \
+      new_mem_idx = (x3==L3m1)? ((Vh_nl+E4E3E2+E4E3E1+E4E2E1/2+ spacecon_z)*zcomm+(idx-L3L2L1mL2L1)/2*(1-zcomm)):((idx+L2L1)>>1); \
       break;								\
     case 3:								\
-      new_mem_idx = (x4==X4m1)? ((Vh+2*(E4E3E2+E4E3E1+E4E2E1)+E3E2E1+spacecon_t))*tcomm+(idx-X4X3X2X1mX3X2X1)/2*(1-tcomm): ((idx+X3X2X1)>>1); \
+      new_mem_idx = (x4==L4m1)? ((Vh_nl+E4E3E2+E4E3E1+E4E2E1+E3E2E1/2+spacecon_t))*tcomm+(idx-L4L3L2L1mL3L2L1)/2*(1-tcomm): ((idx+L3L2L1)>>1); \
       break;                                                            \
     }                                                                   \
     UPDATE_COOR_PLUS(mydir, idx);					\
@@ -461,16 +461,16 @@
 #define LLFAT_COMPUTE_NEW_IDX_MINUS_NL(mydir, idx) do {			\
     switch(mydir){                                                      \
     case 0:                                                             \
-      new_mem_idx = (x1==0)?( (Vh+spacecon_x)*xcomm+(idx+X1m1)/2*(1-xcomm)):((idx-1) >> 1); \
+      new_mem_idx = (x1==0)?( (Vh_nl+spacecon_x)*xcomm+(idx+L1m1)/2*(1-xcomm)):((idx-1) >> 1); \
       break;                                                            \
     case 1:                                                             \
-      new_mem_idx = (x2==0)?( (Vh+2*E4E3E2+spacecon_y)*ycomm+(idx+X2X1mX1)/2*(1-ycomm)):((idx-X1) >> 1); \
+      new_mem_idx = (x2==0)?( (Vh_nl+E4E3E2+spacecon_y)*ycomm+(idx+L2L1mL1)/2*(1-ycomm)):((idx-L1) >> 1); \
       break;                                                            \
     case 2:                                                             \
-      new_mem_idx = (x3==0)?((Vh+2*(E4E3E2+E4E3E1)+spacecon_z)*zcomm+(idx+X3X2X1mX2X1)/2*(1-zcomm)):((idx-X2X1) >> 1); \
+      new_mem_idx = (x3==0)?((Vh_nl+E4E3E2+E4E3E1+spacecon_z)*zcomm+(idx+L3L2L1mL2L1)/2*(1-zcomm)):((idx-L2L1) >> 1); \
       break;                                                            \
     case 3:                                                             \
-      new_mem_idx = (x4==0)?((Vh+2*(E4E3E2+E4E3E1+E4E2E1)+ spacecon_t)*tcomm + (idx+X4X3X2X1mX3X2X1)/2*(1-tcomm)):((idx-X3X2X1) >> 1); \
+      new_mem_idx = (x4==0)?((Vh_nl+E4E3E2+E4E3E1+E4E2E1+ spacecon_t)*tcomm + (idx+L4L3L2L1mL3L2L1)/2*(1-tcomm)):((idx-L3L2L1) >> 1); \
       break;                                                            \
     }                                                                   \
     UPDATE_COOR_MINUS(mydir, idx);					\
@@ -599,73 +599,68 @@
     if(dimcomm[mydir1] == 0 || x[mydir1] > 0){				\
       switch(mydir1){/*mydir1 is not partitioned or x[mydir1]!=  0*/	\
       case 0:								\
-	new_mem_idx = (x1==0)?(new_mem_idx+X1m1):(new_mem_idx-1);	\
-	local_new_x1 = (x1==0)?X1m1:(x1 - 1);				\
+	new_mem_idx = (x1==0)?(new_mem_idx+L1m1):(new_mem_idx-1);	\
+	local_new_x1 = (x1==0)?L1m1:(x1 - 1);				\
 	break;								\
       case 1:								\
-	new_mem_idx = (x2==0)?(new_mem_idx+X2X1mX1):(new_mem_idx-X1);	\
-	local_new_x2 = (x2==0)?X2m1:(x2 - 1);				\
+	new_mem_idx = (x2==0)?(new_mem_idx+L2L1mL1):(new_mem_idx-L1);	\
+	local_new_x2 = (x2==0)?L2m1:(x2 - 1);				\
 	break;								\
       case 2:								\
-	new_mem_idx = (x3==0)?(new_mem_idx+X3X2X1mX2X1):(new_mem_idx-X2X1); \
-	local_new_x3 = (x3==0)?X3m1:(x3 -1);				\
+	new_mem_idx = (x3==0)?(new_mem_idx+L3L2L1mL2L1):(new_mem_idx-L2L1); \
+	local_new_x3 = (x3==0)?L3m1:(x3 -1);				\
 	break;								\
       case 3:								\
-	new_mem_idx = (x4==0)?(new_mem_idx+X4X3X2X1mX3X2X1):(new_mem_idx-X3X2X1); \
-	local_new_x4 = (x4==0)?X4m1:(x4 - 1);				\
+	new_mem_idx = (x4==0)?(new_mem_idx+L4L3L2L1mL3L2L1):(new_mem_idx-L3L2L1); \
+	local_new_x4 = (x4==0)?L4m1:(x4 - 1);				\
 	break;								\
       }									\
       switch(mydir2){							\
       case 0:								\
-	new_mem_idx = (x1==X1m1)?(2*(Vh+Vsh_x)+((local_new_x4*X3X2+local_new_x3*X2+local_new_x2)))*xcomm+(new_mem_idx-X1m1)*(1-xcomm):(new_mem_idx+1); \
+	new_mem_idx = (x1==L1m1)?((2*(Vh_nl+E4E3E2/2)+(local_new_x4*E3E2+local_new_x3*E2+local_new_x2+E3E2+E2+1))*xcomm+(new_mem_idx-L1m1)*(1-xcomm)):(new_mem_idx+1); \
 	break;								\
       case 1:								\
-	new_mem_idx = (x2==X2m1)?(2*(Vh+2*(Vsh_x)+Vsh_y)+((local_new_x4*X3X1+local_new_x3*X1+local_new_x1)))*ycomm+(new_mem_idx-X2X1mX1)*(1-ycomm):(new_mem_idx+X1); \
+	new_mem_idx = (x2==L2m1)?((2*(Vh_nl+E4E3E2+E4E3E1/2)+(local_new_x4*E3E1+local_new_x3*E1+local_new_x1+E3E1+E1+1))*ycomm+(new_mem_idx-L2L1mL1)*(1-ycomm)):(new_mem_idx+L1); \
 	break;								\
       case 2:								\
-	new_mem_idx = (x3==X3m1)?(2*(Vh+2*(Vsh_x+Vsh_y)+Vsh_z)+((local_new_x4*X2X1+local_new_x2*X1+local_new_x1)))*zcomm+(new_mem_idx-X3X2X1mX2X1)*(1-zcomm):(new_mem_idx+X2X1); \
+	new_mem_idx = (x3==L3m1)?((2*(Vh_nl+E4E3E2+E4E3E1+E4E2E1/2)+(local_new_x4*E2E1+local_new_x2*E1+local_new_x1+E2E1+E1+1))*zcomm+(new_mem_idx-L3L2L1mL2L1)*(1-zcomm)):(new_mem_idx+L2L1); \
 	break;								\
       case 3:								\
-	new_mem_idx = (x4==X4m1)?(2*(Vh+2*(Vsh_x+Vsh_y+Vsh_z)+Vsh_t)+((local_new_x3*X2X1+local_new_x2*X1+local_new_x1)))*tcomm+(new_mem_idx-X4X3X2X1mX3X2X1)*(1-tcomm):(new_mem_idx+X3X2X1); \
+	new_mem_idx = (x4==L4m1)?((2*(Vh_nl+E4E3E2+E4E3E1+E4E2E1+E3E2E1/2)+(local_new_x3*E2E1+local_new_x2*E1+local_new_x1+E2E1+E1+1))*tcomm+(new_mem_idx-L4L3L2L1mL3L2L1)*(1-tcomm)):(new_mem_idx+L3L2L1); \
 	break;								\
       }									\
     }else{								\
-      /*the case where both dir1/dir2 are out of boundary are dealed with a different macro (_DIAG)*/ \
-      switch(mydir2){	/*mydir2 is not partitioned or x[mydir2]!=  0*/	\
+      switch(mydir2){	/*mydir1 is partitioned and x[mydir1]==0, so we know we are in ghost data region*/	\
       case 0:								\
-	new_mem_idx = (x1==X1m1)?(new_mem_idx-X1m1):(new_mem_idx+1);	\
-	local_new_x1 = (x1==X1m1)?0:(x1+1);				\
+	local_new_x1 = x1+1;						\
 	break;								\
       case 1:								\
-	new_mem_idx = (x2==X2m1)?(new_mem_idx-X2X1mX1):(new_mem_idx+X1); \
-	local_new_x2 = (x2==X2m1)?0:(x2+1);				\
+	local_new_x2 = x2+1;						\
 	break;								\
       case 2:								\
-	new_mem_idx = (x3==X3m1)?(new_mem_idx-X3X2X1mX2X1):(new_mem_idx+X2X1); \
-	local_new_x3 = (x3==X3m1)?0:(x3+1);				\
+	local_new_x3 = x3+1;						\
 	break;								\
       case 3:								\
-	new_mem_idx = (x4==X4m1)?(new_mem_idx-X4X3X2X1mX3X2X1):(new_mem_idx+X3X2X1); \
-	local_new_x4 = (x4==X4m1)?0:(x4+1);				\
+	local_new_x4 = x4+1;						\
 	break;								\
       }									\
       switch(mydir1){/*mydir1 is 0 here */				\
       case 0:								\
-	new_mem_idx = (x1==0)?(2*(Vh)+(local_new_x4*X3X2+local_new_x3*X2+local_new_x2))*xcomm+(new_mem_idx+X1m1)*(1-xcomm):(new_mem_idx -1); \
+	new_mem_idx = 2*(Vh_nl)+(local_new_x4*E3E2+local_new_x3*E2+local_new_x2 +E3E2+E2+1); \
 	break;								\
       case 1:								\
-	new_mem_idx = (x2==0)?(2*(Vh+2*Vsh_x)+(local_new_x4*X3X1+local_new_x3*X1+local_new_x1))*ycomm+(new_mem_idx+X2X1mX1)*(1-ycomm):(new_mem_idx-X1); \
+	new_mem_idx = 2*(Vh_nl+E4E3E2)+(local_new_x4*E3E1+local_new_x3*E1+local_new_x1+E3E1+E1+1); \
 	break;								\
       case 2:								\
-	new_mem_idx = (x3==0)?(2*(Vh+2*(Vsh_x+Vsh_y))+(local_new_x4*X2X1+local_new_x2*X1+local_new_x1))*zcomm+(new_mem_idx+X3X2X1mX2X1)*(1-zcomm):(new_mem_idx-X2X1); \
+	new_mem_idx = 2*(Vh_nl+E4E3E2+E4E3E1)+(local_new_x4*E2E1+local_new_x2*E1+local_new_x1+E2E1+E1+1); \
 	break;								\
       case 3:								\
-	new_mem_idx = (x4==0)?(2*(Vh+2*(Vsh_x+Vsh_y+Vsh_z))+(local_new_x3*X2X1+local_new_x2*X1+local_new_x1))*tcomm+(new_mem_idx+X4X3X2X1mX3X2X1)*(1-tcomm):(new_mem_idx-X3X2X1); \
+	new_mem_idx = 2*(Vh_nl+E4E2E1+E4E3E1+E4E2E1)+(local_new_x3*E2E1+local_new_x2*E1+local_new_x1); \
 	break;								\
       }									\
     }									\
     new_mem_idx = new_mem_idx >> 1;					\
-    UPDATE_COOR_LOWER_STAPLE(mydir1, mydir2);				\
+    /*UPDATE_COOR_LOWER_STAPLE(mydir1, mydir2);*/			\
   }while(0)
 
 
@@ -1516,7 +1511,6 @@ template<int mu, int nu, int odd_bit>
 							      FloatM* fatlink_even, FloatM* fatlink_odd,	
 							      Float mycoeff, llfat_kernel_param_t kparam)
 {
-#if 0
   __shared__ FloatM sd_data[NUM_FLOATS*64];
   
   //FloatM TEMPA0, TEMPA1, TEMPA2, TEMPA3, TEMPA4, TEMPA5, TEMPA6, TEMPA7, TEMPA8;
@@ -1535,21 +1529,15 @@ template<int mu, int nu, int odd_bit>
   
   short x1odd = (x2 + x3 + x4 + odd_bit) & 1;
   short x1 = 2*x1h + x1odd;
-  
-  x1 += kparam.base_idx;
-  x2 += kparam.base_idx;
-  x3 += kparam.base_idx;
-  x4 += kparam.base_idx;
-   
-  int ox1, ox2, ox3, ox4;
+  int X = mem_idx *2 + x1odd;
 
-  ox1 = x1 -2 ;
-  ox2 = x2 -2 ;
-  ox3 = x3 -2 ;
-  ox4 = x4 -2 ;
-  int X = ox4*X3X2X1 + ox3*X2X1 + ox2*X1 + ox1;
-  mem_idx = X/2;
-  
+  int tx1 = x1 + kparam.base_idx;
+  int tx2 = x2 + kparam.base_idx;
+  int tx3 = x3 + kparam.base_idx;
+  int tx4 = x4 + kparam.base_idx;
+   
+  int fat_idx = ((tx4-2)*X3X2X1+(tx3-2)*X2X1+(tx2-2)*X1+tx1-2)/2;
+
   int new_mem_idx;
   float sign =1;    
   short new_x1 = x1;
@@ -1558,11 +1546,11 @@ template<int mu, int nu, int odd_bit>
   short new_x4 = x4;
 
 
-  int spacecon_x = x4*E3E2 + x3*E2 + x2;
-  int spacecon_y = x4*E3E1 + x3*E1 + x1;
-  int spacecon_z = x4*E2E1 + x2*E1 + x1;
-  int spacecon_t = x3*E2E1 + x3*E2 + x1;
-  
+  int spacecon_x = tx4*E3E2 + tx3*E2 + tx2;
+  int spacecon_y = tx4*E3E1 + tx3*E1 + tx1;
+  int spacecon_z = tx4*E2E1 + tx2*E1 + tx1;
+  int spacecon_t = tx3*E2E1 + tx3*E2 + tx1;
+  int x[4]={x1,x2,x3,x4};
   /* Upper staple */
   /* Computes the staple :
    *                 mu (B)
@@ -1598,6 +1586,18 @@ template<int mu, int nu, int odd_bit>
     RECONSTRUCT_SITE_LINK(nu, new_mem_idx, sign, c);
 
     MULT_SU3_NA(tempa, c, staple);		   
+    /*
+    if(x1==1 && x2==1 && x3==1 && x4==1 &&  odd_bit == 0){
+      printf("gpu gauge is (site_ga_stride=%d), nu=%d, fat_idx=%d\n", site_ga_stride, nu, fat_idx);
+      printf("(%f %f) (%f %f) (%f %f)\n" 
+	     "(%f %f) (%f %f) (%f %f)\n" 
+	     "(%f %f) (%f %f) (%f %f)\n",
+	     a00_re, a00_im, a01_re, a01_im, a02_re, a02_im, 
+	     a10_re, a10_im, a11_re, a11_im, a12_re, a12_im,
+ 	     a20_re, a20_im, a21_re, a21_im, a22_re, a22_im);
+    }
+    */
+
   }
 
   /***************lower staple****************
@@ -1636,18 +1636,16 @@ template<int mu, int nu, int odd_bit>
     LLFAT_ADD_SU3_MATRIX(b, staple, staple);
   }
    
-  
-  if( !(x1 == 1 || x1 == X1 + 2 || x2 == 1 || x2 == X2 + 2
-	|| x3 == 1 || x3 == X3 + 2 || x4 == 1 || x4 == X4 + 2)){
-    int orig_idx = ((x4-2)* X3X2X1 + (x3-2)*X2X1 + (x2-2)*X1 + (x1-2))>>1;
-    
-    LOAD_EVEN_FAT_MATRIX(mu, orig_idx);
+
+  if( !(x1 == 0 || x1 == X1 + 1 || x2 == 0 || x2 == X2 + 1
+	|| x3 == 0 || x3 == X3 + 1 || x4 == 0 || x4 == X4 + 1)){
+    LOAD_EVEN_FAT_MATRIX(mu, fat_idx);
     SCALAR_MULT_ADD_SU3_MATRIX(fat, staple, mycoeff, fat);
-    WRITE_FAT_MATRIX(fatlink_even,mu,  orig_idx);	
+
+    WRITE_FAT_MATRIX(fatlink_even,mu,  fat_idx);	
   }
   WRITE_STAPLE_MATRIX(staple_even, mem_idx);	
 
-#endif    
   return;
 }
 

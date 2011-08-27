@@ -430,7 +430,6 @@ llfat_cuda_nl(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 
   llfatOneLinkKernel_nl(cudaFatLink, cudaSiteLink,cudaStaple, cudaStaple1,
 			param, act_path_coeff, kparam); CUERR;
-#if 0  
 
   for(int dir = 0;dir < 4; dir++){
     for(int nu = 0; nu < 4; nu++){
@@ -443,7 +442,8 @@ llfat_cuda_nl(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 					    dir, nu,
 					    act_path_coeff[2],
 					    recon, prec, kparam_1g); 
-	
+
+#if 0  
 
 	computeGenStapleFieldParityKernel_nl((void*)NULL, (void*)NULL,
 					     (void*)cudaSiteLink.even, (void*)cudaSiteLink.odd,
@@ -481,11 +481,11 @@ llfat_cuda_nl(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 	    }//sig
 	  }
 	}//rho	
+#endif
       }
     }//nu
   }//dir
   
-#endif
   
   cudaThreadSynchronize(); 
   checkCudaError();

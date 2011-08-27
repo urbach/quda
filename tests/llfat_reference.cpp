@@ -211,6 +211,7 @@ llfat_compute_gen_staple_field(su3_matrix *staple, int mu, int nu,
       llfat_mult_su3_na( &tmat1, C, &tmat2); 	    
       llfat_scalar_mult_add_su3_matrix(fat1, &tmat2, coef, fat1);	    
     }
+
   }    
   /***************lower staple****************
    *
@@ -252,7 +253,6 @@ llfat_compute_gen_staple_field(su3_matrix *staple, int mu, int nu,
     if(staple!=NULL){/* Save the staple */
       llfat_add_su3_matrix(&staple[i], &tmat2, &staple[i]);
       llfat_scalar_mult_add_su3_matrix(fat1, &staple[i], coef, fat1);
-	    
     } else{ /* No need to save the staple. Add it to the fatlinks */
       llfat_scalar_mult_add_su3_matrix(fat1, &tmat2, coef, fat1);	    
     }
@@ -301,14 +301,13 @@ void llfat_cpu(void** fatlink, su3_matrix** sitelink, Float* act_path_coeff)
     }
   }
   
-	return;
 
   for (int dir=XUP; dir<=TUP; dir++){
     for(int nu=XUP; nu<=TUP; nu++){
       if(nu!=dir){
 	llfat_compute_gen_staple_field(staple,dir,nu,sitelink[dir], sitelink,fatlink, act_path_coeff[2], 0);
 
-
+#if 0
 	/* The Lepage term */
 	/* Note this also involves modifying c_1 (above) */
 		
@@ -327,6 +326,8 @@ void llfat_cpu(void** fatlink, su3_matrix** sitelink, Float* act_path_coeff)
 	  } 
 
 	}/* rho */
+
+#endif
       } 
 
     }/* nu */

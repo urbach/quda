@@ -908,44 +908,39 @@ void exchange_cpu_sitelink_nl(int* X, void** sitelink_ex, void** sitelink_nl,
     }
 
     int ox1, ox2, ox3, ox4;
-#if 0
-    if(x1 < 2){
-      int idx = (Vh+ghost_tot_len)*oddBit + Vh + (x1*E4E3E2 + x4*E3E2 + x3*E2 + x2)/2  ;
+
+    if(x1 < 1){
+      int idx = (Vh_nl+ghost_tot_len)*oddBit + Vh_nl + (x4*E3E2 + x3*E2 + x2)/2  ;
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i);
-    }else if (x1 >= X1 + 2){
-      ox1 = x1 - (X1+2);
-      int idx = (Vh+ghost_tot_len)*oddBit + Vh + E4E3E2 + (ox1*E4E3E2 + x4*E3E2 + x3*E2 + x2)/2  ;
+    }else if (x1 >= X1 + 3){
+      int idx = (Vh_nl+ghost_tot_len)*oddBit + Vh_nl + E4E3E2/2 + (x4*E3E2 + x3*E2 + x2)/2  ;
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i) ;     
     }
     
-    if(x2 < 2){
-      int idx = (Vh+ghost_tot_len)*oddBit + Vh + ghost_len[0] + (x2*E4E3E1 + x4*E3E1 + x3*E1 + x1)/2  ;
+    if(x2 < 1){
+      int idx = (Vh_nl+ghost_tot_len)*oddBit + Vh_nl + ghost_len[0] + (x4*E3E1 + x3*E1 + x1)/2  ;
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i);
-    }else if (x2 >= X2 + 2){
-      ox2 = x2 - (X2+2);
-      int idx = (Vh+ghost_tot_len)*oddBit + Vh + ghost_len[0] + E4E3E1 + (ox2*E4E3E1 + x4*E3E1 + x3*E1 + x1)/2  ;
+    }else if (x2 >= X2 + 3){
+      int idx = (Vh_nl+ghost_tot_len)*oddBit + Vh_nl + ghost_len[0] + E4E3E1/2 + (x4*E3E1 + x3*E1 + x1)/2  ;
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i) ;     
     }
     
-    if(x3 < 2){
-      int idx = (Vh+ghost_tot_len)*oddBit + Vh + ghost_len[0] + ghost_len[1] + (x3*E4E2E1 + x4*E2E1 + x2*E1 + x1)/2  ;
+    if(x3 < 1){
+      int idx = (Vh_nl+ghost_tot_len)*oddBit + Vh_nl + ghost_len[0] + ghost_len[1] + (x4*E2E1 + x2*E1 + x1)/2  ;
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i);
-    }else if (x3 >= X3 + 2){
-      ox3 = x3 - (X3+2);
-      int idx = (Vh+ghost_tot_len)*oddBit + Vh + ghost_len[0] + ghost_len[1] +  E4E2E1 + (ox3*E4E2E1 + x4*E2E1 + x2*E1 + x1)/2  ;
+    }else if (x3 >= X3 + 3){
+      int idx = (Vh_nl+ghost_tot_len)*oddBit + Vh_nl + ghost_len[0] + ghost_len[1] +  E4E2E1/2 + (x4*E2E1 + x2*E1 + x1)/2  ;
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i) ;     
     }
     
-    if(x4 < 2){
-      int idx = (Vh+ghost_tot_len)*oddBit + Vh + ghost_len[0] + ghost_len[1] + ghost_len[2] + (x4*E3E2E1 + x3*E2E1 + x2*E1 + x1)/2  ;
+    if(x4 < 1){
+      int idx = (Vh_nl+ghost_tot_len)*oddBit + Vh_nl + ghost_len[0] + ghost_len[1] + ghost_len[2] + (x3*E2E1 + x2*E1 + x1)/2  ;
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i);
-    }else if (x4 >= X4 + 2){
-      ox4 = x4 - (X4+2);
-      int idx = (Vh+ghost_tot_len)*oddBit + Vh + ghost_len[0] + ghost_len[1] +  ghost_len[2] + E3E2E1 + (ox4*E3E2E1 + x3*E2E1 + x2*E1 + x1)/2  ;
+    }else if (x4 >= X4 + 3){
+      int idx = (Vh_nl+ghost_tot_len)*oddBit + Vh_nl + ghost_len[0] + ghost_len[1] +  ghost_len[2] + E3E2E1/2 + (x3*E2E1 + x2*E1 + x1)/2  ;
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i) ;     
     }
 
-#endif
     
     if( x1< 1 || x1 >= X1 +3 
 	|| x2< 1 || x2 >= X2 +3 
@@ -992,7 +987,7 @@ void exchange_cpu_sitelink_nl(int* X, void** sitelink_ex, void** sitelink_nl,
   /*
   {
     double* data = (double*)sitelink_nl[0];
-    //data += (Vh+ghost_tot_len) * 18;
+    //data += (Vh_nl+ghost_tot_len) * 18;
     printf("face sitelink is \n");
     printf("(%f %f) (%f %f) (%f %f)\n"
 	   "(%f %f) (%f %f) (%f %f)\n"

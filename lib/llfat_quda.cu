@@ -219,11 +219,29 @@ __constant__ int dir2_array[16];
 __constant__ int last_proc_in_tdim;
 __constant__ int first_proc_in_tdim;
 __constant__ int E1, E2, E3, E4, E1h;
-__constant__ int E3E2E1, E2E1;
 __constant__ int Vh_ex;
+__constant__ int E2E1;
+__constant__ int E3E1;
+__constant__ int E3E2;
+__constant__ int E3E2E1;
+__constant__ int E4E2E1;
+__constant__ int E4E3E1;
+__constant__ int E4E3E2;
+
 __constant__ int L1, L2, L3, L4, L1h;
-__constant__ int L3L2L1, L2L1;
 __constant__ int Vh_nl;
+
+__constant__ int L1m1, L2m1, L3m1, L4m1;
+__constant__ int L2L1mL1;
+__constant__ int L3L2L1mL2L1;
+__constant__ int L4L3L2L1mL3L2L1;
+__constant__ int L2L1;
+__constant__ int L3L1;
+__constant__ int L3L2;
+__constant__ int L3L2L1;
+__constant__ int L4L2L1;
+__constant__ int L4L3L1;
+__constant__ int L4L3L2;
 
 unsigned long staple_bytes=0;
 
@@ -380,36 +398,72 @@ llfat_init_cuda_nl(QudaGaugeParam* param_nl)
   int E2 = param_nl->X[1] + 2;
   int E3 = param_nl->X[2] + 2;
   int E4 = param_nl->X[3] + 2;
-  int E2E1 =E2*E1;
-  int E3E2E1=E3*E2*E1;
-  
+  int E2E1 = E2*E1;
+  int E3E1 = E3*E1;
+  int E3E2 = E3*E2;
+  int E3E2E1 = E3*E2*E1;
+  int E4E2E1 = E4*E2*E1;
+  int E4E3E1 = E4*E3*E1;
+  int E4E3E2 = E4*E3*E2;    
+
   cudaMemcpyToSymbol("E1", &E1, sizeof(int));
   cudaMemcpyToSymbol("E1h", &E1h, sizeof(int));
   cudaMemcpyToSymbol("E2", &E2, sizeof(int));
   cudaMemcpyToSymbol("E3", &E3, sizeof(int));
   cudaMemcpyToSymbol("E4", &E4, sizeof(int));
-  cudaMemcpyToSymbol("E2E1", &E2E1, sizeof(int));
-  cudaMemcpyToSymbol("E3E2E1", &E3E2E1, sizeof(int));  
   cudaMemcpyToSymbol("Vh_ex", &Vh_ex, sizeof(int));
-  
+
+  cudaMemcpyToSymbol("E2E1", &E2E1, sizeof(int));
+  cudaMemcpyToSymbol("E3E1", &E3E1, sizeof(int));
+  cudaMemcpyToSymbol("E3E2", &E3E2, sizeof(int));
+  cudaMemcpyToSymbol("E3E2E1", &E3E2E1, sizeof(int));  
+  cudaMemcpyToSymbol("E4E2E1", &E4E2E1, sizeof(int));  
+  cudaMemcpyToSymbol("E4E3E1", &E4E3E1, sizeof(int));  
+  cudaMemcpyToSymbol("E4E3E2", &E4E3E2, sizeof(int));    
+
+
   int L1 = param_nl->X[0];
   int L1h = L1/2;
   int L2 = param_nl->X[1];
   int L3 = param_nl->X[2];
   int L4 = param_nl->X[3];
-  int L2L1 =L2*L1;
-  int L3L2L1=L3*L2*L1;
+  int L1m1 = L1-1;
+  int L2m1 = L2-1;
+  int L3m1 = L3-1;
+  int L4m1 = L4-1;
+  int L2L1mL1 = L2*L1-L1;
+  int L3L2L1mL2L1 = L3*L2*L1-L2*L1;
+  int L4L3L2L1mL3L2L1 = L4*L3*L2*L1 - L3*L2*L1;
+  int L2L1 = L2*L1;
+  int L3L1 = L3*L1;
+  int L3L2 = L3*L2;
+  int L3L2L1 = L3*L2*L1;
+  int L4L2L1 = L4*L2*L1;
+  int L4L3L1 = L4*L3*L1;
+  int L4L3L2 = L4*L3*L2;  
   
   cudaMemcpyToSymbol("L1", &L1, sizeof(int));
   cudaMemcpyToSymbol("L1h", &L1h, sizeof(int));
   cudaMemcpyToSymbol("L2", &L2, sizeof(int));
   cudaMemcpyToSymbol("L3", &L3, sizeof(int));
   cudaMemcpyToSymbol("L4", &L4, sizeof(int));
-  cudaMemcpyToSymbol("L2L1", &L2L1, sizeof(int));
-  cudaMemcpyToSymbol("L3L2L1", &L3L2L1, sizeof(int));  
   cudaMemcpyToSymbol("Vh_nl", &Vh_nl, sizeof(int));
 
+  cudaMemcpyToSymbol("L1m1", &L1m1, sizeof(int));
+  cudaMemcpyToSymbol("L2m1", &L2m1, sizeof(int));
+  cudaMemcpyToSymbol("L3m1", &L3m1, sizeof(int));
+  cudaMemcpyToSymbol("L4m1", &L4m1, sizeof(int));
 
+  cudaMemcpyToSymbol("L2L1mL1", &L2L1mL1, sizeof(int));
+  cudaMemcpyToSymbol("L3L2L1mL2L1", &L3L2L1mL2L1, sizeof(int));
+  cudaMemcpyToSymbol("L4L3L2L1mL3L2L1", &L4L3L2L1mL3L2L1, sizeof(int));
+  cudaMemcpyToSymbol("L2L1", &L2L1, sizeof(int));
+  cudaMemcpyToSymbol("L3L1", &L3L1, sizeof(int));
+  cudaMemcpyToSymbol("L3L2", &L3L2, sizeof(int));
+  cudaMemcpyToSymbol("L3L2L1", &L3L2L1, sizeof(int));  
+  cudaMemcpyToSymbol("L4L2L1", &L4L2L1, sizeof(int));  
+  cudaMemcpyToSymbol("L4L3L1", &L4L3L1, sizeof(int));  
+  cudaMemcpyToSymbol("L4L3L2", &L4L3L2, sizeof(int));  
 
 }
 
