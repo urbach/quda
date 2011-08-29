@@ -11,18 +11,20 @@
 // volume per GPU (full lattice dimensions)
 const int LX = 16;
 const int LY = 16;
-const int LZ = 8;
-const int LT = 8;
+const int LZ = 16;
+const int LT = 16;
 const int Nspin = 4;
 
 // corresponds to 10 iterations for V=24^4, Nspin = 4, at half precision
 const int Niter = 10 * (24*24*24*24*4) / (LX * LY * LZ * LT * Nspin);
+//const int Niter = 1;
+
 
 const int Nkernels = 30;
 const int ThreadMin = 32;
 const int ThreadMax = 1024;
 const int GridMin = 1;
-const int GridMax = 65536;
+const int GridMax = 1024;//65536; // can remove this with the appropriate data output order for the first reduction output
 
 cpuColorSpinorField *xH, *yH, *zH, *wH, *vH, *hH, *lH;
 cudaColorSpinorField *xD, *yD, *zD, *wD, *vD, *hD, *lD;
@@ -718,7 +720,7 @@ int main(int argc, char** argv)
 	    blocks_max = grid;
 	  }
 	  //printf("%d %d %-35s %f s, flops = %e, Gflop/s = %f, GiB/s = %f\n", 
-	  // thread, grid, names[kernel], secs, flops, gflops, gbytes);
+	  //	 thread, grid, names[kernel], secs, flops, gflops, gbytes);
 	}
       }
 
