@@ -244,7 +244,11 @@ void FaceBuffer::exchangeFacesComms(int dir) {
     volatile unsigned long long *gather = gather_back[dir];
     while(*gather == ULLONG_MAX) { __asm__ __volatile__ ("pause"); }
 #else
-    cudaStreamSynchronize(stream[2*dir + sendBackStrmIdx]);
+    cudaError_t result = cudaStreamQuery(stream[2*dir + sendBackStrmIdx]);
+    while (result != cudaSuccess) {
+      result = cudaStreamQuery(stream[2*dir + sendBackStrmIdx]);
+    }
+    //cudaStreamSynchronize(stream[2*dir + sendBackStrmIdx]);
 #endif
   }
 #endif
@@ -262,7 +266,11 @@ void FaceBuffer::exchangeFacesComms(int dir) {
     volatile unsigned long long *gather = gather_fwd[dir];
     while(*gather == ULLONG_MAX) { __asm__ __volatile__ ("pause"); }
 #else
-    cudaStreamSynchronize(stream[2*dir + sendFwdStrmIdx]);
+    cudaError_t result = cudaStreamQuery(stream[2*dir + sendFwdStrmIdx]);
+    while (result != cudaSuccess) {
+      result = cudaStreamQuery(stream[2*dir + sendFwdStrmIdx]);
+    }
+    //cudaStreamSynchronize(stream[2*dir + sendFwdStrmIdx]);
 #endif
   }
 #endif
