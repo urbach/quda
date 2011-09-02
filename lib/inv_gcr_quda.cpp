@@ -45,7 +45,7 @@ void fillInnerInvertParam(QudaInvertParam &inner, const QudaInvertParam &outer) 
     inner.preserve_source = QUDA_PRESERVE_SOURCE_NO;
   else inner.preserve_source = QUDA_PRESERVE_SOURCE_YES;
 
-  inner.iter_type = outer.iter_type; // need to rename the outer to iter_type_precon
+  inner.iter_type = outer.iter_type_precondition;
 }
 
 void orthoDir(Complex **beta, cudaColorSpinorField *Ap[], int k) {
