@@ -20,7 +20,7 @@ const int Niter = 10 * (24*24*24*24*4) / (LX * LY * LZ * LT * Nspin);
 //const int Niter = 1;
 
 
-const int Nkernels = 30;
+const int Nkernels = 33;
 const int ThreadMin = 32;
 const int ThreadMax = 1024;
 const int GridMin = 1;
@@ -32,6 +32,7 @@ cudaColorSpinorField *xD, *yD, *zD, *wD, *vD, *hD, *lD;
 // defines blas_threads and blas_blocks
 #include "../lib/blas_param.h"
 
+extern double3 *dd_reduce;
 
 void setPrec(ColorSpinorParam &param, const QudaPrecision precision)
 {
@@ -251,59 +252,71 @@ double benchmark(int kernel, int niter) {
       caxpbypczpwCuda(a2, *xD, b2, *yD, c2, *zD, *wD);
       break;
 
-      // double
     case 17:
-      normCuda(*xD);
+      caxpyXmazCuda(a2, *xD, *yD, *zD);
       break;
 
     case 18:
-      reDotProductCuda(*xD, *yD);
+      caxpyXmazDDCuda(*xD, *yD, *zD);
       break;
 
+      // double
     case 19:
-      axpyNormCuda(a, *xD, *yD);
+      normCuda(*xD);
       break;
 
     case 20:
-      xmyNormCuda(*xD, *yD);
+      reDotProductCuda(*xD, *yD);
       break;
-      
+
     case 21:
-      caxpyNormCuda(a2, *xD, *yD);
+      axpyNormCuda(a, *xD, *yD);
       break;
 
     case 22:
+      xmyNormCuda(*xD, *yD);
+      break;
+      
+    case 23:
+      caxpyNormCuda(a2, *xD, *yD);
+      break;
+
+    case 24:
       caxpyXmazNormXCuda(a2, *xD, *yD, *zD);
       break;
 
-    case 23:
+    case 25:
       cabxpyAxNormCuda(a, b2, *xD, *yD);
       break;
 
     // double2
-    case 24:
+    case 26:
       cDotProductCuda(*xD, *yD);
       break;
 
-    case 25:
+    case 27:
       xpaycDotzyCuda(*xD, a, *yD, *zD);
       break;
       
-    case 26:
+    case 28:
       caxpyDotzyCuda(a2, *xD, *yD, *zD);
       break;
 
     // double3
-    case 27:
+    case 29:
       cDotProductNormACuda(*xD, *yD);
       break;
 
-    case 28:
+    case 30:
       cDotProductNormBCuda(*xD, *yD);
       break;
 
-    case 29:
+    case 31:
       caxpbypzYmbwcDotProductUYNormYCuda(a2, *xD, b2, *yD, *zD, *wD, *vD);
+      break;
+
+    case 32:
+      cDotProductNormALocalCuda(*xD, *yD);
       break;
 
     default:
@@ -474,19 +487,39 @@ double test(int kernel) {
       error = ERROR(w); }
     break;
 
-    // double
   case 17:
+    *xD = *xH;
+    *yD = *yH;
+    *zD = *zH;
+    {caxpyXmazCuda(a2, *xD, *yD, *zD);
+      caxpyXmazCpu(a2, *xH, *yH, *zH);
+      error = ERROR(y) + ERROR(x); }
+    break;
+
+  case 18:
+    *xD = *xH;
+    *yD = *yH;
+    *zD = *zH;
+    {double3 d = make_double3(real(a2), imag(a2), 1.0);
+      cudaMemcpy(dd_reduce, &d, sizeof(double3), cudaMemcpyHostToDevice);
+      caxpyXmazDDCuda(*xD, *yD, *zD);
+      caxpyXmazCpu(a2, *xH, *yH, *zH);
+      error = ERROR(y) + ERROR(x); }
+    break;
+
+    // double
+  case 19:
     *xD = *xH;
     error = fabs(normCuda(*xD) - normCpu(*xH)) / normCpu(*xH);
     break;
     
-  case 18:
+  case 20:
     *xD = *xH;
     *yD = *yH;
     error = fabs(reDotProductCuda(*xD, *yD) - reDotProductCpu(*xH, *yH)) / fabs(reDotProductCpu(*xH, *yH));
     break;
 
-  case 19:
+  case 21:
     *xD = *xH;
     *yD = *yH;
     {double d = axpyNormCuda(a, *xD, *yD);
@@ -494,7 +527,7 @@ double test(int kernel) {
     error = ERROR(y) + fabs(d-h)/fabs(h);}
     break;
 
-  case 20:
+  case 22:
     *xD = *xH;
     *yD = *yH;
     {double d = xmyNormCuda(*xD, *yD);
@@ -502,7 +535,7 @@ double test(int kernel) {
     error = ERROR(y) + fabs(d-h)/fabs(h);}
     break;
     
-  case 21:
+  case 23:
     *xD = *xH;
     *yD = *yH;
     {double d = caxpyNormCuda(a, *xD, *yD);
@@ -510,7 +543,7 @@ double test(int kernel) {
     error = ERROR(y) + fabs(d-h)/fabs(h);}
     break;
 
-  case 22:
+  case 24:
     *xD = *xH;
     *yD = *yH;
     *zD = *zH;
@@ -519,7 +552,7 @@ double test(int kernel) {
       error = ERROR(y) + ERROR(x) + fabs(d-h)/fabs(h);}
     break;
 
-  case 23:
+  case 25:
     *xD = *xH;
     *yD = *yH;
     {double d = cabxpyAxNormCuda(a, b2, *xD, *yD);
@@ -528,13 +561,13 @@ double test(int kernel) {
     break;
 
     // double2
-  case 24:
+  case 26:
     *xD = *xH;
     *yD = *yH;
     error = abs(cDotProductCuda(*xD, *yD) - cDotProductCpu(*xH, *yH)) / abs(cDotProductCpu(*xH, *yH));
     break;
     
-  case 25:
+  case 27:
     *xD = *xH;
     *yD = *yH;
     *zD = *zH;
@@ -544,7 +577,7 @@ double test(int kernel) {
     }
     break;
     
-  case 26:
+  case 28:
     *xD = *xH;
     *yD = *yH;
     *zD = *zH;
@@ -554,7 +587,7 @@ double test(int kernel) {
     break;
 
     // double3
-  case 27:
+  case 29:
     *xD = *xH;
     *yD = *yH;
     { double3 d = cDotProductNormACuda(*xD, *yD);
@@ -562,7 +595,7 @@ double test(int kernel) {
       error = fabs(d.x - h.x) / fabs(h.x) + fabs(d.y - h.y) / fabs(h.y) + fabs(d.z - h.z) / fabs(h.z); }
     break;
     
-  case 28:
+  case 30:
     *xD = *xH;
     *yD = *yH;
     { double3 d = cDotProductNormBCuda(*xD, *yD);
@@ -570,7 +603,7 @@ double test(int kernel) {
       error = fabs(d.x - h.x) / fabs(h.x) + fabs(d.y - h.y) / fabs(h.y) + fabs(d.z - h.z) / fabs(h.z); }
     break;
     
-  case 29:
+  case 31:
     *xD = *xH;
     *yD = *yH;
     *zD = *zH;
@@ -582,6 +615,16 @@ double test(int kernel) {
 	fabs(d.y - h.y) / fabs(h.y) + fabs(d.z - h.z) / fabs(h.z); }
     break;
 
+  case 32:
+    *xD = *xH;
+    *yD = *yH;
+    { cDotProductNormALocalCuda(*xD, *yD);
+      double3 d;
+      cudaMemcpy(&d, dd_reduce, sizeof(double3), cudaMemcpyDeviceToHost);
+      double3 h = cDotProductNormACpu(*xH, *yH);
+      error = fabs(d.x - h.x) / fabs(h.x) + fabs(d.y - h.y) / fabs(h.y) + fabs(d.z - h.z) / fabs(h.z); }
+    break;
+    
   default:
     errorQuda("Undefined blas kernel %d\n", kernel);
   }
@@ -644,6 +687,8 @@ int main(int argc, char** argv)
     "cabxpyAxCuda",
     "caxpbypzCuda",
     "caxpbypczpwCuda",
+    "caxpyXmazCuda",
+    "caxpyXmazDDCuda",
     "normCuda",
     "reDotProductCuda",
     "axpyNormCuda",
@@ -657,6 +702,7 @@ int main(int argc, char** argv)
     "cDotProductNormACuda",
     "cDotProductNormBCuda",
     "caxpbypzYmbwcDotProductWYNormYCuda",
+    "cDotProductNormALocalCuda",
   };
 
   const char *prec_str[] = {"half", "single", "double"};

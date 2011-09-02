@@ -158,6 +158,13 @@ void caxpbypzYmbwCpu(const Complex &a, const cpuColorSpinorField &x, const Compl
   caxpyCpu(-b, w, y);
 }
 
+// performs the operation y[i] += a*x[i] and then x[i] -= a*z[i]
+void caxpyXmazCpu(const Complex &a, cpuColorSpinorField &x,
+		  cpuColorSpinorField &y, cpuColorSpinorField &z) {
+  caxpyCpu(a, x, y);
+  caxpyCpu(-a, z, x);
+}
+
 template <typename Float>
 double norm(const Float *a, const int N) {
   double norm2 = 0;

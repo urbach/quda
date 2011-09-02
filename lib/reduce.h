@@ -40,33 +40,37 @@ R REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision precisi
     dim3 grid(N, 1); // each thread block handles the different components
     size_t smemSize = block.x * sizeof(QudaSumFloat) * (block.x <= 32 ? 2 : 1);
     if (block.x == 1) {
-      sumDKernel<1><<<grid, block, smemSize>>>(d_reduce, hd_reduce, N*blasGrid.x);
+      sumDKernel<1><<<grid, block, smemSize>>>(d_reduce, (double*)REDUCE_BUF, N*blasGrid.x);
     } else if (block.x == 2) {
-      sumDKernel<2><<<grid, block, smemSize>>>(d_reduce, hd_reduce, N*blasGrid.x);
+      sumDKernel<2><<<grid, block, smemSize>>>(d_reduce, (double*)REDUCE_BUF, N*blasGrid.x);
     } else if (block.x == 4) {
-      sumDKernel<4><<<grid, block, smemSize>>>(d_reduce, hd_reduce, N*blasGrid.x);
+      sumDKernel<4><<<grid, block, smemSize>>>(d_reduce, (double*)REDUCE_BUF, N*blasGrid.x);
     } else if (block.x == 8) {
-      sumDKernel<8><<<grid, block, smemSize>>>(d_reduce, hd_reduce, N*blasGrid.x);
+      sumDKernel<8><<<grid, block, smemSize>>>(d_reduce, (double*)REDUCE_BUF, N*blasGrid.x);
     } else if (block.x == 16) {
-      sumDKernel<16><<<grid, block, smemSize>>>(d_reduce, hd_reduce, N*blasGrid.x);
+      sumDKernel<16><<<grid, block, smemSize>>>(d_reduce, (double*)REDUCE_BUF, N*blasGrid.x);
     } else if (block.x == 32) {
-      sumDKernel<32><<<grid, block, smemSize>>>(d_reduce, hd_reduce, N*blasGrid.x);
+      sumDKernel<32><<<grid, block, smemSize>>>(d_reduce, (double*)REDUCE_BUF, N*blasGrid.x);
     } else if (block.x == 64) {
-      sumDKernel<64><<<grid, block, smemSize>>>(d_reduce, hd_reduce, N*blasGrid.x);
+      sumDKernel<64><<<grid, block, smemSize>>>(d_reduce, (double*)REDUCE_BUF, N*blasGrid.x);
     } else if (block.x == 128) {
-      sumDKernel<128><<<grid, block, smemSize>>>(d_reduce, hd_reduce, N*blasGrid.x);
+      sumDKernel<128><<<grid, block, smemSize>>>(d_reduce, (double*)REDUCE_BUF, N*blasGrid.x);
     } else if (block.x == 256) {
-      sumDKernel<256><<<grid, block, smemSize>>>(d_reduce, hd_reduce, N*blasGrid.x);
+      sumDKernel<256><<<grid, block, smemSize>>>(d_reduce, (double*)REDUCE_BUF, N*blasGrid.x);
     } else if (block.x == 512) {
-      sumDKernel<512><<<grid, block, smemSize>>>(d_reduce, hd_reduce, N*blasGrid.x);
+      sumDKernel<512><<<grid, block, smemSize>>>(d_reduce, (double*)REDUCE_BUF, N*blasGrid.x);
     } else if (block.x == 1024) {
-      sumDKernel<1024><<<grid, block, smemSize>>>(d_reduce, hd_reduce, N*blasGrid.x);
+      sumDKernel<1024><<<grid, block, smemSize>>>(d_reduce, (double*)REDUCE_BUF, N*blasGrid.x);
     } else {
       errorQuda("Final reduction not implemented for %d threads", block.x);
     }
 
   }
+#endif
+  
+#ifdef HOST_RESULT_REDUCE 
 
+#ifdef DEVICE_REDUCTION
   // Need to synchronize since zero-copy write is asynchronous
   //cudaThreadSynchronize();
   R sum_h;
@@ -76,6 +80,7 @@ R REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision precisi
     while (h_reduce_v[j] == ZERO_COPY_INIT) {  } // fastest synchronize is to poll on the cpu until kernel completes
     sum_p[j] = h_reduce_v[j];
   }
+
 #else
   // copy result from device to host, and perform final reduction on CPU
   cudaMemcpy(h_reduce, d_reduce, N*blasGrid.x*sizeof(QudaSumFloat), cudaMemcpyDeviceToHost);
@@ -94,4 +99,8 @@ R REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision precisi
   reduceDoubleArray(sum_p, N);
 
   return sum_h;
+
+#else
+  return make_double3(0,0,0);
+#endif
 }

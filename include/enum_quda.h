@@ -262,6 +262,12 @@ extern "C" {
     QUDA_FORWARDS
   } QudaDirection;
 
+  typedef enum QudaIterationType_s {
+    QUDA_FIXED_ITER,
+    QUDA_DYNAMIC_ITER,
+    QUDA_INVALID_ITER = QUDA_INVALID_ENUM
+  } QudaIterationType;
+
 #ifdef __cplusplus
 }
 #endif

@@ -45,6 +45,7 @@ void fillInnerInvertParam(QudaInvertParam &inner, const QudaInvertParam &outer) 
     inner.preserve_source = QUDA_PRESERVE_SOURCE_NO;
   else inner.preserve_source = QUDA_PRESERVE_SOURCE_YES;
 
+  inner.iter_type = outer.iter_type; // need to rename the outer to iter_type_precon
 }
 
 void orthoDir(Complex **beta, cudaColorSpinorField *Ap[], int k) {
@@ -216,40 +217,46 @@ void invertGCRCuda(const DiracMatrix &mat, const DiracMatrix &matSloppy, const D
 
   double orthT = 0, matT = 0, preT = 0, resT = 0;
 
+  int Npre = 1; // need to generalize for Npre > 1
+
   while (r2 > stop && total_iter < invert_param->maxiter) {
     
     gettimeofday(&pre0, NULL);
 
-    if (invert_param->inv_type_precondition != QUDA_INVALID_INVERTER) {
-      //if (invert_param->tol/(sqrt(r2/b2)) > invert_param->tol_precondition) // don'trelax stoppng condition
-	//invert_param_inner.tol = invert_param->tol/sqrt(r2/b2);
+    for (int pre_iter=0; pre_iter<Npre; pre_iter++) {
+      
+      if (invert_param->inv_type_precondition != QUDA_INVALID_INVERTER) {
+	cudaColorSpinorField &pPre = (precMatch ? *p[k] : *p_pre);
+	
+	copyCuda(rPre, rSloppy);
+	if (invert_param->inv_type_precondition == QUDA_CG_INVERTER) // inner CG preconditioner
+	  invertCgCuda(pre, pre, pPre, rPre, &invert_param_inner);
+	else if (invert_param->inv_type_precondition == QUDA_BICGSTAB_INVERTER) // inner BiCGstab preconditioner
+	  invertBiCGstabCuda(pre, pre, pre, pPre, rPre, &invert_param_inner);
+	else if (invert_param->inv_type_precondition == QUDA_MR_INVERTER) // inner MR preconditioner
+	  invertMRCuda(pre, pPre, rPre, &invert_param_inner);
+	else
+	  errorQuda("Unknown inner solver %d", invert_param->inv_type_precondition);
+	
+	// relaxation p = omega*p + (1-omega)*r
+	if (invert_param->omega!=1.0) axpbyCuda((1.0-invert_param->omega), rPre, invert_param->omega, pPre);
+	
+      } else { // no preconditioner
+	*p[k] = rSloppy;
+      } 
+      
+      
+      gettimeofday(&pre1, NULL);
+      
+      gettimeofday(&mat0, NULL);
+      matSloppy(*Ap[k], *p[k], tmp);
+      gettimeofday(&mat1, NULL);
 
-      cudaColorSpinorField &pPre = (precMatch ? *p[k] : *p_pre);
-
-      copyCuda(rPre, rSloppy);
-      if (invert_param->inv_type_precondition == QUDA_CG_INVERTER) // inner CG preconditioner
-	invertCgCuda(pre, pre, pPre, rPre, &invert_param_inner);
-      else if (invert_param->inv_type_precondition == QUDA_BICGSTAB_INVERTER) // inner BiCGstab preconditioner
-	invertBiCGstabCuda(pre, pre, pre, pPre, rPre, &invert_param_inner);
-      else if (invert_param->inv_type_precondition == QUDA_MR_INVERTER) // inner MR preconditioner
-	invertMRCuda(pre, pPre, rPre, &invert_param_inner);
-      else
-	errorQuda("Unknown inner solver %d", invert_param->inv_type_precondition);
-
-      // relaxation p = omega*p + (1-omega)*r
-      if (invert_param->omega!=1.0) axpbyCuda((1.0-invert_param->omega), rPre, invert_param->omega, pPre);
-
-      copyCuda(*p[k], pPre);
-    } else { // no preconditioner
-      *p[k] = rSloppy;
-    } 
-
-
-    gettimeofday(&pre1, NULL);
-
-    gettimeofday(&mat0, NULL);
-    matSloppy(*Ap[k], *p[k], tmp);
-    gettimeofday(&mat1, NULL);
+      if (pre_iter<Npre-1) {
+	xmyNormCuda(rSloppy, *Ap[k]);
+	copyCuda(rSloppy, *Ap[k]);
+      }
+    }
 
     orthoDir(beta, Ap, k);
 
@@ -287,8 +294,6 @@ void invertGCRCuda(const DiracMatrix &mat, const DiracMatrix &matSloppy, const D
       copyCuda(x, xSloppy);
       xpyCuda(x, y);
 
-      double r2Sloppy = r2;
-
       k = 0;
       mat(r, y);
       double r2 = xmyNormCuda(b, r);  
@@ -297,16 +302,16 @@ void invertGCRCuda(const DiracMatrix &mat, const DiracMatrix &matSloppy, const D
 	restart++; // restarting if residual is still too great
 
 	if (invert_param->verbosity >= QUDA_VERBOSE) 
-	  printfQuda("\nGCR: restart %d, iterated r2 = %e, true r2 = %e\n", restart, r2Sloppy, r2);
+	  printfQuda("GCR: %d total iterations, %d restart, true r2 = %e\n", total_iter, restart, r2);
       }
 
       copyCuda(rSloppy, r);
       zeroCuda(xSloppy);
 
       if (r2_old < r2) {
-	if (invert_param->verbosity >= QUDA_VERBOSE) 
+	if (invert_param->verbosity >= QUDA_SUMMARIZE) 
 	  printfQuda("GCR: precision limit reached, r2_old = %e < r2 = %e\n", r2_old, r2);
-	break;
+	//break;
       }
 
       r2_old = r2;

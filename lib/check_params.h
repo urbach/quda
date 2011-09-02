@@ -157,6 +157,7 @@ void printQudaInvertParam(QudaInvertParam *param) {
   P(maxiter_precondition, INVALID_INT);
   P(verbosity_precondition, QUDA_INVALID_VERBOSITY);
   P(prec_precondition, QUDA_INVALID_PRECISION);
+  P(iter_type, QUDA_INVALID_ITER);
 #else
   if (param->inv_type_precondition == QUDA_BICGSTAB_INVERTER || 
       param->inv_type_precondition == QUDA_CG_INVERTER || 
@@ -165,6 +166,7 @@ void printQudaInvertParam(QudaInvertParam *param) {
     P(maxiter_precondition, INVALID_INT);
     P(verbosity_precondition, QUDA_INVALID_VERBOSITY);
     P(prec_precondition, QUDA_INVALID_PRECISION);
+    P(iter_type, QUDA_INVALID_ITER);
   }
 #endif
 

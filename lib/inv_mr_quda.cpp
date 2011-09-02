@@ -14,6 +14,10 @@
 
 #include <color_spinor_field.h>
 
+extern double3* dd_reduce;
+
+#define DEVICE_REDUCTION
+
 cudaColorSpinorField *rp_mr = 0;
 cudaColorSpinorField *Arp_mr = 0;
 cudaColorSpinorField *tmpp_mr = 0;
@@ -55,7 +59,7 @@ void invertMRCuda(const DiracMatrix &mat, cudaColorSpinorField &x, cudaColorSpin
 
   if (&r != &b) copyCuda(r, b);
 
-  double b2 = normCuda(b);
+  double b2 = invert_param->iter_type == QUDA_DYNAMIC_ITER ? normCuda(b) : 0;
   double stop = b2*invert_param->tol*invert_param->tol; // stopping condition of solver
 
   // calculate initial residual
@@ -64,14 +68,12 @@ void invertMRCuda(const DiracMatrix &mat, cudaColorSpinorField &x, cudaColorSpin
   //r = Ar;
 
   zeroCuda(x);
-  double r2 = b2;
+  double r2 = invert_param->iter_type == QUDA_DYNAMIC_ITER ? b2 : 1;
 
   if (invert_param->inv_type_precondition != QUDA_GCR_INVERTER) {
     blas_quda_flops = 0;
     stopwatchStart();
   }
-
-  double omega = 1.0;
 
   int k = 0;
   if (invert_param->verbosity >= QUDA_VERBOSE) 
@@ -80,14 +82,22 @@ void invertMRCuda(const DiracMatrix &mat, cudaColorSpinorField &x, cudaColorSpin
   while (r2 > stop && k < invert_param->maxiter) {
     
     mat(Ar, r, tmp);
-    
+
+#ifdef DEVICE_REDUCTION  // fixed iterations and no global reductions
+    cDotProductNormALocalCuda(Ar, r);
+    caxpyXmazDDCuda(r, x, Ar);
+#else
     double3 Ar3 = cDotProductNormACuda(Ar, r);
     Complex alpha = Complex(Ar3.x, Ar3.y) / Ar3.z;
 
     //printfQuda("%d MR %e %e %e\n", k, Ar3.x, Ar3.y, Ar3.z);
 
     // x += omega*alpha*r, r -= omega*alpha*Ar, r2 = norm2(r)
-    r2 = caxpyXmazNormXCuda(omega*alpha, r, x, Ar);
+    if (invert_param->iter_type == QUDA_FIXED_ITER)
+      caxpyXmazCuda(alpha, r, x, Ar);
+    else
+      r2 = caxpyXmazNormXCuda(alpha, r, x, Ar);
+#endif
 
     k++;
 

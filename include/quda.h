@@ -105,6 +105,7 @@ extern "C" {
     double tol_precondition; // tolerance used by inner solver
     int maxiter_precondition; // max number of iterations used by inner solver    
     QudaPrecision prec_precondition; // the precision for the preconditioned solver
+    QudaIterationType iter_type; // QUDA_FIXED_ITER or QUDA_DYNAMIC_ITER
 
     double omega; // the relaxation parameter that is used in GCR-DD (default = 1.0)
 

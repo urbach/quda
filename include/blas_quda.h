@@ -67,6 +67,12 @@ double3 caxpbypzYmbwcDotProductUYNormYCuda(const Complex &a, cudaColorSpinorFiel
 					   cudaColorSpinorField &z, cudaColorSpinorField &w, cudaColorSpinorField &u);
 
 void cabxpyAxCuda(const double &a, const Complex &b, cudaColorSpinorField &x, cudaColorSpinorField &y);
+
+void caxpyXmazCuda(const Complex &a, cudaColorSpinorField &x, 
+		   cudaColorSpinorField &y, cudaColorSpinorField &z);
+
+void caxpyXmazDDCuda(cudaColorSpinorField &x, cudaColorSpinorField &y, cudaColorSpinorField &z);
+
 double caxpyNormCuda(const Complex &a, cudaColorSpinorField &x, cudaColorSpinorField &y);
 double caxpyXmazNormXCuda(const Complex &a, cudaColorSpinorField &x, 
 			  cudaColorSpinorField &y, cudaColorSpinorField &z);
@@ -78,6 +84,10 @@ void caxpbypczpwCuda(const Complex &, cudaColorSpinorField &, const Complex &, c
 		     const Complex &, cudaColorSpinorField &, cudaColorSpinorField &);
 Complex caxpyDotzyCuda(const Complex &a, cudaColorSpinorField &x, cudaColorSpinorField &y,
 		       cudaColorSpinorField &z);
+
+// DD solver reduction
+
+double3 cDotProductNormALocalCuda(cudaColorSpinorField &a, cudaColorSpinorField &b);
 
 // CPU variants
 
@@ -117,6 +127,9 @@ double3 caxpbypzYmbwcDotProductUYNormYCpu(const Complex &a, const cpuColorSpinor
 void cabxpyAxCpu(const double &a, const Complex &b, cpuColorSpinorField &x, cpuColorSpinorField &y);
 
 double caxpyNormCpu(const Complex &a, cpuColorSpinorField &x, cpuColorSpinorField &y);
+
+void caxpyXmazCpu(const Complex &a, cpuColorSpinorField &x, 
+		  cpuColorSpinorField &y, cpuColorSpinorField &z);
 
 double caxpyXmazNormXCpu(const Complex &a, cpuColorSpinorField &x, 
 			 cpuColorSpinorField &y, cpuColorSpinorField &z);
