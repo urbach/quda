@@ -18,6 +18,8 @@
 #include <invert_quda.h>
 #include <color_spinor_field.h>
 
+#include <cuda.h>
+
 #ifdef MULTI_GPU
 #ifdef MPI_COMMS
 #include <mpi.h>
@@ -172,6 +174,17 @@ void initQuda(int dev)
   }
   initialized = 1;
 
+#if (CUDA_VERSION >= 4000)
+  //check if CUDA_NIC_INTEROP is set to 1 in the enviroment
+  char* cni_str = getenv("CUDA_NIC_INTEROP");
+  if(cni_str == NULL){
+    errorQuda("Environment variable CUDA_NIC_INTEROP is not set\n");
+  }
+  int cni_int = atoi(cni_str);
+  if (cni_int != 1){
+    errorQuda("Environment variable CUDA_NIC_INTEROP is not set to 1\n");    
+  }
+#endif
 
   int deviceCount;
   cudaGetDeviceCount(&deviceCount);
@@ -229,7 +242,9 @@ void initQuda(int dev)
   if(numa_config_set){
     if(gpu_affinity[dev] >=0){
       printfQuda("Numa setting to cpu node %d\n", gpu_affinity[dev]);
-      numa_run_on_node(gpu_affinity[dev]);
+      if(numa_run_on_node(gpu_affinity[dev]) != 0){
+        printfQuda("Warning: Setting numa to cpu node %d failed\n", gpu_affinity[dev]);
+      }
     }
 
   }
@@ -1244,8 +1259,9 @@ void invertMultiShiftQuda(void **_hp_x, void *_hp_b, QudaInvertParam *param,
   delete [] hp_x;
 
   if (!param->preserve_dirac) {
-    delete d;
-    delete dSloppy;
+    delete d; d =NULL;
+    delete dSloppy; dSloppy = NULL;
+    delete dPre; dPre = NULL;
     diracCreation = false;
     diracTune = false;
   }  
@@ -1592,8 +1608,9 @@ invertMultiShiftQudaMixed(void **_hp_x, void *_hp_b, QudaInvertParam *param,
   delete [] hp_x;
 
   if (!param->preserve_dirac) {
-    delete d;
-    delete dSloppy;
+    delete d; d = NULL;
+    delete dSloppy; dSloppy = NULL;
+    delete dPre; dPre = NULL;
     diracCreation = false;
     diracTune = false;
   }  
