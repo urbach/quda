@@ -153,7 +153,7 @@ int main(int argc, char **argv)
 
   inv_param.dslash_type = dslash_type;
 
-  double mass = -0.427;
+  double mass = -0.4125;
   inv_param.kappa = 1.0 / (2.0 * (1 + 3/gauge_param.anisotropy + mass));
 
   if (dslash_type == QUDA_TWISTED_MASS_DSLASH) {
@@ -168,7 +168,7 @@ int main(int argc, char **argv)
   inv_param.mass_normalization = QUDA_KAPPA_NORMALIZATION;
 
   inv_param.inv_type = QUDA_GCR_INVERTER;
-  inv_param.gcrNkrylov = 10;
+  inv_param.gcrNkrylov = 50;
   inv_param.tol = 5e-7;
   inv_param.maxiter = 20000;
   inv_param.reliable_delta = 1e-1; // ignored by multi-shift solver
@@ -180,7 +180,7 @@ int main(int argc, char **argv)
   inv_param.maxiter_precondition = 10;
   inv_param.verbosity_precondition = QUDA_SILENT;
   inv_param.prec_precondition = cuda_prec_sloppy;
-  inv_param.omega = 1.0;
+  inv_param.omega = 0.7;
 
   inv_param.cpu_prec = cpu_prec;
   inv_param.cuda_prec = cuda_prec;

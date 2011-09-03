@@ -16,7 +16,8 @@
 
 extern double3* dd_reduce;
 
-#define DEVICE_REDUCTION
+//#define DEVICE_REDUCTION
+#define STABILIZED
 
 cudaColorSpinorField *rp_mr = 0;
 cudaColorSpinorField *Arp_mr = 0;
@@ -57,18 +58,23 @@ void invertMRCuda(const DiracMatrix &mat, cudaColorSpinorField &x, cudaColorSpin
   cudaColorSpinorField &Ar = *Arp_mr;
   cudaColorSpinorField &tmp = *tmpp_mr;
 
+  // set initial guess to zero and thus the residual is just the source
+  zeroCuda(x);  // can get rid of this for a special first update kernel  
+  double b2 = normCuda(b);
   if (&r != &b) copyCuda(r, b);
 
-  double b2 = invert_param->iter_type == QUDA_DYNAMIC_ITER ? normCuda(b) : 0;
-  double stop = b2*invert_param->tol*invert_param->tol; // stopping condition of solver
+  // domain-wise normalization of the initial residual to prevent underflow
+  double r2=0.0; // if zero source then we will exit immediately doing no work
+  if (b2 > 0.0) {
+    axCuda(1/sqrt(b2), r); // can merge this with the prior copy
+    r2 = 1.0; // by definition by this is now true
+  }
+  double stop = r2*invert_param->tol*invert_param->tol; // stopping condition of solver
 
-  // calculate initial residual
-  //mat(Ar, x, tmp);
-  //double r2 = xmyNormCuda(b, Ar);  
-  //r = Ar;
-
-  zeroCuda(x);
-  double r2 = invert_param->iter_type == QUDA_DYNAMIC_ITER ? b2 : 1;
+  if (invert_param->iter_type == QUDA_DYNAMIC_ITER) {
+    r2 = 1.0;
+    stop = 0.0;
+  }
 
   if (invert_param->inv_type_precondition != QUDA_GCR_INVERTER) {
     blas_quda_flops = 0;
@@ -76,8 +82,7 @@ void invertMRCuda(const DiracMatrix &mat, cudaColorSpinorField &x, cudaColorSpin
   }
 
   int k = 0;
-  if (invert_param->verbosity >= QUDA_VERBOSE) 
-    printfQuda("MR: %d iterations, r2 = %e\n", k, r2);
+  if (invert_param->verbosity >= QUDA_VERBOSE) printfQuda("MR: %d iterations, r2 = %e\n", k, r2);
 
   while (r2 > stop && k < invert_param->maxiter) {
     
@@ -90,8 +95,6 @@ void invertMRCuda(const DiracMatrix &mat, cudaColorSpinorField &x, cudaColorSpin
     double3 Ar3 = cDotProductNormACuda(Ar, r);
     Complex alpha = Complex(Ar3.x, Ar3.y) / Ar3.z;
 
-    //printfQuda("%d MR %e %e %e\n", k, Ar3.x, Ar3.y, Ar3.z);
-
     // x += omega*alpha*r, r -= omega*alpha*Ar, r2 = norm2(r)
     if (invert_param->iter_type == QUDA_FIXED_ITER)
       caxpyXmazCuda(alpha, r, x, Ar);
@@ -101,9 +104,17 @@ void invertMRCuda(const DiracMatrix &mat, cudaColorSpinorField &x, cudaColorSpin
 
     k++;
 
-    if (invert_param->verbosity >= QUDA_VERBOSE) printfQuda("MR: %d iterations, r2 = %e\n", k, r2);
+    if (invert_param->verbosity >= QUDA_DEBUG_VERBOSE) {
+      double x2 = norm2(x);
+      double r2 = norm2(r);
+      double Ar2 = norm2(Ar);
+      printfQuda("MR: %d iterations, r2 = %e, Ar2 = %e, x2 = %e\n", k, r2, Ar2, x2);
+    }
   }
-  
+
+  // Obtain global solution by rescaling
+  if (b2 > 0.0) axCuda(sqrt(b2), x);
+
   if (k>=invert_param->maxiter && invert_param->verbosity >= QUDA_SUMMARIZE) 
     warningQuda("Exceeded maximum iterations %d", invert_param->maxiter);
   
