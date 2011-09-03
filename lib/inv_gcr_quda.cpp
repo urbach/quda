@@ -254,8 +254,8 @@ void invertGCRCuda(const DiracMatrix &mat, const DiracMatrix &matSloppy, const D
     orthoDir(beta, Ap, k);
 
     double3 Apr = cDotProductNormACuda(*Ap[k], rSloppy);
+    gamma[k] = sqrt(Apr.z); // gamma[k] = |Ap[k]|
 
-    gamma[k] = sqrt(Apr.z); // gamma[k] = Ap[k]
     if (gamma[k] == 0.0) errorQuda("GCR breakdown\n");
     alpha[k] = Complex(Apr.x, Apr.y) / gamma[k]; // alpha = (1/|Ap|) * (Ap, r)
 
