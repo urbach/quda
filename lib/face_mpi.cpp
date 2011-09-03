@@ -568,7 +568,7 @@ void exchange_cpu_sitelink(int* X,
 void exchange_cpu_sitelink_ex(int* X, void** sitelink,
 			      QudaPrecision gPrecision, int optflag)
 {
-
+  
   int X1,X2,X3,X4;
   int E1,E2,E3,E4;  
   X1 = X[0]; X2 = X[1]; X3 = X[2]; X4 = X[3]; 
@@ -639,6 +639,7 @@ void exchange_cpu_sitelink_ex(int* X, void** sitelink,
   unsigned long recv_request1[4], recv_request2[4];
   unsigned long send_request1[4], send_request2[4];
   
+  int gaugebytes = gaugeSiteSize*gPrecision;
   int a, b, c,d;
   for(int dir =0;dir < 4;dir++){
     if(commDimPartitioned(dir)){
@@ -657,8 +658,8 @@ void exchange_cpu_sitelink_ex(int* X, void** sitelink,
 	      }
 	      for(int linkdir=0; linkdir<4;linkdir++){
 		char* src = (char*)sitelink[linkdir];
-		char* dst = ((char*)(ghost_sitelink_back_sendbuf[dir])) + linkdir*nslices*slice_3d[dir]*gaugeSiteSize*gPrecision;		
-		memcpy(dst + dst_idx * gaugeSiteSize*gPrecision, src+src_idx*gaugeSiteSize*gPrecision, gaugeSiteSize*gPrecision);
+		char* dst = ((char*)(ghost_sitelink_back_sendbuf[dir])) + linkdir*nslices*slice_3d[dir]*gaugebytes;		
+		memcpy(dst + dst_idx * gaugebytes, src+src_idx*gaugebytes, gaugebytes);
 	      }//linkdir
 	    }//c
       
@@ -676,8 +677,8 @@ void exchange_cpu_sitelink_ex(int* X, void** sitelink,
 	      }
 	      for(int linkdir=0; linkdir<4;linkdir++){
 		char* src = (char*)sitelink[linkdir];
-		char* dst = ((char*)(ghost_sitelink_fwd_sendbuf[dir])) + linkdir*nslices*slice_3d[dir]*gaugeSiteSize*gPrecision;
-		memcpy(dst + dst_idx * gaugeSiteSize*gPrecision, src+src_idx*gaugeSiteSize*gPrecision, gaugeSiteSize*gPrecision);
+		char* dst = ((char*)(ghost_sitelink_fwd_sendbuf[dir])) + linkdir*nslices*slice_3d[dir]*gaugebytes;
+		memcpy(dst + dst_idx * gaugebytes, src+src_idx*gaugebytes, gaugebytes);
 	      }//linkdir	
 	    }//c
       
@@ -720,11 +721,11 @@ void exchange_cpu_sitelink_ex(int* X, void** sitelink,
 		char* dst = (char*)sitelink[linkdir];
 		char* src;
 		if(commDimPartitioned(dir)){
-		  src= ((char*)(ghost_sitelink_back[dir])) + linkdir*nslices*slice_3d[dir]*gaugeSiteSize*gPrecision;
+		  src= ((char*)(ghost_sitelink_back[dir])) + linkdir*nslices*slice_3d[dir]*gaugebytes;
 		}else{
 		  src = (char*)sitelink[linkdir];
 		}
-		memcpy(dst + dst_idx * gaugeSiteSize*gPrecision, src+src_idx*gaugeSiteSize*gPrecision, gaugeSiteSize*gPrecision);
+		memcpy(dst + dst_idx * gaugebytes, src+src_idx*gaugebytes, gaugebytes);
 	      }//linkdir
 	    }//c    
     }else{
@@ -733,7 +734,7 @@ void exchange_cpu_sitelink_ex(int* X, void** sitelink,
 	  char* dst = (char*)sitelink[linkdir];
 	  char* src;
 	  if(commDimPartitioned(dir)){
-	    src = ((char*)(ghost_sitelink_back[dir])) + linkdir*nslices*slice_3d[dir]*gaugeSiteSize*gPrecision;	
+	    src = ((char*)(ghost_sitelink_back[dir])) + linkdir*nslices*slice_3d[dir]*gaugebytes;	
 	  }else{
 	    src = (char*)sitelink[linkdir];
 	  }
@@ -745,7 +746,7 @@ void exchange_cpu_sitelink_ex(int* X, void** sitelink,
 	  }else{
 	    src_idx = (X[dir]*f_main[dir][3])>> 1;
 	  }
-	  memcpy(dst + dst_idx * gaugeSiteSize*gPrecision, src+src_idx*gaugeSiteSize*gPrecision, nslices*slice_3d[dir]*gaugeSiteSize*gPrecision/2);
+	  memcpy(dst + dst_idx * gaugebytes, src+src_idx*gaugebytes, nslices*slice_3d[dir]*gaugebytes/2);
 
 	  //odd
 	  dst_idx = Vh_ex;
@@ -754,7 +755,7 @@ void exchange_cpu_sitelink_ex(int* X, void** sitelink,
 	  }else{
 	    src_idx = (X[dir]*f_main[dir][3])/2 + Vh_ex;
 	  }
-	  memcpy(dst + dst_idx * gaugeSiteSize*gPrecision, src+src_idx*gaugeSiteSize*gPrecision, nslices*slice_3d[dir]*gaugeSiteSize*gPrecision/2);
+	  memcpy(dst + dst_idx * gaugebytes, src+src_idx*gaugebytes, nslices*slice_3d[dir]*gaugebytes/2);
       }      
 
     }//if
@@ -785,11 +786,11 @@ void exchange_cpu_sitelink_ex(int* X, void** sitelink,
 		char* dst = (char*)sitelink[linkdir];
 		char* src;
 		if(commDimPartitioned(dir)){
-		  src = ((char*)(ghost_sitelink_fwd[dir])) + linkdir*nslices*slice_3d[dir]*gaugeSiteSize*gPrecision;
+		  src = ((char*)(ghost_sitelink_fwd[dir])) + linkdir*nslices*slice_3d[dir]*gaugebytes;
 		}else{
 		  src = (char*)sitelink[linkdir];
 		}
-		memcpy(dst + dst_idx * gaugeSiteSize*gPrecision, src+src_idx*gaugeSiteSize*gPrecision, gaugeSiteSize*gPrecision);
+		memcpy(dst + dst_idx * gaugebytes, src+src_idx*gaugebytes, gaugebytes);
 	      }//linkdir
 	    }//c
     }else{
@@ -798,7 +799,7 @@ void exchange_cpu_sitelink_ex(int* X, void** sitelink,
 	char* dst = (char*)sitelink[linkdir];
 	char* src;
 	if(commDimPartitioned(dir)){
-	  src = ((char*)(ghost_sitelink_fwd[dir])) + linkdir*nslices*slice_3d[dir]*gaugeSiteSize*gPrecision;	
+	  src = ((char*)(ghost_sitelink_fwd[dir])) + linkdir*nslices*slice_3d[dir]*gaugebytes;	
 	}else{
 	  src = (char*)sitelink[linkdir];
 	}
@@ -810,7 +811,7 @@ void exchange_cpu_sitelink_ex(int* X, void** sitelink,
 	}else{
 	  src_idx = (2*f_main[dir][3]) >> 1;
 	}
-	memcpy(dst + dst_idx * gaugeSiteSize*gPrecision, src+src_idx*gaugeSiteSize*gPrecision, nslices*slice_3d[dir]*gaugeSiteSize*gPrecision/2);
+	memcpy(dst + dst_idx * gaugebytes, src+src_idx*gaugebytes, nslices*slice_3d[dir]*gaugebytes/2);
 	
 	//odd
 	dst_idx = Vh_ex + (((X[dir]+2)*f_main[dir][3]) >> 1);
@@ -819,7 +820,7 @@ void exchange_cpu_sitelink_ex(int* X, void** sitelink,
 	}else{
 	  src_idx = (2*f_main[dir][3])/2 + Vh_ex;
 	}
-	memcpy(dst + dst_idx * gaugeSiteSize*gPrecision, src+src_idx*gaugeSiteSize*gPrecision, nslices*slice_3d[dir]*gaugeSiteSize*gPrecision/2);
+	memcpy(dst + dst_idx * gaugebytes, src+src_idx*gaugebytes, nslices*slice_3d[dir]*gaugebytes/2);
       }
       
     }//if    
@@ -908,36 +909,37 @@ void exchange_cpu_sitelink_nl(int* X, void** sitelink_ex, void** sitelink_nl,
     }
 
     int ox1, ox2, ox3, ox4;
-
+    
+    int base = (Vh_nl+ghost_tot_len)*oddBit + Vh_nl ;
     if(x1 < 1){
-      int idx = (Vh_nl+ghost_tot_len)*oddBit + Vh_nl + (x4*E3E2 + x3*E2 + x2)/2  ;
+      int idx = base + (x4*E3E2 + x3*E2 + x2)/2  ;
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i);
     }else if (x1 >= X1 + 3){
-      int idx = (Vh_nl+ghost_tot_len)*oddBit + Vh_nl + E4E3E2/2 + (x4*E3E2 + x3*E2 + x2)/2  ;
+      int idx = base + E4E3E2/2 + (x4*E3E2 + x3*E2 + x2)/2  ;
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i) ;     
     }
     
     if(x2 < 1){
-      int idx = (Vh_nl+ghost_tot_len)*oddBit + Vh_nl + ghost_len[0] + (x4*E3E1 + x3*E1 + x1)/2  ;
+      int idx = base + ghost_len[0] + (x4*E3E1 + x3*E1 + x1)/2  ;
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i);
     }else if (x2 >= X2 + 3){
-      int idx = (Vh_nl+ghost_tot_len)*oddBit + Vh_nl + ghost_len[0] + E4E3E1/2 + (x4*E3E1 + x3*E1 + x1)/2  ;
+      int idx = base + ghost_len[0] + E4E3E1/2 + (x4*E3E1 + x3*E1 + x1)/2  ;
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i) ;     
     }
     
     if(x3 < 1){
-      int idx = (Vh_nl+ghost_tot_len)*oddBit + Vh_nl + ghost_len[0] + ghost_len[1] + (x4*E2E1 + x2*E1 + x1)/2  ;
+      int idx = base + ghost_len[0] + ghost_len[1] + (x4*E2E1 + x2*E1 + x1)/2  ;
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i);
     }else if (x3 >= X3 + 3){
-      int idx = (Vh_nl+ghost_tot_len)*oddBit + Vh_nl + ghost_len[0] + ghost_len[1] +  E4E2E1/2 + (x4*E2E1 + x2*E1 + x1)/2  ;
+      int idx = base + ghost_len[0] + ghost_len[1] +  E4E2E1/2 + (x4*E2E1 + x2*E1 + x1)/2  ;
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i) ;     
     }
     
     if(x4 < 1){
-      int idx = (Vh_nl+ghost_tot_len)*oddBit + Vh_nl + ghost_len[0] + ghost_len[1] + ghost_len[2] + (x3*E2E1 + x2*E1 + x1)/2  ;
+      int idx = base + ghost_len[0] + ghost_len[1] + ghost_len[2] + (x3*E2E1 + x2*E1 + x1)/2  ;
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i);
     }else if (x4 >= X4 + 3){
-      int idx = (Vh_nl+ghost_tot_len)*oddBit + Vh_nl + ghost_len[0] + ghost_len[1] +  ghost_len[2] + E3E2E1/2 + (x3*E2E1 + x2*E1 + x1)/2  ;
+      int idx = base + ghost_len[0] + ghost_len[1] +  ghost_len[2] + E3E2E1/2 + (x3*E2E1 + x2*E1 + x1)/2  ;
       COPY_SITELINK(sitelink_nl, idx, sitelink_ex, i) ;     
     }
 
@@ -968,38 +970,11 @@ void exchange_cpu_sitelink_nl(int* X, void** sitelink_ex, void** sitelink_nl,
       char* dst = (char*)sitelink_nl[dir];
       memcpy(dst+idx*gaugeSiteSize*gSize, src+i*gaugeSiteSize*gSize, gaugeSiteSize*gSize);	
     }//dir
-    /*
-    if( ox1 == 1 && ox2 == 1 && ox3 == 1 && ox4 == 1)
-      {
-	double* data = ((double*)sitelink_nl[0]+idx*18);
-	printf("face sitelink inloop is  \n");
-	printf("(%f %f) (%f %f) (%f %f)\n"
-	       "(%f %f) (%f %f) (%f %f)\n"
-	       "(%f %f) (%f %f) (%f %f)\n",
-	       data[0], data[1], data[2], data[3], data[4], data[5], 
-	       data[6], data[7], data[8], data[9], data[10], data[11], 
-	       data[12], data[13], data[14], data[15], data[16], data[17]); 
-      }
-    */
 
   }//i
-  
-  /*
-  {
-    double* data = (double*)sitelink_nl[0];
-    //data += (Vh_nl+ghost_tot_len) * 18;
-    printf("face sitelink is \n");
-    printf("(%f %f) (%f %f) (%f %f)\n"
-	   "(%f %f) (%f %f) (%f %f)\n"
-	   "(%f %f) (%f %f) (%f %f)\n",
-	   data[0], data[1], data[2], data[3], data[4], data[5], 
-	   data[6], data[7], data[8], data[9], data[10], data[11], 
-	   data[12], data[13], data[14], data[15], data[16], data[17]); 
-  }
-  */
-
 
 }
+
 
 template<typename Float>
 void

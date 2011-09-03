@@ -428,7 +428,7 @@ llfat_cuda_nl(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 
 
   llfatOneLinkKernel_nl(cudaFatLink, cudaSiteLink,cudaStaple, cudaStaple1,
-			param, act_path_coeff, kparam); CUERR;
+			param, act_path_coeff, kparam); 
   
   for(int dir = 0;dir < 4; dir++){
     for(int nu = 0; nu < 4; nu++){

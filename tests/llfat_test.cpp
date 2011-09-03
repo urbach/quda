@@ -494,11 +494,12 @@ llfat_test(int test)
   int flops= 61632; 
 
   struct timeval t0, t1, t2, t3;
-  gettimeofday(&t0, NULL);
 
   switch(test){
   case 0:
     llfat_init_cuda(&gaugeParam);
+
+    gettimeofday(&t0, NULL);
     gaugeParam.ga_pad = gaugeParam.site_ga_pad;
     gaugeParam.reconstruct = link_recon;
     loadLinkToGPU(cudaSiteLink, sitelink, &gaugeParam);
@@ -508,6 +509,8 @@ llfat_test(int test)
 
   case 1:
     llfat_init_cuda_ex(&gaugeParam_ex);
+
+    gettimeofday(&t0, NULL);
     exchange_cpu_sitelink_ex(gaugeParam.X, sitelink_ex, gaugeParam.cpu_prec, 1);    
     gaugeParam_ex.ga_pad = gaugeParam_ex.site_ga_pad;
     gaugeParam_ex.reconstruct = link_recon;
@@ -518,6 +521,8 @@ llfat_test(int test)
 
   case 2:
     llfat_init_cuda_nl(&gaugeParam_nl);
+
+    gettimeofday(&t0, NULL);
     exchange_cpu_sitelink_nl(gaugeParam.X, sitelink_ex, sitelink_nl, gaugeParam.cpu_prec, 1);    
     gaugeParam.ga_pad = gaugeParam.site_ga_pad;
     gaugeParam.reconstruct = link_recon;

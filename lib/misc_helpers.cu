@@ -3,6 +3,7 @@
 #define gaugeSiteSize 18
 #define BLOCKSIZE 64
 
+#define TEMP_BLOCKSIZE 8
 /* This function converts format in CPU form 
  * into forms in GPU so as to enable coalesce access
  * The function only converts half(even or odd) of the links
@@ -32,7 +33,7 @@ do_link_format_cpu_to_gpu(FloatN* dst, Float* src,
 {
   int tid = blockIdx.x * blockDim.x +  threadIdx.x;
   int thread0_tid = blockIdx.x * blockDim.x;
-  __shared__ FloatN buf[M/N*8];
+  __shared__ FloatN buf[M/N*TEMP_BLOCKSIZE];
   
   int dir;
   int j;
@@ -73,7 +74,7 @@ link_format_cpu_to_gpu(void* dst, void* src,
 		       int ghostV,
 		       QudaPrecision prec, cudaStream_t stream)
 {
-  dim3 blockDim(8);
+  dim3 blockDim(TEMP_BLOCKSIZE);
 #ifdef MULTI_GPU  
   dim3 gridDim((Vh+ghostV)/blockDim.x);
 #else

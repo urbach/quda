@@ -764,7 +764,7 @@ template<int mu, int nu, int odd_bit>
 							   Float mycoeff, llfat_kernel_param_t kparam)
 {
 
-#if 0
+#if 1
   
   __shared__ FloatM sd_data[NUM_FLOATS*64];
   
@@ -909,7 +909,7 @@ template<int mu, int nu, int odd_bit, int save_staple>
 							   FloatM* mulink_even, FloatM* mulink_odd, 
 							   Float mycoeff, llfat_kernel_param_t kparam)
 {
-#if 0
+#if 1
 
   __shared__ FloatM sd_data[NUM_FLOATS*64];
   //FloatM TEMPA0, TEMPA1, TEMPA2, TEMPA3, TEMPA4, TEMPA5, TEMPA6, TEMPA7, TEMPA8;  
@@ -1063,7 +1063,7 @@ LLFAT_KERNEL(llfatOneLink, RECONSTRUCT)(FloatN* sitelink_even, FloatN* sitelink_
 					Float coeff0, Float coeff5)
 {
 
-#if 0
+#if 1
 
   FloatN* my_sitelink;
   FloatM* my_fatlink;
@@ -1125,7 +1125,7 @@ template<int mu, int nu, int odd_bit>
 							      FloatM* fatlink_even, FloatM* fatlink_odd,	
 							      Float mycoeff, llfat_kernel_param_t kparam)
 {
-#if 0
+#if 1
   __shared__ FloatM sd_data[NUM_FLOATS*64];
   
   //FloatM TEMPA0, TEMPA1, TEMPA2, TEMPA3, TEMPA4, TEMPA5, TEMPA6, TEMPA7, TEMPA8;
@@ -1256,7 +1256,7 @@ template<int mu, int nu, int odd_bit, int save_staple>
 							      FloatM* mulink_even, FloatM* mulink_odd, 
 							      Float mycoeff, llfat_kernel_param_t kparam)
 {
-#if 0
+#if 1
   __shared__ FloatM sd_data[NUM_FLOATS*64];
   //FloatM TEMPA0, TEMPA1, TEMPA2, TEMPA3, TEMPA4, TEMPA5, TEMPA6, TEMPA7, TEMPA8;  
   FloatM  TEMPA5, TEMPA6, TEMPA7, TEMPA8;  
@@ -1381,7 +1381,7 @@ LLFAT_KERNEL_EX(llfatOneLink, RECONSTRUCT)(FloatN* sitelink_even, FloatN* siteli
 					   FloatM* fatlink_even, FloatM* fatlink_odd,
 					   Float coeff0, Float coeff5, llfat_kernel_param_t kparam)
 {
-#if 0
+#if 1
 
   FloatN* my_sitelink;
   FloatM* my_fatlink;
