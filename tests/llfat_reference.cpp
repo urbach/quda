@@ -197,7 +197,8 @@ llfat_compute_gen_staple_field(su3_matrix *staple, int mu, int nu,
     }else{
       B = mulink + nbr_idx;
     }
-	
+    int b_nbr_idx= nbr_idx;
+
     memset(dx, 0, sizeof(dx));
     dx[mu] =1;
     nbr_idx = neighborIndexFullLattice(i, dx[3], dx[2],dx[1],dx[0]);
@@ -211,7 +212,6 @@ llfat_compute_gen_staple_field(su3_matrix *staple, int mu, int nu,
       llfat_mult_su3_na( &tmat1, C, &tmat2); 	    
       llfat_scalar_mult_add_su3_matrix(fat1, &tmat2, coef, fat1);	    
     }
-
   }    
   /***************lower staple****************
    *
@@ -300,14 +300,14 @@ void llfat_cpu(void** fatlink, su3_matrix** sitelink, Float* act_path_coeff)
       llfat_scalar_mult_su3_matrix(sitelink[dir] + i, one_link, fat1 );
     }
   }
+
   
 
   for (int dir=XUP; dir<=TUP; dir++){
     for(int nu=XUP; nu<=TUP; nu++){
       if(nu!=dir){
 	llfat_compute_gen_staple_field(staple,dir,nu,sitelink[dir], sitelink,fatlink, act_path_coeff[2], 0);
-
-#if 0
+	
 	/* The Lepage term */
 	/* Note this also involves modifying c_1 (above) */
 		
@@ -316,7 +316,7 @@ void llfat_cpu(void** fatlink, su3_matrix** sitelink, Float* act_path_coeff)
 	for(int rho=XUP; rho<=TUP; rho++) {
 	  if((rho!=dir)&&(rho!=nu)){
 	    llfat_compute_gen_staple_field( tempmat1, dir, rho, staple,sitelink,fatlink, act_path_coeff[3], 1);
-	    
+	    	    
 	    for(int sig=XUP; sig<=TUP; sig++){
 	      if((sig!=dir)&&(sig!=nu)&&(sig!=rho)){
 		llfat_compute_gen_staple_field((su3_matrix*)NULL,dir,sig,tempmat1,sitelink,fatlink, act_path_coeff[4], 1);
@@ -327,7 +327,6 @@ void llfat_cpu(void** fatlink, su3_matrix** sitelink, Float* act_path_coeff)
 
 	}/* rho */
 
-#endif
       } 
 
     }/* nu */

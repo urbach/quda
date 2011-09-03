@@ -327,7 +327,6 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 						 act_path_coeff[3],
 						 recon, prec, kparam_1g);
 	    
-	    
 	    for(int sig = 0; sig < 4; sig++){
 	      if (sig != dir && sig != nu && sig != rho){						
 		
@@ -407,7 +406,7 @@ llfat_cuda_nl(FullGauge cudaFatLink, FullGauge cudaSiteLink,
   kparam.D3 = param->X[2];
   kparam.D4 = param->X[3];
   kparam.D1h = param->X[0]/2;
-  kparam.base_idx = 2;
+  kparam.base_idx = 1;
   
   kparam_1g.threads= Vh_1g;
   kparam_1g.halfGridDim = halfGridDim_1g;
@@ -416,7 +415,7 @@ llfat_cuda_nl(FullGauge cudaFatLink, FullGauge cudaSiteLink,
   kparam_1g.D3 = param->X[2] + 2;
   kparam_1g.D4 = param->X[3] + 2;
   kparam_1g.D1h = (param->X[0] + 2)/2;
-  kparam_1g.base_idx = 1;
+  kparam_1g.base_idx = 0;
 
   kparam_2g.threads= Vh_2g;
   kparam_2g.halfGridDim = halfGridDim_2g;
@@ -425,12 +424,12 @@ llfat_cuda_nl(FullGauge cudaFatLink, FullGauge cudaSiteLink,
   kparam_2g.D3 = param->X[2] + 4;
   kparam_2g.D4 = param->X[3] + 4;
   kparam_2g.D1h = (param->X[0] + 4)/2;
-  kparam_2g.base_idx = 0;
+  kparam_2g.base_idx = 1;
 
 
   llfatOneLinkKernel_nl(cudaFatLink, cudaSiteLink,cudaStaple, cudaStaple1,
 			param, act_path_coeff, kparam); CUERR;
-
+  
   for(int dir = 0;dir < 4; dir++){
     for(int nu = 0; nu < 4; nu++){
       if (nu != dir){
@@ -442,9 +441,8 @@ llfat_cuda_nl(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 					    dir, nu,
 					    act_path_coeff[2],
 					    recon, prec, kparam_1g); 
-
-#if 0  
-
+	
+	
 	computeGenStapleFieldParityKernel_nl((void*)NULL, (void*)NULL,
 					     (void*)cudaSiteLink.even, (void*)cudaSiteLink.odd,
 					     (void*)cudaFatLink.even, (void*)cudaFatLink.odd, 
@@ -452,7 +450,7 @@ llfat_cuda_nl(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 					     dir, nu, 0,
 					     act_path_coeff[5],
 					     recon, prec, kparam);
-	
+
 	
 	for(int rho = 0; rho < 4; rho++){
 	  if (rho != dir && rho != nu){
@@ -465,7 +463,7 @@ llfat_cuda_nl(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 						 act_path_coeff[3],
 						 recon, prec, kparam_1g);
 	    
-	    
+
 	    for(int sig = 0; sig < 4; sig++){
 	      if (sig != dir && sig != nu && sig != rho){						
 		
@@ -481,7 +479,6 @@ llfat_cuda_nl(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 	    }//sig
 	  }
 	}//rho	
-#endif
       }
     }//nu
   }//dir

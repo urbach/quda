@@ -904,7 +904,7 @@ void exchange_cpu_sitelink_nl(int* X, void** sitelink_ex, void** sitelink_nl,
     for(int dir= 0; dir < 4; dir++){					\
       char* src = (char*)src_array[dir];				\
       char* dst = (char*)dst_array[dir];				\
-      memcpy(dst+idx*gaugeSiteSize*gSize, src+i*gaugeSiteSize*gSize, gaugeSiteSize*gSize); \
+      memcpy(dst+idx*gaugeSiteSize*gSize, src+src_idx*gaugeSiteSize*gSize, gaugeSiteSize*gSize); \
     }
 
     int ox1, ox2, ox3, ox4;

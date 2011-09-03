@@ -228,10 +228,11 @@ llfat_init(int test)
   }
 
   createSiteLinkCPU(sitelink, gaugeParam.cpu_prec, 1);
+  
   /*
   {
     double* data = (double*)sitelink[1];
-    //data += Vh * gaugeSiteSize;
+    data += (Vh) * gaugeSiteSize;
     printf("cpu sitelink=\n");
     printf("(%f %f) (%f %f) (%f %f)\n"
 	   "(%f %f) (%f %f) (%f %f)\n"
@@ -240,7 +241,7 @@ llfat_init(int test)
 	   data[6], data[7], data[8], data[9], data[10], data[11], 
 	   data[12], data[13], data[14], data[15], data[16], data[17]); 
   }
-  */
+*/
 
 
   for(i=0;i < 4;i++){
