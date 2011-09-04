@@ -310,9 +310,9 @@ void initDslashConstants(const FullGauge gauge, const int sp_stride)
   // create the streams and scatter events
   for (int i=0; i<Nstream; i++) {
     cudaStreamCreate(&streams[i]);
-    cudaEventCreate(&scatterEvent[i], cudaEventDisableTiming);
+    cudaEventCreateWithFlags(&scatterEvent[i], cudaEventDisableTiming);
   }
-  cudaEventCreate(&dslashEnd, cudaEventDisableTiming);
+  cudaEventCreateWithFlags(&dslashEnd, cudaEventDisableTiming);
 }
 
 void initCloverConstants (const int cl_stride) {

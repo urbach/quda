@@ -954,9 +954,7 @@ void copyCuda(cudaColorSpinorField &dst, const cudaColorSpinorField &src) {
     }
   }
   
-  cudaThreadSynchronize();
   if (!blasTuning) checkCudaError();
-
 }
 
 
