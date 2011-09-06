@@ -229,7 +229,7 @@ class TuneDiracStaggeredDslashXpay : public TuneBase {
 		      const cudaColorSpinorField &b, const cudaColorSpinorField &c) : 
   TuneBase("DiracStaggeredDslashXpay", d.Verbose()), dirac(d), a(a), b(b), c(c) { ; }
   virtual ~TuneDiracStaggeredDslashXpay() { ; }
-
+  
   void Apply() const { dirac.DiracStaggered::DslashXpay(a, b, QUDA_EVEN_PARITY, c, 1.0); }
   unsigned long long Flops() const { return dirac.Flops(); }
 };

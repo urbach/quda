@@ -24,8 +24,9 @@ typedef struct llfat_kernel_param_s{
   
   //use in extended kernels
   int D1, D2,D3, D4, D1h;
+  dim3 blockDim;
   dim3 halfGridDim;
-  int base_idx;
+  int base_idx;  
 }llfat_kernel_param_t;
 
 

@@ -225,25 +225,28 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 	      FullStaple cudaStaple, FullStaple cudaStaple1,
 	      QudaGaugeParam* param, double* act_path_coeff)
 {
+
+  dim3 blockDim(BLOCK_DIM, 1,1);
+  
   int volume = (param->X[0])*(param->X[1])*(param->X[2])*(param->X[3]);
   int Vh = volume/2;
-  dim3 halfGridDim(Vh/BLOCK_DIM,1,1);
-  if(Vh % BLOCK_DIM != 0){
+  dim3 halfGridDim(Vh/blockDim.x,1,1);
+  if(Vh % blockDim.x != 0){
     halfGridDim.x +=1;
   }
 
 
   int volume_1g = (param->X[0]+2)*(param->X[1]+2)*(param->X[2]+2)*(param->X[3]+2);
   int Vh_1g = volume_1g/2;
-  dim3 halfGridDim_1g(Vh_1g/BLOCK_DIM,1,1);
-  if(Vh_1g % BLOCK_DIM != 0){
+  dim3 halfGridDim_1g(Vh_1g/blockDim.x,1,1);
+  if(Vh_1g % blockDim.x != 0){
     halfGridDim_1g.x +=1;
   }
   
   int volume_2g = (param->X[0]+4)*(param->X[1]+4)*(param->X[2]+4)*(param->X[3]+4);
   int Vh_2g = volume_2g/2;
-  dim3 halfGridDim_2g(Vh_2g/BLOCK_DIM,1,1);
-  if(Vh_2g % BLOCK_DIM != 0){
+  dim3 halfGridDim_2g(Vh_2g/blockDim.x,1,1);
+  if(Vh_2g % blockDim.x != 0){
     halfGridDim_2g.x +=1;
   }
 
@@ -263,7 +266,7 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
   llfat_kernel_param_t kparam;
   llfat_kernel_param_t kparam_1g;
   llfat_kernel_param_t kparam_2g;
-
+  
   kparam.threads= Vh;
   kparam.halfGridDim = halfGridDim;
   kparam.D1 = param->X[0];
@@ -290,7 +293,8 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
   kparam_2g.D4 = param->X[3] + 4;
   kparam_2g.D1h = (param->X[0] + 4)/2;
   kparam_2g.base_idx = 0;
-
+  
+  kparam_1g.blockDim = kparam_2g.blockDim = kparam.blockDim = blockDim;
 
   llfatOneLinkKernel_ex(cudaFatLink, cudaSiteLink,cudaStaple, cudaStaple1,
 			param, act_path_coeff, kparam); CUERR;
