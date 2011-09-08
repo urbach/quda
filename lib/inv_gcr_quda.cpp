@@ -303,11 +303,13 @@ void invertGCRCuda(const DiracMatrix &mat, const DiracMatrix &matSloppy, const D
       copyCuda(rSloppy, r);
       zeroCuda(xSloppy);
 
+#if 0
       if (r2_old < r2) {
 	if (invert_param->verbosity >= QUDA_VERBOSE) 
 	  printfQuda("GCR: precision limit reached, r2_old = %e < r2 = %e\n", r2_old, r2);
 	break;
       }
+#endif
 
       r2_old = r2;
     }
