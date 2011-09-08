@@ -361,7 +361,7 @@ llfat_init(int test)
       gaugeParam_ex.reconstruct = link_recon;
       createLinkQuda(&cudaSiteLink_ex, &gaugeParam_ex);
     
-      gaugeParam_ex.staple_pad =  E1*E2*E2/2;
+      gaugeParam_ex.staple_pad =  E1*E2*E2/2*3;
       createStapleQuda(&cudaStaple_ex, &gaugeParam_ex);
       createStapleQuda(&cudaStaple1_ex, &gaugeParam_ex);
 

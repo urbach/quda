@@ -8,9 +8,9 @@
 #include <force_common.h>
 #include "llfat_quda.h"
 #include <face_quda.h>
+#include <tune_quda.h>
 
-
-#define BLOCK_DIM 64
+#define LLFAT_BLOCK_DIM 32
 
 void
 llfat_cuda(FullGauge cudaFatLink, FullGauge cudaSiteLink, 
@@ -19,9 +19,9 @@ llfat_cuda(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 {
   int volume = param->X[0]*param->X[1]*param->X[2]*param->X[3];
   int Vh = volume/2;
-  dim3 gridDim(volume/BLOCK_DIM,1,1);
-  dim3 halfGridDim(Vh/BLOCK_DIM,1,1);
-  dim3 blockDim(BLOCK_DIM , 1, 1);
+  dim3 blockDim(LLFAT_BLOCK_DIM , 1, 1);
+  dim3 gridDim(volume/blockDim.x,1,1);
+  dim3 halfGridDim(Vh/blockDim.x,1,1);
   
   QudaPrecision prec = cudaSiteLink.precision;
   QudaReconstructType recon = cudaSiteLink.reconstruct;
@@ -41,15 +41,19 @@ llfat_cuda(FullGauge cudaFatLink, FullGauge cudaSiteLink,
     cudaStreamCreate(&stream[i]);
   }
 
- 
-  llfatOneLinkKernel(cudaFatLink, cudaSiteLink,cudaStaple, cudaStaple1,
-		     param, act_path_coeff); CUERR;
-
-
   llfat_kernel_param_t kparam;
   for(int i=0;i < 4;i++){
      kparam.ghostDim[i] = commDimPartitioned(i);
   }
+  
+  kparam.blockDim = blockDim;
+
+  
+  llfatOneLinkKernel(cudaFatLink, cudaSiteLink,cudaStaple, cudaStaple1,
+		     param, act_path_coeff, kparam); CUERR;
+
+
+  
   int ktype[8] = {
 		LLFAT_EXTERIOR_KERNEL_BACK_X, 
 		LLFAT_EXTERIOR_KERNEL_FWD_X, 
@@ -226,7 +230,7 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 	      QudaGaugeParam* param, double* act_path_coeff)
 {
 
-  dim3 blockDim(BLOCK_DIM, 1,1);
+  dim3 blockDim(LLFAT_BLOCK_DIM, 1,1);
   
   int volume = (param->X[0])*(param->X[1])*(param->X[2])*(param->X[3]);
   int Vh = volume/2;
@@ -296,6 +300,17 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
   
   kparam_1g.blockDim = kparam_2g.blockDim = kparam.blockDim = blockDim;
 
+  /*
+  {
+    static dim3 blocks[3]={{64, 1, 1}, {64,1,1}, {64,1,1}};
+    QudaVerbosity verbose = QUDA_DEBUG_VERBOSE;
+    TuneLinkFattening fatTune(cudaFatLink, cudaSiteLink, cudaStaple, cudaStaple1,
+			      kparam, kparam_1g, verbose);
+    fatTune.BenchmarkMulti(blocks, 3);
+    
+  }
+  */
+
   llfatOneLinkKernel_ex(cudaFatLink, cudaSiteLink,cudaStaple, cudaStaple1,
 			param, act_path_coeff, kparam); CUERR;
   
@@ -364,25 +379,27 @@ llfat_cuda_nl(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 	      FullStaple cudaStaple, FullStaple cudaStaple1,
 	      QudaGaugeParam* param, double* act_path_coeff)
 {
+  dim3 blockDim(LLFAT_BLOCK_DIM, 1, 1);
+  
   int volume = (param->X[0])*(param->X[1])*(param->X[2])*(param->X[3]);
   int Vh = volume/2;
-  dim3 halfGridDim(Vh/BLOCK_DIM,1,1);
-  if(Vh % BLOCK_DIM != 0){
+  dim3 halfGridDim(Vh/blockDim.x,1,1);
+  if(Vh % blockDim.x != 0){
     halfGridDim.x +=1;
   }
 
 
   int volume_1g = (param->X[0]+2)*(param->X[1]+2)*(param->X[2]+2)*(param->X[3]+2);
   int Vh_1g = volume_1g/2;
-  dim3 halfGridDim_1g(Vh_1g/BLOCK_DIM,1,1);
-  if(Vh_1g % BLOCK_DIM != 0){
+  dim3 halfGridDim_1g(Vh_1g/blockDim.x,1,1);
+  if(Vh_1g % blockDim.x != 0){
     halfGridDim_1g.x +=1;
   }
   
   int volume_2g = (param->X[0]+4)*(param->X[1]+4)*(param->X[2]+4)*(param->X[3]+4);
   int Vh_2g = volume_2g/2;
-  dim3 halfGridDim_2g(Vh_2g/BLOCK_DIM,1,1);
-  if(Vh_2g % BLOCK_DIM != 0){
+  dim3 halfGridDim_2g(Vh_2g/blockDim.x,1,1);
+  if(Vh_2g % blockDim.x != 0){
     halfGridDim_2g.x +=1;
   }
 
@@ -430,7 +447,9 @@ llfat_cuda_nl(FullGauge cudaFatLink, FullGauge cudaSiteLink,
   kparam_2g.D1h = (param->X[0] + 4)/2;
   kparam_2g.base_idx = 1;
 
-
+  
+  kparam.blockDim = kparam_1g.blockDim = kparam_2g.blockDim = blockDim;
+  
   llfatOneLinkKernel_nl(cudaFatLink, cudaSiteLink,cudaStaple, cudaStaple1,
 			param, act_path_coeff, kparam); 
   

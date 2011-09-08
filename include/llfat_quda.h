@@ -90,10 +90,11 @@ typedef struct llfat_kernel_param_s{
 					   int mu, int nu,	double mycoeff,
 					   QudaReconstructType recon, QudaPrecision prec,
 					   llfat_kernel_param_t kparam);
-
+  
   void llfatOneLinkKernel(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 			  FullStaple cudaStaple, FullStaple cudaStaple1,
-			  QudaGaugeParam* param, double* act_path_coeff);
+			  QudaGaugeParam* param, double* act_path_coeffk,
+			  llfat_kernel_param_t kparam);
   void llfatOneLinkKernel_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 			     FullStaple cudaStaple, FullStaple cudaStaple1,
 			     QudaGaugeParam* param, double* act_path_coeff,

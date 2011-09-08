@@ -215,7 +215,7 @@
 #define TEMPA2 sd_data[threadIdx.x + 2*blockDim.x ]
 #define TEMPA3 sd_data[threadIdx.x + 3*blockDim.x ]
 #define TEMPA4 sd_data[threadIdx.x + 4*blockDim.x ]
-    
+
 #ifdef MULTI_GPU
 
 #undef UPDATE_COOR_PLUS

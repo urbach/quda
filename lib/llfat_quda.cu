@@ -995,6 +995,7 @@ void siteComputeGenStapleParityKernel(void* staple_even, void* staple_odd,
 {
 
   //compute even and odd
+  dim3 blockDim = kparam.blockDim;
   
 #define  CALL_FUNCTION(mu, nu)						\
   if (prec == QUDA_DOUBLE_PRECISION){					\
@@ -1048,7 +1049,6 @@ void siteComputeGenStapleParityKernel(void* staple_even, void* staple_odd,
   }
   
 
-  dim3 blockDim(BLOCK_DIM , 1, 1);  
   ENUMERATE_FUNCS(mu,nu);  
 
 #undef CALL_FUNCTION
@@ -1067,8 +1067,8 @@ void siteComputeGenStapleParityKernel_ex(void* staple_even, void* staple_odd,
   //compute even and odd
   dim3 blockDim = kparam.blockDim;
   dim3 halfGridDim = kparam.halfGridDim;
-  int sbytes_dp = BLOCK_DIM*5*sizeof(double2);
-  int sbytes_sp = BLOCK_DIM*5*sizeof(float2);
+  int sbytes_dp = blockDim.x*5*sizeof(double2);
+  int sbytes_sp = blockDim.x*5*sizeof(float2);
   
 #define  CALL_FUNCTION(mu, nu)						\
   if (prec == QUDA_DOUBLE_PRECISION){					\
@@ -1139,6 +1139,7 @@ void siteComputeGenStapleParityKernel_nl(void* staple_even, void* staple_odd,
 {
   
   //compute even and odd
+  dim3 blockDim = kparam.blockDim;
   dim3 halfGridDim = kparam.halfGridDim;
 #define  CALL_FUNCTION(mu, nu)						\
   if (prec == QUDA_DOUBLE_PRECISION){					\
@@ -1192,7 +1193,6 @@ void siteComputeGenStapleParityKernel_nl(void* staple_even, void* staple_odd,
   }
   
   
-  dim3 blockDim(BLOCK_DIM , 1, 1);  
   ENUMERATE_FUNCS(mu,nu);  
 
 #undef CALL_FUNCTION
@@ -1212,6 +1212,9 @@ computeGenStapleFieldParityKernel(void* staple_even, void* staple_odd,
 				  dim3 halfGridDim, llfat_kernel_param_t kparam,
 				  cudaStream_t* stream)
 {
+
+  dim3 blockDim= kparam.blockDim;
+
 
 #define  CALL_FUNCTION(mu, nu, save_staple)				\
   if (prec == QUDA_DOUBLE_PRECISION){					\
@@ -1273,7 +1276,6 @@ computeGenStapleFieldParityKernel(void* staple_even, void* staple_odd,
   }
   
   BIND_MU_LINK();
-  dim3 blockDim(BLOCK_DIM , 1, 1);
   ENUMERATE_FUNCS_SAVE(mu,nu,save_staple);
 
   UNBIND_MU_LINK();
@@ -1293,11 +1295,13 @@ computeGenStapleFieldParityKernel_ex(void* staple_even, void* staple_odd,
 				     QudaReconstructType recon, QudaPrecision prec,
 				     llfat_kernel_param_t kparam)
 {
-  int sbytes_dp = BLOCK_DIM*5*sizeof(double2);
-  int sbytes_sp = BLOCK_DIM*5*sizeof(float2);
   
   dim3 blockDim = kparam.blockDim;
   dim3 halfGridDim= kparam.halfGridDim;
+  
+  int sbytes_dp = blockDim.x*5*sizeof(double2);
+  int sbytes_sp = blockDim.x*5*sizeof(float2);
+
 #define  CALL_FUNCTION(mu, nu, save_staple)				\
   if (prec == QUDA_DOUBLE_PRECISION){					\
     if(recon == QUDA_RECONSTRUCT_NO){					\
@@ -1378,6 +1382,7 @@ computeGenStapleFieldParityKernel_nl(void* staple_even, void* staple_odd,
 				     llfat_kernel_param_t kparam)
 {
 
+  dim3 blockDim = kparam.blockDim;
   dim3 halfGridDim= kparam.halfGridDim;
 #define  CALL_FUNCTION(mu, nu, save_staple)				\
   if (prec == QUDA_DOUBLE_PRECISION){					\
@@ -1439,7 +1444,6 @@ computeGenStapleFieldParityKernel_nl(void* staple_even, void* staple_odd,
   }
   
   BIND_MU_LINK();
-  dim3 blockDim(BLOCK_DIM , 1, 1);
   ENUMERATE_FUNCS_SAVE(mu,nu,save_staple);
 
   UNBIND_MU_LINK();
@@ -1451,15 +1455,15 @@ computeGenStapleFieldParityKernel_nl(void* staple_even, void* staple_odd,
 
 void llfatOneLinkKernel(FullGauge cudaFatLink, FullGauge cudaSiteLink,
            FullStaple cudaStaple, FullStaple cudaStaple1,
-           QudaGaugeParam* param, double* act_path_coeff)
+			QudaGaugeParam* param, double* act_path_coeff, llfat_kernel_param_t kparam)
 {  
   QudaPrecision prec = cudaSiteLink.precision;
   QudaReconstructType recon = cudaSiteLink.reconstruct;
   
   BIND_SITE_AND_FAT_LINK;
   int volume = param->X[0]*param->X[1]*param->X[2]*param->X[3];  
-  dim3 gridDim(volume/BLOCK_DIM,1,1);
-  dim3 blockDim(BLOCK_DIM , 1, 1);
+  dim3 blockDim=kparam.blockDim;
+  dim3 gridDim(volume/blockDim.x,1,1);
 
   staple_bytes = cudaStaple.bytes;
 
@@ -1542,7 +1546,7 @@ void llfatOneLinkKernel_nl(FullGauge cudaFatLink, FullGauge cudaSiteLink,
   BIND_SITE_AND_FAT_LINK;
   
   dim3 gridDim;    
-  dim3 blockDim(BLOCK_DIM , 1, 1);
+  dim3 blockDim=kparam.blockDim;
   gridDim.x = 2* kparam.halfGridDim.x;
   gridDim.y = 1;
   gridDim.z = 1;
