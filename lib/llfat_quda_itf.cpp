@@ -11,6 +11,7 @@
 #include <tune_quda.h>
 
 #define LLFAT_BLOCK_DIM 32
+#define LLFAT_BLOCK_DIM_NORMAL 64
 
 void
 llfat_cuda(FullGauge cudaFatLink, FullGauge cudaSiteLink, 
@@ -19,7 +20,7 @@ llfat_cuda(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 {
   int volume = param->X[0]*param->X[1]*param->X[2]*param->X[3];
   int Vh = volume/2;
-  dim3 blockDim(LLFAT_BLOCK_DIM , 1, 1);
+  dim3 blockDim(LLFAT_BLOCK_DIM_NORMAL , 1, 1);
   dim3 gridDim(volume/blockDim.x,1,1);
   dim3 halfGridDim(Vh/blockDim.x,1,1);
   
