@@ -318,6 +318,36 @@
     }									\
   }while(0)
 
+#define UPDATE_COOR_LOWER_STAPLE_EX(mydir1, mydir2) do {		\
+    new_x1 = x1; new_x2 = x2;  new_x4 = x4;				\
+    switch(mydir1){							\
+    case 0:								\
+      new_x1 = x1 - 1;							\
+      break;								\
+    case 1:								\
+      new_x2 = x2 - 1;							\
+      break;								\
+    case 2:								\
+      break;								\
+    case 3:								\
+      new_x4 = x4 - 1;							\
+      break;								\
+    }									\
+    switch(mydir2){							\
+    case 0:								\
+      new_x1 = x1+1;							\
+      break;								\
+    case 1:								\
+      new_x2 = x2+1;							\
+      break;								\
+    case 2:								\
+      break;								\
+    case 3:								\
+      new_x4 = x4+1;							\
+      break;								\
+    }									\
+  }while(0)
+
 #define UPDATE_COOR_LOWER_STAPLE_DIAG(nu, mu, dir1, dir2) do {		\
     int	new_x[4]; 							\
     new_x[3] = x4; new_x[1] = x2; new_x[0] = x1;			\
@@ -585,7 +615,7 @@
       new_mem_idx = (new_mem_idx+E3E2E1) >> 1;				\
       break;								\
     }                                                                   \
-    /*UPDATE_COOR_LOWER_STAPLE(mydir1, mydir2);	*/			\
+    UPDATE_COOR_LOWER_STAPLE_EX(mydir1, mydir2);			\
   }while(0)
 
 
@@ -764,7 +794,7 @@ template<int mu, int nu, int odd_bit>
 							   Float mycoeff, llfat_kernel_param_t kparam)
 {
 
-#if 0
+#if 1
   
   __shared__ FloatM sd_data[NUM_FLOATS*64];
   
@@ -909,7 +939,7 @@ template<int mu, int nu, int odd_bit, int save_staple>
 							   FloatM* mulink_even, FloatM* mulink_odd, 
 							   Float mycoeff, llfat_kernel_param_t kparam)
 {
-#if 0
+#if 1
 
   __shared__ FloatM sd_data[NUM_FLOATS*64];
   //FloatM TEMPA0, TEMPA1, TEMPA2, TEMPA3, TEMPA4, TEMPA5, TEMPA6, TEMPA7, TEMPA8;  
@@ -1063,7 +1093,7 @@ LLFAT_KERNEL(llfatOneLink, RECONSTRUCT)(FloatN* sitelink_even, FloatN* sitelink_
 					Float coeff0, Float coeff5)
 {
 
-#if 0
+#if 1
 
   FloatN* my_sitelink;
   FloatM* my_fatlink;
@@ -1173,15 +1203,15 @@ template<int mu, int nu, int odd_bit>
   {
     /* load matrix A*/
     LOAD_EVEN_SITE_MATRIX(nu, mem_idx, A);   
-    COMPUTE_RECONSTRUCT_SIGN(sign, nu, x1, x2, x3, x4);
+    COMPUTE_RECONSTRUCT_SIGN(sign, nu, (x1-2), (x2-2), (x3-2), (x4-2));
     RECONSTRUCT_SITE_LINK(nu, mem_idx, sign, a);
 
 
-
+    
     /* load matrix B*/  
     LLFAT_COMPUTE_NEW_IDX_PLUS_EX(nu, X);    
     LOAD_ODD_SITE_MATRIX(mu, new_mem_idx, B);
-    COMPUTE_RECONSTRUCT_SIGN(sign, mu, new_x1, new_x2, new_x3, new_x4);    
+    COMPUTE_RECONSTRUCT_SIGN(sign, mu, (new_x1-2), (new_x2-2), (new_x3-2), (new_x4-2));    
     RECONSTRUCT_SITE_LINK(mu, new_mem_idx, sign, b);
     
 
@@ -1191,10 +1221,11 @@ template<int mu, int nu, int odd_bit>
         
     LLFAT_COMPUTE_NEW_IDX_PLUS_EX(mu, X);    
     LOAD_ODD_SITE_MATRIX(nu, new_mem_idx, C);
-    COMPUTE_RECONSTRUCT_SIGN(sign, nu, new_x1, new_x2, new_x3, new_x4);    
+    COMPUTE_RECONSTRUCT_SIGN(sign, nu, (new_x1-2), (new_x2-2), (new_x3-2), (new_x4-2));    
     RECONSTRUCT_SITE_LINK(nu, new_mem_idx, sign, c);
 
     MULT_SU3_NA(tempa, c, staple);		   
+ 
   }
 
   /***************lower staple****************
@@ -1206,35 +1237,38 @@ template<int mu, int nu, int odd_bit>
    *                  mu (B)
    *
    *********************************************/
-  {
+    {
     /* load matrix A*/
     LLFAT_COMPUTE_NEW_IDX_MINUS_EX(nu,X);    
     
     LOAD_ODD_SITE_MATRIX(nu, (new_mem_idx), A);
-    COMPUTE_RECONSTRUCT_SIGN(sign, nu, new_x1, new_x2, new_x3, new_x4);        
+    COMPUTE_RECONSTRUCT_SIGN(sign, nu, (new_x1-2), (new_x2-2), (new_x3-2), (new_x4-2));        
     RECONSTRUCT_SITE_LINK(nu, (new_mem_idx), sign, a);
     
     /* load matrix B*/				
     LOAD_ODD_SITE_MATRIX(mu, (new_mem_idx), B);
-    COMPUTE_RECONSTRUCT_SIGN(sign, mu, new_x1, new_x2, new_x3, new_x4);    
+    COMPUTE_RECONSTRUCT_SIGN(sign, mu, (new_x1-2), (new_x2-2), (new_x3-2), (new_x4-2));    
     RECONSTRUCT_SITE_LINK(mu, (new_mem_idx), sign, b);
     
     MULT_SU3_AN(a, b, tempa);
-    
+
+
+
     /* load matrix C*/
     LLFAT_COMPUTE_NEW_IDX_LOWER_STAPLE_EX(nu, mu);
     LOAD_EVEN_SITE_MATRIX(nu, new_mem_idx, C);
    
-    COMPUTE_RECONSTRUCT_SIGN(sign, nu, new_x1, new_x2, new_x3, new_x4);        
+    COMPUTE_RECONSTRUCT_SIGN(sign, nu, (new_x1-2), (new_x2-2), (new_x3-2), (new_x4-2));        
     RECONSTRUCT_SITE_LINK(nu, new_mem_idx, sign, c);
     
     
     MULT_SU3_NN(tempa, c, b);		
     LLFAT_ADD_SU3_MATRIX(b, staple, staple);
+
   }
    
-  
-  if( !(x1 == 1 || x1 == X1 + 2 || x2 == 1 || x2 == X2 + 2
+    
+    if( !(x1 == 1 || x1 == X1 + 2 || x2 == 1 || x2 == X2 + 2
 	|| x3 == 1 || x3 == X3 + 2 || x4 == 1 || x4 == X4 + 2)){
     int orig_idx = ((x4-2)* X3X2X1 + (x3-2)*X2X1 + (x2-2)*X1 + (x1-2))>>1;
     
@@ -1304,19 +1338,18 @@ template<int mu, int nu, int odd_bit, int save_staple>
   {		
     /* load matrix A*/
     LOAD_EVEN_SITE_MATRIX(nu, mem_idx, A);
-    COMPUTE_RECONSTRUCT_SIGN(sign, nu, x1, x2, x3, x4);
+    COMPUTE_RECONSTRUCT_SIGN(sign, nu, (x1-2), (x2-2), (x3-2), (x4-2));
     RECONSTRUCT_SITE_LINK(nu, mem_idx, sign, a);
     
     /* load matrix BB*/
     LLFAT_COMPUTE_NEW_IDX_PLUS_EX(nu, X);    
     LOAD_ODD_MULINK_MATRIX(0, new_mem_idx, BB);
-    int b_idx = new_mem_idx;
     MULT_SU3_NN(a, bb, tempa);    
     
     /* load matrix C*/
     LLFAT_COMPUTE_NEW_IDX_PLUS_EX(mu, X);    
     LOAD_ODD_SITE_MATRIX(nu, new_mem_idx, C);
-    COMPUTE_RECONSTRUCT_SIGN(sign, nu, new_x1, new_x2, new_x3, new_x4);
+    COMPUTE_RECONSTRUCT_SIGN(sign, nu, (new_x1-2), (new_x2-2), (new_x3-2), (new_x4-2));
     RECONSTRUCT_SITE_LINK(nu, new_mem_idx, sign, c);
     
     MULT_SU3_NA(tempa, c, staple);
@@ -1332,13 +1365,12 @@ template<int mu, int nu, int odd_bit, int save_staple>
    *
    *********************************************/
     
-
   {
     /* load matrix A*/
     LLFAT_COMPUTE_NEW_IDX_MINUS_EX(nu, X);
     
     LOAD_ODD_SITE_MATRIX(nu, new_mem_idx, A);
-    COMPUTE_RECONSTRUCT_SIGN(sign, nu, new_x1, new_x2, new_x3, new_x4);
+    COMPUTE_RECONSTRUCT_SIGN(sign, nu, (new_x1-2), (new_x2-2), (new_x3-2), (new_x4-2));
     RECONSTRUCT_SITE_LINK(nu, new_mem_idx, sign, a);
     
     /* load matrix B*/
@@ -1352,7 +1384,7 @@ template<int mu, int nu, int odd_bit, int save_staple>
     LLFAT_COMPUTE_NEW_IDX_LOWER_STAPLE_EX(nu, mu);
     
     LOAD_EVEN_SITE_MATRIX(nu, new_mem_idx, C);
-    COMPUTE_RECONSTRUCT_SIGN(sign, nu, new_x1, new_x2, new_x3, new_x4);
+    COMPUTE_RECONSTRUCT_SIGN(sign, nu, (new_x1-2), (new_x2-2), (new_x3-2), (new_x4-2));
     RECONSTRUCT_SITE_LINK(nu, new_mem_idx, sign, c);				
     
     MULT_SU3_NN(tempa, c, a);	
@@ -1422,7 +1454,7 @@ LLFAT_KERNEL_EX(llfatOneLink, RECONSTRUCT)(FloatN* sitelink_even, FloatN* siteli
 
   for(int dir=0;dir < 4; dir++){
     LOAD_SITE_MATRIX(my_sitelink, dir, mem_idx, A);
-    COMPUTE_RECONSTRUCT_SIGN(sign, dir, x1, x2, x3, x4);
+    COMPUTE_RECONSTRUCT_SIGN(sign, dir, (x1-2), (x2-2), (x3-2), (x4-2));
     RECONSTRUCT_SITE_LINK(dir, mem_idx, sign, a);
 
     LOAD_FAT_MATRIX(my_fatlink, dir, idx);
@@ -1430,6 +1462,17 @@ LLFAT_KERNEL_EX(llfatOneLink, RECONSTRUCT)(FloatN* sitelink_even, FloatN* siteli
     SCALAR_MULT_SU3_MATRIX((coeff0 - 6.0*coeff5), a, fat); 
     
     WRITE_FAT_MATRIX(my_fatlink,dir, idx);	 
+    /*
+    if(dir == 3 && x1 == 5 && x2 == 2 && x3 == 2 && x4 == 7){
+      printf(" GPU link is\n");
+      printf("(%f %f) (%f %f) (%f %f)\n"
+	     "(%f %f) (%f %f) (%f %f)\n"
+	     "(%f %f) (%f %f) (%f %f)\n",
+	     a00_re, a00_im, a01_re, a01_im, a02_re, a02_im, 
+	     a10_re, a10_im, a11_re, a11_im, a12_re, a12_im, 
+	     a20_re, a20_im, a21_re, a21_im, a22_re, a22_im);
+    }
+    */ 
   }
 #endif
     

@@ -333,8 +333,7 @@ llfat_cuda_ex(FullGauge cudaFatLink, FullGauge cudaSiteLink,
 					     dir, nu, 0,
 					     act_path_coeff[5],
 					     recon, prec, kparam);
-	
-	
+
 	for(int rho = 0; rho < 4; rho++){
 	  if (rho != dir && rho != nu){
 	    

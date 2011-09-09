@@ -565,7 +565,7 @@ void exchange_cpu_sitelink(int* X,
  * @sitelink: this is stored according to dimension size (X1+4) (X2+4) (X3+4) (X4+4)
  */
 
-void exchange_cpu_sitelink_ex(int* X, void** sitelink,
+void exchange_cpu_sitelink_ex(int* X, void** sitelink, 
 			      QudaPrecision gPrecision, int optflag)
 {
   

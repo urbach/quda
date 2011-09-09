@@ -541,7 +541,8 @@ llfat_test(int test)
   gettimeofday(&t3, NULL);
 
   double secs = TDIFF(t0,t3);
- 
+  double kernel_secs = TDIFF(t1, t2);
+  
   int i;
   void* myfatlink[4];
   for(i=0;i < 4;i++){
@@ -551,23 +552,23 @@ llfat_test(int test)
 	  exit(1);
 	}
   }
-
- for(i=0;i < V; i++){
+  
+  for(i=0;i < V; i++){
 	for(int dir=0; dir< 4; dir++){
 	  char* src = ((char*)fatlink)+ (4*i+dir)*gaugeSiteSize*gSize;
 	  char* dst = ((char*)myfatlink[dir]) + i*gaugeSiteSize*gSize;
 	  memcpy(dst, src, gaugeSiteSize*gSize);
 	}
- }  
+  }  
 
  if (verify_results){   
    int optflag = 0;
    exchange_cpu_sitelink(gaugeParam.X, sitelink, ghost_sitelink, ghost_sitelink_diag, gaugeParam.cpu_prec, optflag);
    
    
-   //llfat_reference_mg(reflink, sitelink, ghost_sitelink, ghost_sitelink_diag, gaugeParam.cpu_prec, act_path_coeff);
+   llfat_reference_mg(reflink, sitelink, ghost_sitelink, ghost_sitelink_diag, gaugeParam.cpu_prec, act_path_coeff);
    //llfat_reference_mg_nocomm(reflink, sitelink_ex, gaugeParam.cpu_prec, act_path_coeff);
-   llfat_reference(reflink, sitelink, gaugeParam.cpu_prec, act_path_coeff);
+   //llfat_reference(reflink, sitelink, gaugeParam.cpu_prec, act_path_coeff);
   }
   
 
@@ -581,8 +582,9 @@ llfat_test(int test)
     
   printfQuda("Test %s\n",(1 == res) ? "PASSED" : "FAILED");	    
   int volume = gaugeParam.X[0]*gaugeParam.X[1]*gaugeParam.X[2]*gaugeParam.X[3];
-  double perf = 1.0* flops*volume/(secs*1024*1024*1024);
-  printfQuda("gpu time =%.2f ms, flops= %.2f Gflops\n", secs*1000, perf);
+  double perf = 1.0* flops*volume/secs*1e-9;
+  double kernel_perf = 1.0* flops*volume/kernel_secs*1e-9;
+  printfQuda("gpu time =%.2f ms, flops= %.2f Gflops, kernel_flops= %.2f Gflops\n", secs*1000, perf, kernel_perf);
 
 
   for(i=0;i < 4;i++){
@@ -614,6 +616,14 @@ display_test_info(int test)
 	     get_prec_str(prec),
 	     get_recon_str(link_recon), 
 	     xdim, ydim, zdim, tdim, test);
+
+  printfQuda("Grid partition info:     X  Y  Z  T\n"); 
+  printfQuda("                         %d  %d  %d  %d\n", 
+	     commDimPartitioned(0),
+	     commDimPartitioned(1),
+	     commDimPartitioned(2),
+	     commDimPartitioned(3));
+
   return ;
   
 }

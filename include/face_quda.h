@@ -149,7 +149,7 @@ extern "C" {
   void exchange_cpu_sitelink(int* X,void** sitelink, void** ghost_sitelink,
 			     void** ghost_sitelink_diag, 
 			     QudaPrecision gPrecision, int optflag);   
-  void exchange_cpu_sitelink_ex(int* X, void** sitelink,
+  void exchange_cpu_sitelink_ex(int* X, void** sitelink, 
 				QudaPrecision gPrecision, int optflag);
   void exchange_cpu_sitelink_nl(int* X, void** sitelink_ex, void** sitelink_nl,
 				QudaPrecision gPrecision, int optflag);

@@ -3,7 +3,7 @@
 #define gaugeSiteSize 18
 #define BLOCKSIZE 64
 
-#define TEMP_BLOCKSIZE 8
+#define TEMP_BLOCKSIZE 64
 /* This function converts format in CPU form 
  * into forms in GPU so as to enable coalesce access
  * The function only converts half(even or odd) of the links
