@@ -336,7 +336,7 @@ static void unitarize_single_link_si(x3_matrix* ulink, const x3_matrix* const fa
   x3_matrix v_inv;
 	
   unitarize_assign(fatlink,ulink);
-  for(int i=0; i<16; i++){
+  for(int i=0; i<18; i++){
 
     compute_inverse(ulink, &v_inv);
 
