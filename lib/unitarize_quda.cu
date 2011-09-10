@@ -97,7 +97,7 @@ namespace hisq {
 
   template<class Cmplx>
   __device__ __host__
-  const Cmplx getPreciseInverse(const Cmplx & z){
+  Cmplx getPreciseInverse(const Cmplx & z){
     typename RealTypeId<Cmplx>::Type ratio, max, denom;
     if( fabs(z.x) > fabs(z.y) ){ max = z.x; ratio = z.y/max; }else{ max=z.y; ratio = z.x/max; }
     denom = max*max*(1 + ratio*ratio);
@@ -125,14 +125,14 @@ namespace hisq {
 
 
   template<class T>
-  __device__ __host__ const T getTrace(const LinkVariable<T> & a)
+  __device__ __host__ T getTrace(const LinkVariable<T> & a)
   {
     return a(0,0) + a(1,1) + a(2,2);
   }
 
 
   template<class T>
-  __device__ __host__ const T getDeterminant(const LinkVariable<T> & a){
+  __device__ __host__  T getDeterminant(const LinkVariable<T> & a){
    
     T result;
     result = a(0,0)*(a(1,1)*a(2,2) - a(2,1)*a(1,2))
