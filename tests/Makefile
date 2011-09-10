@@ -45,7 +45,7 @@ llfat_test: llfat_test.o llfat_reference.o test_util.o misc.o $(QUDA)
 	$(CXX) $(LDFLAGS) $^  -o $@  $(LDFLAGS)
 
 unitarize_test: unitarize_test.o unitarize_reference.o test_util.o misc.o $(QUDA)
-          $(CXX) $(LDFLAGS) $^ -o $@ $(LDFLAGS)
+	$(CXX) $(LDFLAGS) $^ -o $@ $(LDFLAGS)
 
 gauge_force_test: gauge_force_test.o gauge_force_reference.o test_util.o misc.o $(QUDA)
 	$(CC) $(LDFLAGS) $^  -o $@  $(LDFLAGS)
