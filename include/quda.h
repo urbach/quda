@@ -84,6 +84,8 @@ extern "C" {
 
     QudaVerbosity verbosity;    
 
+    QudaGammaBasis gamma_basis; // the gamma basis of the input and output cpu fields 
+
     int sp_pad;
     int cl_pad;
 
