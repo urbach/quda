@@ -21,6 +21,8 @@ extern "C" {
     QudaDslashType get_dslash_type(char* s);
     const char* get_dslash_type_str(QudaDslashType type);
 
+    int check_field_unitarity(void* link, int len, int precision);
+
 #ifdef __cplusplus
 }
 #endif

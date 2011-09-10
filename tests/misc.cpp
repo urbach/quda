@@ -787,3 +787,143 @@ get_dslash_type_str(QudaDslashType type)
   return ret;
     
 }
+
+template<typename T>
+struct isFloat{
+  enum {result = false};
+};
+
+
+template<>
+struct isFloat<float>{
+ enum {result = true};
+};
+
+template<typename T>
+struct isDouble{
+  enum {result = false};
+};
+
+template<>
+struct isDouble<double>{
+  enum {result = true};
+};
+
+
+template<typename Float> 
+static int check_unitarity_internal(Float* link, int dir, int ga_idx)
+{
+  const int success_code=1;
+  const int error_code=-1;
+
+  Float refid_buf[18]; // Should contain a complex 3*3 identity matrix
+  Float* refid = &refid_buf[0];
+
+  // set all the elements of refid to zero
+  memset((void*)refid, 0, sizeof(refid_buf));
+
+
+  Float* m = link;
+  for(int i=0; i<3; i++){
+    for(int j=0; j<3; j++){
+      for(int k=0; k<3; k++){	
+        accumulateComplexDotProduct(refid+2*((i*3)+j),m+2*((k*3)+i),m+2*((k*3)+j)); // refid[i][j] = sum_{k} conj(m[k][i])*m[k][j] = M^{\dagger} M
+      }
+    }
+  }
+
+  double delta;
+  if(isDouble<Float>::result == true){ 
+    delta = 0.000001;
+  }else{
+    delta = 0.0001;
+  }
+
+  for(int i=0; i<3; i++){
+    for(int j=0; j<3; j++){
+      const int real_index = 2*(i*3+j);
+		  const int imag_index = real_index+1;
+      double realdiff = i==j? (refid[real_index])-1 : refid[real_index]; // factor of two picks out the real components
+      double absdiff = sqrt(realdiff*realdiff + refid[imag_index]*refid[imag_index]);
+      if (absdiff > delta){ 
+        printf("ERROR: unitarity check failed for link\n");
+        display_link_internal(link);
+        printf("dir=%d, ga_idx=%d\n", dir, ga_idx);
+        printf("absdiff = %lf\n",absdiff);
+        return error_code;
+      }
+    }
+  }
+  return success_code;
+}
+
+
+
+
+// Loops over links along all four space-time dimensions
+int check_field_unitarity(void *link, int len, int precision)
+{
+  int i;
+  int rid = 1;
+  int dir;
+
+  if (precision == QUDA_DOUBLE_PRECISION){
+
+
+    double* mylink = (double*)link;
+    // even
+
+    for (i=0; i<len/2; i++){ 
+      for(dir=XUP; dir<=TUP; dir++){ 
+        rid = check_unitarity_internal(mylink + gaugeSiteSize*(4*i+dir), dir, i);
+        if (rid != 1){ 
+          printf("ERROR: even link unitarity check failed, i=%d\n",i);
+          exit(1);
+        }
+      }
+    }
+
+    mylink = mylink + 4*gaugeSiteSize*len/2;
+    // odd
+    for(i=0; i<len/2; i++){
+      for(dir=XUP; dir<=TUP; dir++){
+        rid = check_unitarity_internal(mylink + gaugeSiteSize*(4*i+dir), dir, i);
+        if (rid != 1){ 
+          printf("ERROR: odd link unitarity check failed, i=%d\n",i);
+          exit(1);
+        }
+      } // end loop over dir	
+    } // end loop over odd lattice sites  
+
+  }else if (precision == QUDA_SINGLE_PRECISION){
+    float* mylink = (float*)link;
+    // even
+    for (i=0; i<len/2; i++){ 
+      for(dir=XUP; dir<=TUP; dir++){ 
+        rid = check_unitarity_internal(mylink + gaugeSiteSize*(4*i+dir), dir, i);
+        if (rid != 1){ 
+          printf("ERROR: even link unitarity check failed, i=%d\n",i);
+          exit(1);
+        }
+      }
+    }
+
+    mylink = mylink + 4*gaugeSiteSize*len/2;
+    // odd
+    for(i=0; i<len/2; i++){
+      for(dir=XUP; dir<=TUP; dir++){
+        rid = check_unitarity_internal(mylink + gaugeSiteSize*(4*i+dir), dir, i);
+        if (rid != 1){ 
+          printf("ERROR: odd link unitarity check failed, i=%d\n",i);
+          exit(1);
+        }
+      } // end loop over dir	
+    } // end loop over odd lattice sites  
+
+  } // end if precision
+
+  return rid;
+}
+
+
+
