@@ -9,7 +9,7 @@ HDRS = blas_reference.h wilson_dslash_reference.h staggered_dslash_reference.h  
 
 TESTS = su3_test blas_test pack_test $(WILSON_DIRAC_TEST) 		\
 	$(STAGGERED_DIRAC_TEST) $(DOMAIN_WALL_DIRAC_TEST)		\
-	$(FATLINK_TEST) $(GAUGE_FORCE_TEST) $(FERMION_FORCE_TEST)
+	$(FATLINK_TEST) $(GAUGE_FORCE_TEST) $(FERMION_FORCE_TEST) $(UNITARIZE_TEST)
 
 all: $(TESTS)
 
@@ -43,6 +43,9 @@ blas_test: blas_test.o $(QUDA)
 
 llfat_test: llfat_test.o llfat_reference.o test_util.o misc.o $(QUDA)
 	$(CXX) $(LDFLAGS) $^  -o $@  $(LDFLAGS)
+
+unitarize_test: unitarize_test.o unitarize_reference.o test_util.o misc.o $(QUDA)
+          $(CXX) $(LDFLAGS) $^ -o $@ $(LDFLAGS)
 
 gauge_force_test: gauge_force_test.o gauge_force_reference.o test_util.o misc.o $(QUDA)
 	$(CC) $(LDFLAGS) $^  -o $@  $(LDFLAGS)
