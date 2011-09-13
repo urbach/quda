@@ -66,13 +66,21 @@ R REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision precisi
     }
 
   }
-#endif
+#endif // DEVICE_REDUCTION
   
 #ifdef HOST_RESULT_REDUCE 
 
 #ifdef DEVICE_REDUCTION
   // Need to synchronize since zero-copy write is asynchronous
-  //cudaThreadSynchronize();
+
+#if (__CUDA_ARCH__ == 130)
+  cudaThreadSynchronize();
+  R sum_h;
+  double *sum_p = (double*)&sum_h; // cast return type as an array of doubles
+  for (unsigned int j=0; j<N; j++) {
+    sum_p[j] = h_reduce[j];
+  }
+#else // rely on threadfence_system for Fermi+
   R sum_h;
   double *sum_p = (double*)&sum_h; // cast return type as an array of doubles
   volatile double *h_reduce_v = h_reduce;
@@ -80,8 +88,9 @@ R REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision precisi
     while (h_reduce_v[j] == ZERO_COPY_INIT) {  } // fastest synchronize is to poll on the cpu until kernel completes
     sum_p[j] = h_reduce_v[j];
   }
+#endif // __CUDA_ARCH__
 
-#else
+#else // DEVICE_REDUCTION
   // copy result from device to host, and perform final reduction on CPU
   cudaMemcpy(h_reduce, d_reduce, N*blasGrid.x*sizeof(QudaSumFloat), cudaMemcpyDeviceToHost);
 
@@ -91,7 +100,7 @@ R REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision precisi
     sum_p[j] = 0.0;
     for (unsigned int i = 0; i<blasGrid.x; i++) sum_p[j] += h_reduce[j*blasGrid.x + i];
   }
-#endif
+#endif // DEVICE_REDUCTION
 
   // for a tuning run, let blas_test check the error condition
   if (!blasTuning) checkCudaError();
@@ -100,7 +109,7 @@ R REDUCE_FUNC_NAME(Cuda) (REDUCE_TYPES, int n, int kernel, QudaPrecision precisi
 
   return sum_h;
 
-#else
+#else // HOST_RESULT_REDUCTION
   return make_double3(0,0,0);
-#endif
+#endif // HOST_RESULT_REDUCTION
 }

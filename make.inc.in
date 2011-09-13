@@ -24,6 +24,8 @@ BUILD_FATLINK = @BUILD_FATLINK@             	# build code for computing asqtad f
 BUILD_GAUGE_FORCE = @BUILD_GAUGE_FORCE@         	# build code for (1-loop Symanzik) gauge force?
 BUILD_FERMION_FORCE = @BUILD_FERMION_FORCE@	      	# build code for asqtad fermion force?
 
+DEVICE_REDUCTION = no					# reductions are done compeltely on the GPU (experimental)
+
 # Multiple GPU options
 BUILD_MULTI_GPU = @BUILD_MULTI_GPU@ # set to 'yes' to build the multi-GPU code
 BUILD_QMP = @BUILD_QMP@     # set to 'yes' to build the QMP multi-GPU code
@@ -162,6 +164,10 @@ ifeq ($(strip $(BUILD_FERMION_FORCE)), yes)
   NVCCOPT += -DGPU_FERMION_FORCE
   COPT += -DGPU_FERMION_FORCE
   FERMION_FORCE_TEST=fermion_force_test
+endif
+ifeq ($(strip $(DEVICE_REDUCTION)), yes)
+  NVCCOPT += -DDEVICE_REDUCTION
+  COPT += -DDEVICE_REDUCTION
 endif
 
 ifeq ($(strip $(HOST_DEBUG)), yes)

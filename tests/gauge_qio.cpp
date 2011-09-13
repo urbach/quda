@@ -27,7 +27,7 @@ QIO_Reader *open_test_input(char *filename, int volfmt, int serpar,
     return NULL;
   }
 
-  printfQuda("%s: QIO_open_read done.\n",myname,this_node);
+  printfQuda("%s: QIO_open_read done.\n",myname);
   printfQuda("%s: User file info is \"%s\"\n", myname, QIO_string_ptr(xml_file_in));
 
   QIO_string_destroy(xml_file_in);
@@ -87,7 +87,7 @@ void read_gauge_field(char *filename, void *gauge[], QudaPrecision precision, in
   QIO_Reader *infile;
   int status;
   int sites_on_node = 0;
-  QMP_thread_level_t provided;
+  //QMP_thread_level_t provided;
   char myname[] = "qio_load";
 
   this_node = mynode();

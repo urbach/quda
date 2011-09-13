@@ -238,6 +238,15 @@ void initQuda(int dev)
   printfQuda("QUDA: Using device %d: %s\n", dev, deviceProp.name);
 
   cudaSetDevice(dev);
+  checkCudaError();
+
+#ifdef DEVICE_REDUCTION
+  if(!deviceProp.canMapHostMemory)
+    errorQuda("Device %d does not support mapping CPU host memory!\n", dev);
+
+  cudaSetDeviceFlags(cudaDeviceMapHost);
+#endif
+
 #ifdef HAVE_NUMA
   if(numa_config_set){
     if(gpu_affinity[dev] >=0){
@@ -277,6 +286,9 @@ void initQuda(int dev)
 
   initCache();
   initBlas();
+
+  // do final error check before declaring we have successfully initialized
+  checkCudaError();
 }
 
 

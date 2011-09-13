@@ -16,7 +16,6 @@
 
 extern double3* dd_reduce;
 
-//#define DEVICE_REDUCTION
 #define STABILIZED
 
 cudaColorSpinorField *rp_mr = 0;

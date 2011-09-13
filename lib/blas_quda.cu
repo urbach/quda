@@ -8,8 +8,6 @@
 
 #include <cuComplex.h>
 
-#define DEVICE_REDUCTION
-
 #define REDUCE_MAX_BLOCKS 65536
 
 // the maximum number of reductions done simultaneously
@@ -159,6 +157,15 @@ void initBlas(void)
     }
   }
 
+  // This is the storage used for the device-side reductions
+  if (!dd_reduce) {
+    if (cudaMalloc((void**) &dd_reduce, sizeof(double3)) == cudaErrorMemoryAllocation) {
+      errorQuda("Error allocating DD reduction array");
+    }    
+  }
+
+  cudaEventCreate(&sumCompletion);
+
 #ifdef DEVICE_REDUCTION
   if (!h_reduce) {
     if(cudaHostAlloc((void **)&h_reduce, maxReduce*sizeof(QudaSumFloat), cudaHostAllocMapped) 
@@ -166,19 +173,14 @@ void initBlas(void)
       errorQuda("Error allocating host reduction array");
     }
   }
+
   if (!hd_reduce) {
     if (cudaHostGetDevicePointer((void**)&hd_reduce, (void*)h_reduce, 0) 
 	== cudaErrorMemoryAllocation) {
       errorQuda("Error getting device pointer from host reduction array");
     }
   }
-  cudaEventCreate(&sumCompletion);
 
-  if (!dd_reduce) {
-    if (cudaMalloc((void**) &dd_reduce, sizeof(double3)) == cudaErrorMemoryAllocation) {
-      errorQuda("Error allocating DD reduction array");
-    }    
-  }
 #else
   if (!h_reduce) {
     if (cudaMallocHost((void**) &h_reduce, maxReduce*REDUCE_MAX_BLOCKS*sizeof(QudaSumFloat)) 
@@ -186,11 +188,12 @@ void initBlas(void)
       errorQuda("Error allocating host reduction array");
     }
   }
-#endif
+#endif // DEVICE_REDUCTION
 }
 
 void endBlas(void)
 {
+  cudaEventDestroy(sumCompletion);
   if (dd_reduce) cudaFree(dd_reduce);
   if (hd_reduce) hd_reduce = 0;
   if (d_reduce) cudaFree(d_reduce);
@@ -2802,6 +2805,7 @@ void caxpyXmazCuda(const Complex &a, cudaColorSpinorField &x, cudaColorSpinorFie
   if (!blasTuning) checkCudaError();
 }
 
+
 template <typename Float2>
 __global__ void caxpyXmazDDKernel(double3 *a_d, Float2 *x, Float2 *y, Float2 *z, int len) {
   
@@ -2919,6 +2923,7 @@ void caxpyXmazDDCuda(cudaColorSpinorField &x, cudaColorSpinorField &y, cudaColor
   if (!blasTuning) checkCudaError();
 }
 
+
 #define REG_CREATE(x, value) QudaSumFloat x = value
 #define SH_SET(s, i, t) s[i] = t
 #define REDUCE(x, i) x += REDUCE_OPERATION(i)
@@ -2928,7 +2933,13 @@ void caxpyXmazDDCuda(cudaColorSpinorField &x, cudaColorSpinorField &y, cudaColor
 #define SUMFLOAT_EQ_SUMFLOAT(a, b) QudaSumFloat a = b
 #define WRITE_GLOBAL(array, i, s, j) array[i] = s[j];
 
+#ifdef DEVICE_REDUCTION
+
+#if (__CUDA_ARCH__ >= 200) 
 #define FLUSH __threadfence_system()
+#else
+#define FLUSH
+#endif
 
 // this is the kernel we need to generate to do the final device-side
 // reduction.  No driver code is created, just the kernel.
@@ -2946,6 +2957,9 @@ template <unsigned int reduce_threads, typename FloatN>
 #undef REDUCE_OPERATION
 
 #undef FLUSH
+
+#endif // DEVICE_REDUCTION
+
 #define FLUSH
 
 #define REDUCE_BUF hd_reduce
