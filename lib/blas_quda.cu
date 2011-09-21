@@ -2773,7 +2773,7 @@ void caxpyXmazCuda(const Complex &a, cudaColorSpinorField &x, cudaColorSpinorFie
 					     length);
   } else {
     if (x.siteSubset == QUDA_FULL_SITE_SUBSET) {
-      caxpyXmazCuda(a, x.Even(), y.Even(), x.Even());
+      caxpyXmazCuda(a, x.Even(), y.Even(), z.Even());
       caxpyXmazCuda(a, x.Odd(), y.Odd(), z.Odd());
       return;
     }
@@ -2893,7 +2893,7 @@ void caxpyXmazDDCuda(cudaColorSpinorField &x, cudaColorSpinorField &y, cudaColor
     caxpyXmazDDKernel<<<blasGrid, blasBlock>>>(dd_reduce, (float2*)x.v, (float2*)y.v, (float2*)z.v, length);
   } else {
     if (x.siteSubset == QUDA_FULL_SITE_SUBSET) {
-      caxpyXmazDDCuda(x.Even(), y.Even(), x.Even());
+      caxpyXmazDDCuda(x.Even(), y.Even(), z.Even());
       caxpyXmazDDCuda(x.Odd(), y.Odd(), z.Odd());
       return;
     }
