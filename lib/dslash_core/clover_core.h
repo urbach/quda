@@ -263,7 +263,7 @@ volatile spinorFloat o32_im;
 #include "io_spinor.h"
 
 int sid = blockIdx.x*blockDim.x + threadIdx.x;
-if (sid >= param.threads) return;
+if (sid >= dp.threads) return;
 
 #ifdef SPINOR_DOUBLE
 #if (__CUDA_ARCH__ >= 200)
@@ -286,7 +286,7 @@ volatile spinorFloat *s = ss_data + CLOVER_SHARED_FLOATS_PER_THREAD*SHARED_STRID
 #endif
 
 // read spinor from device memory                                                                                                           
-READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
+READ_SPINOR(SPINORTEX, dp.sp_stride, sid, sid);
 
 // change to chiral basis
 {
@@ -320,7 +320,7 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
 
 // apply first chiral block
 {
-    READ_CLOVER(CLOVERTEX, 0)
+    READ_CLOVER(CLOVERTEX, 0, dp.cl_stride)
     
     spinorFloat a00_re = 0; spinorFloat a00_im = 0;
     spinorFloat a01_re = 0; spinorFloat a01_im = 0;
@@ -417,7 +417,7 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
 
 // apply second chiral block
 {
-    READ_CLOVER(CLOVERTEX, 1)
+    READ_CLOVER(CLOVERTEX, 1, dp.cl_stride)
     
     spinorFloat a20_re = 0; spinorFloat a20_im = 0;
     spinorFloat a21_re = 0; spinorFloat a21_im = 0;
@@ -616,7 +616,7 @@ READ_ACCUM(ACCUMTEX, sp_stride)
 #endif // DSLASH_XPAY
 
     // write spinor field back to device memory
-    WRITE_SPINOR(sp_stride);
+    WRITE_SPINOR(dp.sp_stride);
 
 // undefine to prevent warning when precision is changed
 #undef spinorFloat

@@ -160,7 +160,7 @@
 
 #if (DD_PREC==0) // double-precision fields
 
-#define TPROJSCALE tProjScale
+#define TPROJSCALE dp.tProjScale
 
 // double-precision gauge field
 #ifdef DIRECT_ACCESS_LINK
@@ -221,7 +221,7 @@
 
 #elif (DD_PREC==1) // single-precision fields
 
-#define TPROJSCALE tProjScale_f
+#define TPROJSCALE dp.tProjScale_f
 
 // single-precision gauge field
 #ifdef DIRECT_ACCESS_LINK
@@ -283,7 +283,7 @@
 
 #else             // half-precision fields
 
-#define TPROJSCALE tProjScale_f
+#define TPROJSCALE dp.tProjScale_f
 
 // half-precision gauge field
 #ifdef DIRECT_ACCESS_LINK
@@ -367,7 +367,7 @@
 
 template <KernelType kernel_type>
 __global__ void	DD_FUNC(DD_NAME_F, DD_RECON_F, DD_DAG_F, DD_XPAY_F)
-  (DD_PARAM_OUT DD_PARAM_GAUGE DD_PARAM_CLOVER DD_PARAM_IN DD_PARAM_XPAY const DslashParam param) {
+(DD_PARAM_OUT DD_PARAM_GAUGE DD_PARAM_CLOVER DD_PARAM_IN DD_PARAM_XPAY const LatticeParam lp, const DslashParam dp) {
 
   // build Wilson or clover as appropriate
 #if ((DD_CLOVER==0 && BUILD_WILSON) || (DD_CLOVER==1 && BUILD_CLOVER))

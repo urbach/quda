@@ -59,11 +59,13 @@ class Dirac {
   friend class DiracMdagM;
   friend class DiracMdag;
 
-  protected:
+ protected:
   FullGauge &gauge;
   double kappa;
   double mass;
   MatPCType matpcType;
+  mutable LatticeParam latParam; // mutable to allow setting Ls in DiracDomainWall::Dslash() [FIXME]
+  mutable DslashParam dslashParam;
   mutable DagType dagger; // mutable to simplify implementation of Mdag
   mutable unsigned long long flops;
   mutable cudaColorSpinorField *tmp1; // temporary hack

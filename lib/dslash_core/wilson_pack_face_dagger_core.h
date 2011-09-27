@@ -62,7 +62,7 @@ if (face_num) {
   case 0:
     {
       // read spinor from device memory
-      READ_SPINOR(SPINORTEX, sp_stride, idx, idx);
+      READ_SPINOR(SPINORTEX, dp.sp_stride, idx, idx);
       
       spinorFloat a0_re, a0_im;
       spinorFloat a1_re, a1_im;
@@ -92,7 +92,7 @@ if (face_num) {
   case 1:
     {
       // read spinor from device memory
-      READ_SPINOR(SPINORTEX, sp_stride, idx, idx);
+      READ_SPINOR(SPINORTEX, dp.sp_stride, idx, idx);
       
       spinorFloat a0_re, a0_im;
       spinorFloat a1_re, a1_im;
@@ -122,7 +122,7 @@ if (face_num) {
   case 2:
     {
       // read spinor from device memory
-      READ_SPINOR(SPINORTEX, sp_stride, idx, idx);
+      READ_SPINOR(SPINORTEX, dp.sp_stride, idx, idx);
       
       spinorFloat a0_re, a0_im;
       spinorFloat a1_re, a1_im;
@@ -152,7 +152,7 @@ if (face_num) {
   case 3:
     {
       // read spinor from device memory
-      READ_SPINOR_DOWN(SPINORTEX, sp_stride, idx, idx);
+      READ_SPINOR_DOWN(SPINORTEX, dp.sp_stride, idx, idx);
       
       spinorFloat a0_re, a0_im;
       spinorFloat a1_re, a1_im;
@@ -187,7 +187,7 @@ if (face_num) {
   case 0:
     {
       // read spinor from device memory
-      READ_SPINOR(SPINORTEX, sp_stride, idx, idx);
+      READ_SPINOR(SPINORTEX, dp.sp_stride, idx, idx);
       
       spinorFloat a0_re, a0_im;
       spinorFloat a1_re, a1_im;
@@ -217,7 +217,7 @@ if (face_num) {
   case 1:
     {
       // read spinor from device memory
-      READ_SPINOR(SPINORTEX, sp_stride, idx, idx);
+      READ_SPINOR(SPINORTEX, dp.sp_stride, idx, idx);
       
       spinorFloat a0_re, a0_im;
       spinorFloat a1_re, a1_im;
@@ -247,7 +247,7 @@ if (face_num) {
   case 2:
     {
       // read spinor from device memory
-      READ_SPINOR(SPINORTEX, sp_stride, idx, idx);
+      READ_SPINOR(SPINORTEX, dp.sp_stride, idx, idx);
       
       spinorFloat a0_re, a0_im;
       spinorFloat a1_re, a1_im;
@@ -277,7 +277,7 @@ if (face_num) {
   case 3:
     {
       // read spinor from device memory
-      READ_SPINOR_UP(SPINORTEX, sp_stride, idx, idx);
+      READ_SPINOR_UP(SPINORTEX, dp.sp_stride, idx, idx);
       
       spinorFloat a0_re, a0_im;
       spinorFloat a1_re, a1_im;

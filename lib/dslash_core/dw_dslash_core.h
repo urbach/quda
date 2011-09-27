@@ -201,7 +201,7 @@ volatile spinorFloat o32_im;
 //J  in the x1 direction.  They are ordered red/black or
 //J  black/red, depending on the number of boundary crossings.
 int sid = blockIdx.x*blockDim.x + threadIdx.x;
-if (sid >= param.threads) return;
+if (sid >= dp.threads) return;
 //J  Boundary crossings has to do with the red/black checkerboard.
 //J  We keep track of how many of those boundaries we cross in going
 //J  from the origin to the location associated with THIS thread.
@@ -213,22 +213,22 @@ if (sid >= param.threads) return;
 // the gauge links.  I.e., they should be thought of as living
 // on the xs=0 slice, when determining their parity.
 
-int boundaryCrossings = sid/X1h + sid/(X2*X1h) + sid/(X3*X2*X1h) + sid/(X4*X3*X2*X1h);
+int boundaryCrossings = sid/lp.X1h + sid/(lp.X2*lp.X1h) + sid/(lp.X3*lp.X2*lp.X1h) + sid/(lp.X4*lp.X3*lp.X2*lp.X1h);
 // Gauge fields have 4d parity.  E.g., if xs is odd, we need to grab
 // opposite parity link if we're supposed to use U_\mu(x).
-int boundaryCrossings4d = sid/X1h + sid/(X2*X1h) + sid/(X3*X2*X1h);
+int boundaryCrossings4d = sid/lp.X1h + sid/(lp.X2*lp.X1h) + sid/(lp.X3*lp.X2*lp.X1h);
 // We will use the difference between boundaryCrossings and boundaryCrossings4d to determine
 // which gaugetex is used in the operations below.
 
 //J  Define the linear index X to checkerboard sites on the lattice.
-int X = 2*sid + (boundaryCrossings + param.parity) % 2;
+int X = 2*sid + (boundaryCrossings + dp.parity) % 2;
 //J  Coordinates of the checkerboard (sublattice) site.
 //J  This is for the output spinor.
-int xs = X/(X4*X3*X2*X1);
-int x4 = (X/(X3*X2*X1)) % X4;
-int x3 = (X/(X2*X1)) % X3;
-int x2 = (X/X1) % X2;
-int x1 = X % X1;
+int xs = X/(lp.X4*lp.X3*lp.X2*lp.X1);
+int x4 = (X/(lp.X3*lp.X2*lp.X1)) % lp.X4;
+int x3 = (X/(lp.X2*lp.X1)) % lp.X3;
+int x2 = (X/lp.X1) % lp.X2;
+int x1 = X % lp.X1;
 
 // Initialize output spinor to zero.
 o00_re = o00_im = 0;
@@ -254,9 +254,9 @@ o32_re = o32_im = 0;
     // i 0 0 1 
     
     //J  Hop forward?  Yes, and this is for the input spinor.
-    int sp_idx = ((x1==X1-1) ? X-(X1-1) : X+1) / 2;
+    int sp_idx = ((x1==lp.X1-1) ? X-(lp.X1-1) : X+1) / 2;
     //J  Link not hopped.  But need to project to 4d lattice.
-    int ga_idx = (sid % Vh);
+    int ga_idx = (sid % lp.Vh);
     
     // read gauge matrix from device memory
     // GAUGE0TEX is defined in dslash_dwf_def.h.
@@ -270,9 +270,9 @@ o32_re = o32_im = 0;
     //J  ugly code repetition. ***
     if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
       // gauge field same parity.
-      READ_GAUGE_MATRIX(G, GAUGE0TEX, 0, ga_idx, ga_stride);
+      READ_GAUGE_MATRIX(G, GAUGE0TEX, 0, ga_idx, dp.ga_stride);
         // read spinor from device memory
-      READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+      READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(0);
@@ -348,9 +348,9 @@ o32_re = o32_im = 0;
     
     } else {
       // gauge field opposite parity.
-      READ_GAUGE_MATRIX(G, GAUGE1TEX, 0, ga_idx, ga_stride);
+      READ_GAUGE_MATRIX(G, GAUGE1TEX, 0, ga_idx, dp.ga_stride);
         // read spinor from device memory
-      READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+      READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
       // reconstruct gauge matrix
       RECONSTRUCT_GAUGE_MATRIX(0);
@@ -438,22 +438,22 @@ o32_re = o32_im = 0;
     //J  but relabeling 1-->0.
     //J  Thus, hop backwards.  sp_idx is used in io_spinor.h to
     //J  read in the input spinor.
-    int sp_idx = ((x1==0)    ? X+(X1-1) : X-1) / 2;
+    int sp_idx = ((x1==0)    ? X+(lp.X1-1) : X-1) / 2;
     //J  Link also hops.
     // ** HERE : need gymnastics because xs=0 for gauge parity. **
-    int ga_idx = sp_idx % Vh;
+    int ga_idx = sp_idx % lp.Vh;
     
     // read gauge matrix from device memory
     // NB:  Here GAUGE1TEX is used, which is different from in P0- above!
     // I.e., parity is handled by having 2 bindings.
     if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
       // gauge field opposite parity.
-      READ_GAUGE_MATRIX(G, GAUGE1TEX, 1, ga_idx, ga_stride);
+      READ_GAUGE_MATRIX(G, GAUGE1TEX, 1, ga_idx, dp.ga_stride);
     // read spinor from device memory
     //J  The relevant code from io_spinor.h.
     //J  Which one to use is determined near Line 105
     //J  of dslash_dwf_def.h.
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(1);
@@ -519,12 +519,12 @@ o32_re = o32_im = 0;
     o32_im -= A2_re;
     } else {
       // gauge field same parity.
-      READ_GAUGE_MATRIX(G, GAUGE0TEX, 1, ga_idx, ga_stride);
+      READ_GAUGE_MATRIX(G, GAUGE0TEX, 1, ga_idx, dp.ga_stride);
     // read spinor from device memory
     //J  The relevant code from io_spinor.h.
     //J  Which one to use is determined near Line 105
     //J  of dslash_dwf_def.h.
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(1);
@@ -600,15 +600,15 @@ o32_re = o32_im = 0;
     // 0 1 1 0 
     // -1 0 0 1 
     
-    int sp_idx = ((x2==X2-1) ? X-(X2-1)*X1 : X+X1) / 2;
-    int ga_idx = sid  % Vh;
+    int sp_idx = ((x2==lp.X2-1) ? X-(lp.X2-1)*lp.X1 : X+lp.X1) / 2;
+    int ga_idx = sid  % lp.Vh;
     
     // read gauge matrix from device memory
     if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
       // gauge field same parity.
-      READ_GAUGE_MATRIX(G, GAUGE0TEX, 2, ga_idx, ga_stride);
+      READ_GAUGE_MATRIX(G, GAUGE0TEX, 2, ga_idx, dp.ga_stride);
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(2);
@@ -674,9 +674,9 @@ o32_re = o32_im = 0;
     o32_im -= A2_im;
     } else {
       // gauge field opposite parity.
-      READ_GAUGE_MATRIX(G, GAUGE1TEX, 2, ga_idx, ga_stride);
+      READ_GAUGE_MATRIX(G, GAUGE1TEX, 2, ga_idx, dp.ga_stride);
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(2);
@@ -753,15 +753,15 @@ o32_re = o32_im = 0;
     // 0 -1 1 0 
     // 1 0 0 1 
     
-    int sp_idx = ((x2==0)    ? X+(X2-1)*X1 : X-X1) / 2;
-    int ga_idx = sp_idx % Vh;
+    int sp_idx = ((x2==0)    ? X+(lp.X2-1)*lp.X1 : X-lp.X1) / 2;
+    int ga_idx = sp_idx % lp.Vh;
     
     // read gauge matrix from device memory
     if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
       // gauge field opposite parity.
-      READ_GAUGE_MATRIX(G, GAUGE1TEX, 3, ga_idx, ga_stride);
+      READ_GAUGE_MATRIX(G, GAUGE1TEX, 3, ga_idx, dp.ga_stride);
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(3);
@@ -828,9 +828,9 @@ o32_re = o32_im = 0;
     
     } else {
       // gauge field same parity.
-      READ_GAUGE_MATRIX(G, GAUGE0TEX, 3, ga_idx, ga_stride);
+      READ_GAUGE_MATRIX(G, GAUGE0TEX, 3, ga_idx, dp.ga_stride);
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(3);
@@ -907,15 +907,15 @@ o32_re = o32_im = 0;
     // i 0 1 0 
     // 0 -i 0 1 
     
-    int sp_idx = ((x3==X3-1) ? X-(X3-1)*X2*X1 : X+X2*X1) / 2;
-    int ga_idx = sid % Vh;
+    int sp_idx = ((x3==lp.X3-1) ? X-(lp.X3-1)*lp.X2*lp.X1 : X+lp.X2*lp.X1) / 2;
+    int ga_idx = sid % lp.Vh;
     
     // read gauge matrix from device memory
     if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
       // gauge field same parity.
-      READ_GAUGE_MATRIX(G, GAUGE0TEX, 4, ga_idx, ga_stride);
+      READ_GAUGE_MATRIX(G, GAUGE0TEX, 4, ga_idx, dp.ga_stride);
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(4);
@@ -981,9 +981,9 @@ o32_re = o32_im = 0;
     o32_im -= B2_re;
     } else {
       // gauge field opp parity.
-      READ_GAUGE_MATRIX(G, GAUGE1TEX, 4, ga_idx, ga_stride);
+      READ_GAUGE_MATRIX(G, GAUGE1TEX, 4, ga_idx, dp.ga_stride);
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(4);
@@ -1060,15 +1060,15 @@ o32_re = o32_im = 0;
     // -i 0 1 0 
     // 0 i 0 1 
     
-    int sp_idx = ((x3==0)    ? X+(X3-1)*X2*X1 : X-X2*X1) / 2;
-    int ga_idx = sp_idx % Vh;
+    int sp_idx = ((x3==0)    ? X+(lp.X3-1)*lp.X2*lp.X1 : X-lp.X2*lp.X1) / 2;
+    int ga_idx = sp_idx % lp.Vh;
     
     // read gauge matrix from device memory
     if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
       // gauge field opposite parity.
-      READ_GAUGE_MATRIX(G, GAUGE1TEX, 5, ga_idx, ga_stride);
+      READ_GAUGE_MATRIX(G, GAUGE1TEX, 5, ga_idx, dp.ga_stride);
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(5);
@@ -1135,9 +1135,9 @@ o32_re = o32_im = 0;
     
     } else {
       // gauge field same parity.
-      READ_GAUGE_MATRIX(G, GAUGE0TEX, 5, ga_idx, ga_stride);
+      READ_GAUGE_MATRIX(G, GAUGE0TEX, 5, ga_idx, dp.ga_stride);
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(5);
@@ -1214,12 +1214,12 @@ o32_re = o32_im = 0;
     // 0 0 2 0 
     // 0 0 0 2 
     
-    int sp_idx = ((x4==X4-1) ? X-(X4-1)*X3*X2*X1 : X+X3*X2*X1) / 2;
-    int ga_idx = sid % Vh;
+    int sp_idx = ((x4==lp.X4-1) ? X-(lp.X4-1)*lp.X3*lp.X2*lp.X1 : X+lp.X3*lp.X2*lp.X1) / 2;
+    int ga_idx = sid % lp.Vh;
     
-    if (gauge_fixed && ga_idx < (X4-1)*X1h*X2*X3) {
+    if (dp.gauge_fixed && ga_idx < (lp.X4-1)*lp.X1h*lp.X2*lp.X3) {
         // read spinor from device memory
-        READ_SPINOR_DOWN(SPINORTEX, sp_stride, sp_idx, sp_idx);
+        READ_SPINOR_DOWN(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
         
         // project spinor into half spinors
         spinorFloat a0_re = +2*i20_re;
@@ -1264,9 +1264,9 @@ o32_re = o32_im = 0;
         // read gauge matrix from device memory
         if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
           // gauge field same parity.
-          READ_GAUGE_MATRIX(G, GAUGE0TEX, 6, ga_idx, ga_stride);
+          READ_GAUGE_MATRIX(G, GAUGE0TEX, 6, ga_idx, dp.ga_stride);
         // read spinor from device memory
-        READ_SPINOR_DOWN(SPINORTEX, sp_stride, sp_idx, sp_idx);
+        READ_SPINOR_DOWN(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
         
         // reconstruct gauge matrix
         RECONSTRUCT_GAUGE_MATRIX(6);
@@ -1321,9 +1321,9 @@ o32_re = o32_im = 0;
         
         } else {
           // gauge field opp parity.
-          READ_GAUGE_MATRIX(G, GAUGE1TEX, 6, ga_idx, ga_stride);
+          READ_GAUGE_MATRIX(G, GAUGE1TEX, 6, ga_idx, dp.ga_stride);
         // read spinor from device memory
-        READ_SPINOR_DOWN(SPINORTEX, sp_stride, sp_idx, sp_idx);
+        READ_SPINOR_DOWN(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
         
         // reconstruct gauge matrix
         RECONSTRUCT_GAUGE_MATRIX(6);
@@ -1389,12 +1389,12 @@ o32_re = o32_im = 0;
     // 0 0 0 0 
     // 0 0 0 0 
     
-    int sp_idx = ((x4==0)    ? X+(X4-1)*X3*X2*X1 : X-X3*X2*X1) / 2;
-    int ga_idx = sp_idx % Vh;
+    int sp_idx = ((x4==0)    ? X+(lp.X4-1)*lp.X3*lp.X2*lp.X1 : X-lp.X3*lp.X2*lp.X1) / 2;
+    int ga_idx = sp_idx % lp.Vh;
     
-    if (gauge_fixed && ga_idx < (X4-1)*X1h*X2*X3) {
+    if (dp.gauge_fixed && ga_idx < (lp.X4-1)*lp.X1h*lp.X2*lp.X3) {
         // read spinor from device memory
-        READ_SPINOR_UP(SPINORTEX, sp_stride, sp_idx, sp_idx);
+        READ_SPINOR_UP(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
         
         // project spinor into half spinors
         spinorFloat a0_re = +2*i00_re;
@@ -1439,9 +1439,9 @@ o32_re = o32_im = 0;
         // read gauge matrix from device memory
         if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
           // gauge field opposite parity.
-          READ_GAUGE_MATRIX(G, GAUGE1TEX, 7, ga_idx, ga_stride);
+          READ_GAUGE_MATRIX(G, GAUGE1TEX, 7, ga_idx, dp.ga_stride);
         // read spinor from device memory
-        READ_SPINOR_UP(SPINORTEX, sp_stride, sp_idx, sp_idx);
+        READ_SPINOR_UP(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
         
         // reconstruct gauge matrix
         RECONSTRUCT_GAUGE_MATRIX(7);
@@ -1495,9 +1495,9 @@ o32_re = o32_im = 0;
         o12_im += B2_im;
         } else {
           // gauge field same parity.
-          READ_GAUGE_MATRIX(G, GAUGE0TEX, 7, ga_idx, ga_stride);
+          READ_GAUGE_MATRIX(G, GAUGE0TEX, 7, ga_idx, dp.ga_stride);
         // read spinor from device memory
-        READ_SPINOR_UP(SPINORTEX, sp_stride, sp_idx, sp_idx);
+        READ_SPINOR_UP(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
         
         // reconstruct gauge matrix
         RECONSTRUCT_GAUGE_MATRIX(7);
@@ -1580,10 +1580,10 @@ o32_re = o32_im = 0;
       //J  The logic sets xs to the s-coordinate of the output
       //J  spinor, which is accumulated by this thread.
       //J  I.e., it uses the thread index to determine xs.
-      int sp_idx = ((xs==0) ? X+(Ls-1)*2*Vh : X-2*Vh) / 2;
+      int sp_idx = ((xs==0) ? X+(lp.Ls-1)*2*lp.Vh : X-2*lp.Vh) / 2;
       // --- Read spinor from device memory. ---
       //
-      READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+      READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
       
       if (xs != 0) {
          //J  OK, now the input spinor should be at:
@@ -1710,15 +1710,15 @@ o32_re = o32_im = 0;
       //J  
       //J  TODO  Check logic w/ case examples.
       //J  Cf. hand-written notes 8/6/09 for check of logic.
-      int sp_idx = ((xs==(Ls-1)) ? X-(Ls-1)*2*Vh : X+2*Vh) / 2;
+      int sp_idx = ((xs==(lp.Ls-1)) ? X-(lp.Ls-1)*2*lp.Vh : X+2*lp.Vh) / 2;
          
       //J  Read spinor from device memory.
       //
-      READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+      READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
 
       // HERE
       //
-      if ( xs < (Ls-1) ) {
+      if ( xs < (lp.Ls-1) ) {
          //J  Case of not at RH boundary.   Then we just do += P_R psi(s+1).
          
          //J  ------------------------------------
@@ -1837,7 +1837,7 @@ o32_re = o32_im = 0;
 //  such as occurs in Lines near 666 of dslash_quda.cu.
 
 #ifdef DSLASH_XPAY
-READ_ACCUM(ACCUMTEX, sp_stride)
+READ_ACCUM(ACCUMTEX, dp.sp_stride)
 #ifdef SPINOR_DOUBLE
     //J  This all looks like diagonal terms,
     //J  out = a*out+in.
@@ -1898,7 +1898,7 @@ READ_ACCUM(ACCUMTEX, sp_stride)
 
 
     // write spinor field back to device memory
-    WRITE_SPINOR(sp_stride);
+    WRITE_SPINOR(dp.sp_stride);
 
 // undefine to prevent warning when precision is changed
 #undef spinorFloat

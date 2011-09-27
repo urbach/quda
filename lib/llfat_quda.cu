@@ -800,23 +800,23 @@ void siteComputeGenStapleParityKernel(void* staple_even, void* staple_odd,
 	<<<halfGridDim, blockDim, 0, *stream>>>((double2*)staple_even, (double2*)staple_odd, \
 						(double2*)sitelink_even, (double2*)sitelink_odd, \
 						(double2*)fatlink_even, (double2*)fatlink_odd, \
-						(double)mycoeff, kparam);	\
+						(double)mycoeff, lp, kparam); \
       do_siteComputeGenStapleParity18Kernel<mu,nu, 1>		\
 	<<<halfGridDim, blockDim, 0, *stream>>>((double2*)staple_odd, (double2*)staple_even, \
 						(double2*)sitelink_odd, (double2*)sitelink_even, \
 						(double2*)fatlink_odd, (double2*)fatlink_even, \
-						(double)mycoeff, kparam);	\
+						(double)mycoeff, lp, kparam); \
     }else{								\
       do_siteComputeGenStapleParity12Kernel<mu,nu, 0>		\
 	<<<halfGridDim, blockDim, 0, *stream>>>((double2*)staple_even, (double2*)staple_odd, \
 						(double2*)sitelink_even, (double2*)sitelink_odd, \
 						(double2*)fatlink_even, (double2*)fatlink_odd, \
-						(double)mycoeff, kparam);	\
+						(double)mycoeff, lp, kparam); \
       do_siteComputeGenStapleParity12Kernel<mu,nu, 1>		\
 	<<<halfGridDim, blockDim, 0, *stream>>>((double2*)staple_odd, (double2*)staple_even, \
 						(double2*)sitelink_odd, (double2*)sitelink_even, \
 						(double2*)fatlink_odd, (double2*)fatlink_even, \
-						(double)mycoeff, kparam);	\
+						(double)mycoeff, lp, kparam); \
     }									\
   }else {								\
     if(recon == QUDA_RECONSTRUCT_NO){					\
@@ -824,23 +824,23 @@ void siteComputeGenStapleParityKernel(void* staple_even, void* staple_odd,
 	<<<halfGridDim, blockDim, 0, *stream>>>((float2*)staple_even, (float2*)staple_odd, \
 						(float2*)sitelink_even, (float2*)sitelink_odd, \
 						(float2*)fatlink_even, (float2*)fatlink_odd, \
-						(float)mycoeff, kparam);	\
+						(float)mycoeff, lp, kparam); \
       do_siteComputeGenStapleParity18Kernel<mu,nu, 1>		\
 	<<<halfGridDim, blockDim, 0, *stream>>>((float2*)staple_odd, (float2*)staple_even, \
 						(float2*)sitelink_odd, (float2*)sitelink_even, \
 						(float2*)fatlink_odd, (float2*)fatlink_even, \
-						(float)mycoeff, kparam); \
+						(float)mycoeff, lp, kparam); \
     }else{								\
       do_siteComputeGenStapleParity12Kernel<mu,nu, 0>		\
 	<<<halfGridDim, blockDim, 0, *stream>>>((float2*)staple_even, (float2*)staple_odd, \
 						(float2*)sitelink_even, (float2*)sitelink_odd, \
 						(float2*)fatlink_even, (float2*)fatlink_odd, \
-						(float)mycoeff, kparam); \
+						(float)mycoeff, lp, kparam); \
       do_siteComputeGenStapleParity12Kernel<mu,nu, 1>		\
 	<<<halfGridDim, blockDim, 0, *stream>>>((float2*)staple_odd, (float2*)staple_even, \
 						(float2*)sitelink_odd, (float2*)sitelink_even, \
 						(float2*)fatlink_odd, (float2*)fatlink_even, \
-						(float)mycoeff, kparam); \
+						(float)mycoeff, lp, kparam); \
     }									\
   }
   
@@ -862,7 +862,7 @@ computeGenStapleFieldParityKernel(void* staple_even, void* staple_odd,
 				  int mu, int nu, int save_staple,
 				  double mycoeff,
 				  QudaReconstructType recon, QudaPrecision prec,
-				  dim3 halfGridDim, llfat_kernel_param_t kparam,
+				  dim3 halfGridDim, const LatticeParam lp, llfat_kernel_param_t kparam,
 				  cudaStream_t* stream)
 {
 
@@ -874,26 +874,26 @@ computeGenStapleFieldParityKernel(void* staple_even, void* staple_odd,
 						(double2*)sitelink_even, (double2*)sitelink_odd, \
 						(double2*)fatlink_even, (double2*)fatlink_odd, \
 						(double2*)mulink_even, (double2*)mulink_odd, \
-						(double)mycoeff, kparam); \
+						(double)mycoeff, lp, kparam); \
       do_computeGenStapleFieldParity18Kernel<mu,nu, 1, save_staple> \
 	<<<halfGridDim, blockDim, 0, *stream>>>((double2*)staple_odd, (double2*)staple_even, \
 						(double2*)sitelink_odd, (double2*)sitelink_even, \
 						(double2*)fatlink_odd, (double2*)fatlink_even, \
 						(double2*)mulink_odd, (double2*)mulink_even, \
-						(double)mycoeff, kparam); \
+						(double)mycoeff, lp, kparam); \
     }else{								\
       do_computeGenStapleFieldParity12Kernel<mu,nu, 0, save_staple> \
 	<<<halfGridDim, blockDim, 0, *stream>>>((double2*)staple_even, (double2*)staple_odd, \
 						(double2*)sitelink_even, (double2*)sitelink_odd, \
 						(double2*)fatlink_even, (double2*)fatlink_odd, \
 						(double2*)mulink_even, (double2*)mulink_odd, \
-						(double)mycoeff, kparam); \
+						(double)mycoeff, lp, kparam); \
       do_computeGenStapleFieldParity12Kernel<mu,nu, 1, save_staple> \
 	<<<halfGridDim, blockDim, 0, *stream>>>((double2*)staple_odd, (double2*)staple_even, \
 						(double2*)sitelink_odd, (double2*)sitelink_even, \
 						(double2*)fatlink_odd, (double2*)fatlink_even, \
 						(double2*)mulink_odd, (double2*)mulink_even, \
-						(double)mycoeff, kparam); \
+						(double)mycoeff, lp, kparam); \
     }									\
   }else{								\
     if(recon == QUDA_RECONSTRUCT_NO){					\
@@ -902,26 +902,26 @@ computeGenStapleFieldParityKernel(void* staple_even, void* staple_odd,
 						(float2*)sitelink_even, (float2*)sitelink_odd, \
 						(float2*)fatlink_even, (float2*)fatlink_odd, \
 						(float2*)mulink_even, (float2*)mulink_odd, \
-						(float)mycoeff, kparam); \
+						(float)mycoeff, lp, kparam); \
       do_computeGenStapleFieldParity18Kernel<mu,nu, 1, save_staple> \
 	<<<halfGridDim, blockDim, 0, *stream>>>((float2*)staple_odd, (float2*)staple_even, \
 						(float2*)sitelink_odd, (float2*)sitelink_even, \
 						(float2*)fatlink_odd, (float2*)fatlink_even, \
 						(float2*)mulink_odd, (float2*)mulink_even, \
-						(float)mycoeff, kparam); \
+						(float)mycoeff, lp, kparam); \
     }else{								\
       do_computeGenStapleFieldParity12Kernel<mu,nu, 0, save_staple>	\
 	<<<halfGridDim, blockDim, 0, *stream>>>((float2*)staple_even, (float2*)staple_odd, \
 						(float2*)sitelink_even, (float2*)sitelink_odd, \
 						(float2*)fatlink_even, (float2*)fatlink_odd, \
 						(float2*)mulink_even, (float2*)mulink_odd, \
-						(float)mycoeff, kparam); \
+						(float)mycoeff, lp, kparam); \
       do_computeGenStapleFieldParity12Kernel<mu,nu, 1, save_staple> \
 	<<<halfGridDim, blockDim, 0, *stream>>>((float2*)staple_odd, (float2*)staple_even, \
 						(float2*)sitelink_odd, (float2*)sitelink_even, \
 						(float2*)fatlink_odd, (float2*)fatlink_even, \
 						(float2*)mulink_odd, (float2*)mulink_even, \
-						(float)mycoeff, kparam); \
+						(float)mycoeff, lp, kparam); \
     }									\
   }
   

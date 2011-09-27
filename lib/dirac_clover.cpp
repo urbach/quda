@@ -63,15 +63,15 @@ void DiracClover::checkParitySpinor(const cudaColorSpinorField &out, const cudaC
 // Public method to apply the clover term only
 void DiracClover::Clover(cudaColorSpinorField &out, const cudaColorSpinorField &in, const QudaParity parity) const
 {
-  if (!initDslash) initDslashConstants(gauge, in.stride);
-  if (!initClover) initCloverConstants(clover.stride);
+  setDslashParam(dslashParam, gauge, in.Stride());
+  setCloverParam(dslashParam, clover.stride);
   checkParitySpinor(in, out, clover);
 
   // regular clover term
   FullClover cs;
   cs.even = clover.even; cs.odd = clover.odd; cs.evenNorm = clover.evenNorm; cs.oddNorm = clover.oddNorm;
   cs.precision = clover.precision; cs.bytes = clover.bytes, cs.norm_bytes = clover.norm_bytes;
-  cloverCuda(&out, gauge, cs, &in, parity, blockClover);
+  cloverCuda(&out, gauge, cs, &in, parity, blockClover, dslashParam);
 
   flops += 504*in.volume;
 }
@@ -193,15 +193,15 @@ void DiracCloverPC::Tune(cudaColorSpinorField &out, const cudaColorSpinorField &
 void DiracCloverPC::CloverInv(cudaColorSpinorField &out, const cudaColorSpinorField &in, 
 			      const QudaParity parity) const
 {
-  if (!initDslash) initDslashConstants(gauge, in.stride);
-  if (!initClover) initCloverConstants(clover.stride);
+  setDslashParam(dslashParam, gauge, in.Stride());
+  setCloverParam(dslashParam, clover.stride);
   checkParitySpinor(in, out, clover);
 
   // needs to be cloverinv
   FullClover cs;
   cs.even = clover.evenInv; cs.odd = clover.oddInv; cs.evenNorm = clover.evenInvNorm; cs.oddNorm = clover.oddInvNorm;
   cs.precision = clover.precision; cs.bytes = clover.bytes, cs.norm_bytes = clover.norm_bytes;
-  cloverCuda(&out, gauge, cs, &in, parity, blockClover);
+  cloverCuda(&out, gauge, cs, &in, parity, blockClover, dslashParam);
 
   flops += 504*in.volume;
 }
@@ -212,8 +212,8 @@ void DiracCloverPC::CloverInv(cudaColorSpinorField &out, const cudaColorSpinorFi
 void DiracCloverPC::Dslash(cudaColorSpinorField &out, const cudaColorSpinorField &in, 
 			   const QudaParity parity) const
 {
-  if (!initDslash) initDslashConstants(gauge, in.stride);
-  if (!initClover) initCloverConstants(clover.stride);
+  setDslashParam(dslashParam, gauge, in.Stride());
+  setCloverParam(dslashParam, clover.stride);
   checkParitySpinor(in, out, clover);
   checkSpinorAlias(in, out);
 
@@ -222,7 +222,7 @@ void DiracCloverPC::Dslash(cudaColorSpinorField &out, const cudaColorSpinorField
   FullClover cs;
   cs.even = clover.evenInv; cs.odd = clover.oddInv; cs.evenNorm = clover.evenInvNorm; cs.oddNorm = clover.oddInvNorm;
   cs.precision = clover.precision; cs.bytes = clover.bytes, cs.norm_bytes = clover.norm_bytes;
-  cloverDslashCuda(&out, gauge, cs, &in, parity, dagger, 0, 0.0,  blockDslash, commDim);
+  cloverDslashCuda(&out, gauge, cs, &in, parity, dagger, 0, 0.0,  blockDslash, commDim, latParam, dslashParam);
 
   flops += (1320+504)*in.volume;
 }
@@ -232,8 +232,8 @@ void DiracCloverPC::DslashXpay(cudaColorSpinorField &out, const cudaColorSpinorF
 			       const QudaParity parity, const cudaColorSpinorField &x,
 			       const double &k) const
 {
-  if (!initDslash) initDslashConstants(gauge, in.stride);
-  if (!initClover) initCloverConstants(clover.stride);
+  setDslashParam(dslashParam, gauge, in.Stride());
+  setCloverParam(dslashParam, clover.stride);
   checkParitySpinor(in, out, clover);
   checkSpinorAlias(in, out);
 
@@ -242,7 +242,7 @@ void DiracCloverPC::DslashXpay(cudaColorSpinorField &out, const cudaColorSpinorF
   FullClover cs;
   cs.even = clover.evenInv; cs.odd = clover.oddInv; cs.evenNorm = clover.evenInvNorm; cs.oddNorm = clover.oddInvNorm;
   cs.precision = clover.precision; cs.bytes = clover.bytes, cs.norm_bytes = clover.norm_bytes;
-  cloverDslashCuda(&out, gauge, cs, &in, parity, dagger, &x, k, blockDslashXpay, commDim);
+  cloverDslashCuda(&out, gauge, cs, &in, parity, dagger, &x, k, blockDslashXpay, commDim, latParam, dslashParam);
 
   flops += (1320+504+48)*in.volume;
 }

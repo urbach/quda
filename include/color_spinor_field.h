@@ -13,7 +13,8 @@ typedef std::complex<double> Complex;
 
 // forward declaration
 class ColorSpinorField;
-
+struct LatticeParam;
+struct DslashParam;
 struct FullClover;
 
 class ColorSpinorParam {
@@ -229,9 +230,10 @@ class ColorSpinorField {
   friend class ColorSpinorParam;
 
   friend void packFaceWilson(void *ghost_buf, cudaColorSpinorField &in, const int dim, const QudaDirection dir, const int dagger, 
-			     const int parity, const cudaStream_t &stream);
-  friend void collectGhostSpinor(void *in, const void *inNorm, void* ghost_spinor_gpu, int dir, int whichway,
-				 const int parity, cudaColorSpinorField* inSpinor, cudaStream_t* stream);
+			     const int parity, const LatticeParam &latParam, const DslashParam &dslashParam, const cudaStream_t &stream);
+  friend void collectGhostSpinor(void *in, const void *inNorm, void *ghost_spinor_gpu, int dir, int whichway,
+				 const int parity, cudaColorSpinorField* inSpinor, const LatticeParam &lp,
+				 const DslashParam &dp, cudaStream_t* stream);
 };
 
 // CUDA implementation
@@ -297,32 +299,37 @@ class cudaColorSpinorField : public ColorSpinorField {
 				cudaColorSpinorField &z);
 
   friend void wilsonDslashCuda(cudaColorSpinorField *out, const FullGauge gauge, const cudaColorSpinorField *in,
-			       const int parity, const int dagger, const cudaColorSpinorField *x,
-			       const double &k, const dim3 *block, const int *commDim);
+			       const int oddBit, const int daggerBit, const cudaColorSpinorField *x,
+			       const double &k, const dim3 *block, const int *commDim,
+			       const LatticeParam &latParam, DslashParam &dslashParam);
   friend void cloverDslashCuda(cudaColorSpinorField *out, const FullGauge gauge, const FullClover cloverInv,
 			       const cudaColorSpinorField *in, const int parity, const int dagger, 
 			       const cudaColorSpinorField *x, const double &a,
-			       const dim3 *block, const int *commDim);
+			       const dim3 *block, const int *commDim,
+			       const LatticeParam &latParam, DslashParam &dslashParam);
   friend void domainWallDslashCuda(cudaColorSpinorField *out, const FullGauge gauge, 
 				   const cudaColorSpinorField *in, const int parity, const int dagger, 
 				   const cudaColorSpinorField *x, const double &m_f, const double &k2,
-				   const dim3 *block);
+				   const dim3 *block, const LatticeParam &latParam, DslashParam &dslashParam);
   friend void staggeredDslashCuda(cudaColorSpinorField *out, const FullGauge fatGauge, 
 				  const FullGauge longGauge, const cudaColorSpinorField *in,
 				  const int parity, const int dagger, const cudaColorSpinorField *x,
-				  const double &k, const dim3 *block, const int *commDim);
+				  const double &k, const dim3 *block, const int *commDim,
+				  const LatticeParam &latParam, DslashParam &dslashParam);
   friend void twistedMassDslashCuda(cudaColorSpinorField *out, const FullGauge gauge, 
 				    const cudaColorSpinorField *in, const int parity, const int dagger, 
 				    const cudaColorSpinorField *x, const double &kappa, const double &mu, 
-				    const double &a, const dim3 *block, const int *commDim);
+				    const double &a, const dim3 *block, const int *commDim,
+				    const LatticeParam &latParam, DslashParam &dslashParam);
+
 
   friend void cloverCuda(cudaColorSpinorField *out, const FullGauge gauge, const FullClover clover, 
-			 const cudaColorSpinorField *in, const int parity, const dim3 &blockDim);
+			 const cudaColorSpinorField *in, const int parity, const dim3 &blockDim, DslashParam &dslashParam);
   friend void twistGamma5Cuda(cudaColorSpinorField *out, const cudaColorSpinorField *in,
 			      const int dagger, const double &kappa, const double &mu,
-			      const QudaTwistGamma5Type twist, const dim3 &block);
+			      const QudaTwistGamma5Type twist, const dim3 &block, DslashParam &dslashParam);
   friend void packFaceWilson(void *ghost_buf, cudaColorSpinorField &in, const int dim, const QudaDirection dir, const int dagger, 
-			     const int parity, const cudaStream_t &stream);
+			     const int parity, const LatticeParam &latParam, const DslashParam &dslashParam, const cudaStream_t &stream);
 
  private:
   void *v; // the field elements

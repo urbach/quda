@@ -91,14 +91,12 @@ void DiracStaggered::checkParitySpinor(const cudaColorSpinorField &in, const cud
 void DiracStaggered::Dslash(cudaColorSpinorField &out, const cudaColorSpinorField &in, 
 			 const QudaParity parity) const
 {
-  if (!initDslash) {
-    initDslashConstants(*fatGauge, in.Stride());
-    initStaggeredConstants(*fatGauge, *longGauge);
-  }
   checkParitySpinor(in, out);
+  setDslashParam(dslashParam, gauge, in.Stride());
+  setStaggeredParam(dslashParam, *fatGauge, *longGauge);
 
   setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda
-  staggeredDslashCuda(&out, *fatGauge, *longGauge, &in, parity, dagger, 0, 0, blockDslash, commDim);
+  staggeredDslashCuda(&out, *fatGauge, *longGauge, &in, parity, dagger, 0, 0, blockDslash, commDim, latParam, dslashParam);
   
   flops += 1146*in.volume;
 }
@@ -107,14 +105,12 @@ void DiracStaggered::DslashXpay(cudaColorSpinorField &out, const cudaColorSpinor
 				const QudaParity parity, const cudaColorSpinorField &x,
 				const double &k) const
 {    
-  if (!initDslash){
-    initDslashConstants(*fatGauge, in.Stride());
-    initStaggeredConstants(*fatGauge, *longGauge);
-  }
   checkParitySpinor(in, out);
+  setDslashParam(dslashParam, gauge, in.Stride());
+  setStaggeredParam(dslashParam, *fatGauge, *longGauge);
 
   setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda
-  staggeredDslashCuda(&out, *fatGauge, *longGauge, &in, parity, dagger, &x, k, blockDslashXpay, commDim);
+  staggeredDslashCuda(&out, *fatGauge, *longGauge, &in, parity, dagger, &x, k, blockDslashXpay, commDim, latParam, dslashParam);
   
   flops += (1146+12)*in.volume;
 }
@@ -122,11 +118,6 @@ void DiracStaggered::DslashXpay(cudaColorSpinorField &out, const cudaColorSpinor
 // Full staggered operator
 void DiracStaggered::M(cudaColorSpinorField &out, const cudaColorSpinorField &in) const
 {
-  if (!initDslash){
-    initDslashConstants(*fatGauge, in.Stride());
-    initStaggeredConstants(*fatGauge, *longGauge);
-  }
-
   bool reset = newTmp(&tmp1, in.Even());
 
   DslashXpay(out.Even(), in.Odd(), QUDA_EVEN_PARITY, *tmp1, 2*mass);  
@@ -137,12 +128,6 @@ void DiracStaggered::M(cudaColorSpinorField &out, const cudaColorSpinorField &in
 
 void DiracStaggered::MdagM(cudaColorSpinorField &out, const cudaColorSpinorField &in) const
 {
-
-  if (!initDslash){
-    initDslashConstants(*fatGauge, in.Stride());
-    initStaggeredConstants(*fatGauge, *longGauge);
-  }
-  
   bool reset = newTmp(&tmp1, in);
   
   cudaColorSpinorField* mytmp = dynamic_cast<cudaColorSpinorField*>(tmp1->even);
@@ -214,11 +199,6 @@ void DiracStaggeredPC::M(cudaColorSpinorField &out, const cudaColorSpinorField &
 
 void DiracStaggeredPC::MdagM(cudaColorSpinorField &out, const cudaColorSpinorField &in) const
 {
-  if (!initDslash){
-    initDslashConstants(*fatGauge, in.Stride());
-    initStaggeredConstants(*fatGauge, *longGauge);
-  }
-  
   bool reset = newTmp(&tmp1, in);
   
   QudaParity parity = QUDA_INVALID_PARITY;

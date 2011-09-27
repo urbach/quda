@@ -357,7 +357,7 @@ int sp_norm_idx;
 #endif // MULTI_GPU half precision
 
 int sid = blockIdx.x*blockDim.x + threadIdx.x;
-if (sid >= param.threads) return;
+if (sid >= dp.threads) return;
 
 #ifdef MULTI_GPU
 int face_idx;
@@ -365,16 +365,16 @@ if (kernel_type == INTERIOR_KERNEL) {
 #endif
 
   // Inline by hand for the moment and assume even dimensions
-  //coordsFromIndex(X, x1, x2, x3, x4, sid, param.parity);
+  //coordsFromIndex(X, x1, x2, x3, x4, sid, dp.parity);
 
   X = 2*sid;
-  int aux1 = X / X1;
-  x1 = X - aux1 * X1;
-  int aux2 = aux1 / X2;
-  x2 = aux1 - aux2 * X2;
-  x4 = aux2 / X3;
-  x3 = aux2 - x4 * X3;
-  aux1 = (param.parity + x4 + x3 + x2) & 1;
+  int aux1 = X / lp.X1;
+  x1 = X - aux1 * lp.X1;
+  int aux2 = aux1 / lp.X2;
+  x2 = aux1 - aux2 * lp.X2;
+  x4 = aux2 / lp.X3;
+  x3 = aux2 - x4 * lp.X3;
+  aux1 = (dp.parity + x4 + x3 + x2) & 1;
   x1 += aux1;
   X += aux1;
 
@@ -395,21 +395,21 @@ if (kernel_type == INTERIOR_KERNEL) {
 } else { // exterior kernel
 
   const int dim = static_cast<int>(kernel_type);
-  const int face_volume = (param.threads >> 1);           // volume of one face
+  const int face_volume = (dp.threads >> 1);           // volume of one face
   const int face_num = (sid >= face_volume);              // is this thread updating face 0 or 1
   face_idx = sid - face_num*face_volume;        // index into the respective face
 
   // ghostOffset is scaled to include body (includes stride) and number of FloatN arrays (SPINOR_HOP)
   // face_idx not sid since faces are spin projected and share the same volume index (modulo UP/DOWN reading)
-  //sp_idx = face_idx + param.ghostOffset[dim];
+  //sp_idx = face_idx + dp.ghostOffset[dim];
 
 #if (DD_PREC==2) // half precision
-  sp_norm_idx = sid + param.ghostNormOffset[static_cast<int>(kernel_type)];
+  sp_norm_idx = sid + dp.ghostNormOffset[static_cast<int>(kernel_type)];
 #endif
 
-  coordsFromFaceIndex<1>(X, sid, x1, x2, x3, x4, face_idx, face_volume, dim, face_num, param.parity);
+  coordsFromFaceIndex<1>(X, sid, x1, x2, x3, x4, face_idx, face_volume, dim, face_num, dp.parity, lp);
 
-  READ_INTERMEDIATE_SPINOR(INTERTEX, sp_stride, sid, sid);
+  READ_INTERMEDIATE_SPINOR(INTERTEX, dp.sp_stride, sid, sid);
 
   o00_re = i00_re;  o00_im = i00_im;
   o01_re = i01_re;  o01_im = i01_im;
@@ -428,8 +428,8 @@ if (kernel_type == INTERIOR_KERNEL) {
 
 
 #ifdef MULTI_GPU
-if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[0] || x1<X1m1)) ||
-     (kernel_type == EXTERIOR_KERNEL_X && x1==X1m1) )
+if ( (kernel_type == INTERIOR_KERNEL && (!dp.ghostDim[0] || x1<lp.X1m1)) ||
+     (kernel_type == EXTERIOR_KERNEL_X && x1==lp.X1m1) )
 #endif
 {
   // Projector P0+
@@ -439,16 +439,16 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[0] || x1<X1m1)) ||
   // -i 0 0 1 
   
 #ifdef MULTI_GPU
-  const int sp_idx = (kernel_type == INTERIOR_KERNEL) ? (x1==X1m1 ? X-X1m1 : X+1) >> 1 :
-    face_idx + param.ghostOffset[static_cast<int>(kernel_type)];
+  const int sp_idx = (kernel_type == INTERIOR_KERNEL) ? (x1==lp.X1m1 ? X-lp.X1m1 : X+1) >> 1 :
+    face_idx + dp.ghostOffset[static_cast<int>(kernel_type)];
 #else
-  const int sp_idx = (x1==X1m1 ? X-X1m1 : X+1) >> 1;
+  const int sp_idx = (x1==lp.X1m1 ? X-lp.X1m1 : X+1) >> 1;
 #endif
   
   const int ga_idx = sid;
   
   // read gauge matrix from device memory
-  READ_GAUGE_MATRIX(G, GAUGE0TEX, 0, ga_idx, ga_stride);
+  READ_GAUGE_MATRIX(G, GAUGE0TEX, 0, ga_idx, dp.ga_stride);
   
   spinorFloat a0_re, a0_im;
   spinorFloat a1_re, a1_im;
@@ -462,7 +462,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[0] || x1<X1m1)) ||
 #endif
   
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // project spinor into half spinors
     a0_re = +i00_re-i30_im;
@@ -481,7 +481,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[0] || x1<X1m1)) ||
 #ifdef MULTI_GPU
   } else {
   
-    const int sp_stride_pad = ghostFace[static_cast<int>(kernel_type)];
+    const int sp_stride_pad = lp.ghostFace[static_cast<int>(kernel_type)];
     
     // read half spinor from device memory
     READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx);
@@ -619,7 +619,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[0] || x1<X1m1)) ||
 }
 
 #ifdef MULTI_GPU
-if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[0] || x1>0)) ||
+if ( (kernel_type == INTERIOR_KERNEL && (!dp.ghostDim[0] || x1>0)) ||
      (kernel_type == EXTERIOR_KERNEL_X && x1==0) )
 #endif
 {
@@ -630,20 +630,20 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[0] || x1>0)) ||
   // i 0 0 1 
   
 #ifdef MULTI_GPU
-  const int sp_idx = (kernel_type == INTERIOR_KERNEL) ? (x1==0 ? X+X1m1 : X-1) >> 1 :
-    face_idx + param.ghostOffset[static_cast<int>(kernel_type)];
+  const int sp_idx = (kernel_type == INTERIOR_KERNEL) ? (x1==0 ? X+lp.X1m1 : X-1) >> 1 :
+    face_idx + dp.ghostOffset[static_cast<int>(kernel_type)];
 #else
-  const int sp_idx = (x1==0 ? X+X1m1 : X-1) >> 1;
+  const int sp_idx = (x1==0 ? X+lp.X1m1 : X-1) >> 1;
 #endif
   
 #ifdef MULTI_GPU
-  const int ga_idx = ((kernel_type == INTERIOR_KERNEL) ? sp_idx : Vh+face_idx);
+  const int ga_idx = ((kernel_type == INTERIOR_KERNEL) ? sp_idx : lp.Vh+face_idx);
 #else
   const int ga_idx = sp_idx;
 #endif
   
   // read gauge matrix from device memory
-  READ_GAUGE_MATRIX(G, GAUGE1TEX, 1, ga_idx, ga_stride);
+  READ_GAUGE_MATRIX(G, GAUGE1TEX, 1, ga_idx, dp.ga_stride);
   
   spinorFloat a0_re, a0_im;
   spinorFloat a1_re, a1_im;
@@ -657,7 +657,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[0] || x1>0)) ||
 #endif
   
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // project spinor into half spinors
     a0_re = +i00_re+i30_im;
@@ -676,7 +676,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[0] || x1>0)) ||
 #ifdef MULTI_GPU
   } else {
   
-    const int sp_stride_pad = ghostFace[static_cast<int>(kernel_type)];
+    const int sp_stride_pad = lp.ghostFace[static_cast<int>(kernel_type)];
     
     // read half spinor from device memory
     READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx, sp_norm_idx);
@@ -814,8 +814,8 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[0] || x1>0)) ||
 }
 
 #ifdef MULTI_GPU
-if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[1] || x2<X2m1)) ||
-     (kernel_type == EXTERIOR_KERNEL_Y && x2==X2m1) )
+if ( (kernel_type == INTERIOR_KERNEL && (!dp.ghostDim[1] || x2<lp.X2m1)) ||
+     (kernel_type == EXTERIOR_KERNEL_Y && x2==lp.X2m1) )
 #endif
 {
   // Projector P1+
@@ -825,16 +825,16 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[1] || x2<X2m1)) ||
   // 1 0 0 1 
   
 #ifdef MULTI_GPU
-  const int sp_idx = (kernel_type == INTERIOR_KERNEL) ? (x2==X2m1 ? X-X2X1mX1 : X+X1) >> 1 :
-    face_idx + param.ghostOffset[static_cast<int>(kernel_type)];
+  const int sp_idx = (kernel_type == INTERIOR_KERNEL) ? (x2==lp.X2m1 ? X-lp.X2X1mX1 : X+lp.X1) >> 1 :
+    face_idx + dp.ghostOffset[static_cast<int>(kernel_type)];
 #else
-  const int sp_idx = (x2==X2m1 ? X-X2X1mX1 : X+X1) >> 1;
+  const int sp_idx = (x2==lp.X2m1 ? X-lp.X2X1mX1 : X+lp.X1) >> 1;
 #endif
   
   const int ga_idx = sid;
   
   // read gauge matrix from device memory
-  READ_GAUGE_MATRIX(G, GAUGE0TEX, 2, ga_idx, ga_stride);
+  READ_GAUGE_MATRIX(G, GAUGE0TEX, 2, ga_idx, dp.ga_stride);
   
   spinorFloat a0_re, a0_im;
   spinorFloat a1_re, a1_im;
@@ -848,7 +848,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[1] || x2<X2m1)) ||
 #endif
   
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // project spinor into half spinors
     a0_re = +i00_re+i30_re;
@@ -867,7 +867,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[1] || x2<X2m1)) ||
 #ifdef MULTI_GPU
   } else {
   
-    const int sp_stride_pad = ghostFace[static_cast<int>(kernel_type)];
+    const int sp_stride_pad = lp.ghostFace[static_cast<int>(kernel_type)];
     
     // read half spinor from device memory
     READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx);
@@ -1005,7 +1005,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[1] || x2<X2m1)) ||
 }
 
 #ifdef MULTI_GPU
-if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[1] || x2>0)) ||
+if ( (kernel_type == INTERIOR_KERNEL && (!dp.ghostDim[1] || x2>0)) ||
      (kernel_type == EXTERIOR_KERNEL_Y && x2==0) )
 #endif
 {
@@ -1016,20 +1016,20 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[1] || x2>0)) ||
   // -1 0 0 1 
   
 #ifdef MULTI_GPU
-  const int sp_idx = (kernel_type == INTERIOR_KERNEL) ? (x2==0 ? X+X2X1mX1 : X-X1) >> 1 :
-    face_idx + param.ghostOffset[static_cast<int>(kernel_type)];
+  const int sp_idx = (kernel_type == INTERIOR_KERNEL) ? (x2==0 ? X+lp.X2X1mX1 : X-lp.X1) >> 1 :
+    face_idx + dp.ghostOffset[static_cast<int>(kernel_type)];
 #else
-  const int sp_idx = (x2==0 ? X+X2X1mX1 : X-X1) >> 1;
+  const int sp_idx = (x2==0 ? X+lp.X2X1mX1 : X-lp.X1) >> 1;
 #endif
   
 #ifdef MULTI_GPU
-  const int ga_idx = ((kernel_type == INTERIOR_KERNEL) ? sp_idx : Vh+face_idx);
+  const int ga_idx = ((kernel_type == INTERIOR_KERNEL) ? sp_idx : lp.Vh+face_idx);
 #else
   const int ga_idx = sp_idx;
 #endif
   
   // read gauge matrix from device memory
-  READ_GAUGE_MATRIX(G, GAUGE1TEX, 3, ga_idx, ga_stride);
+  READ_GAUGE_MATRIX(G, GAUGE1TEX, 3, ga_idx, dp.ga_stride);
   
   spinorFloat a0_re, a0_im;
   spinorFloat a1_re, a1_im;
@@ -1043,7 +1043,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[1] || x2>0)) ||
 #endif
   
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // project spinor into half spinors
     a0_re = +i00_re-i30_re;
@@ -1062,7 +1062,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[1] || x2>0)) ||
 #ifdef MULTI_GPU
   } else {
   
-    const int sp_stride_pad = ghostFace[static_cast<int>(kernel_type)];
+    const int sp_stride_pad = lp.ghostFace[static_cast<int>(kernel_type)];
     
     // read half spinor from device memory
     READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx, sp_norm_idx);
@@ -1200,8 +1200,8 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[1] || x2>0)) ||
 }
 
 #ifdef MULTI_GPU
-if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[2] || x3<X3m1)) ||
-     (kernel_type == EXTERIOR_KERNEL_Z && x3==X3m1) )
+if ( (kernel_type == INTERIOR_KERNEL && (!dp.ghostDim[2] || x3<lp.X3m1)) ||
+     (kernel_type == EXTERIOR_KERNEL_Z && x3==lp.X3m1) )
 #endif
 {
   // Projector P2+
@@ -1211,16 +1211,16 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[2] || x3<X3m1)) ||
   // 0 i 0 1 
   
 #ifdef MULTI_GPU
-  const int sp_idx = (kernel_type == INTERIOR_KERNEL) ? (x3==X3m1 ? X-X3X2X1mX2X1 : X+X2X1) >> 1 :
-    face_idx + param.ghostOffset[static_cast<int>(kernel_type)];
+  const int sp_idx = (kernel_type == INTERIOR_KERNEL) ? (x3==lp.X3m1 ? X-lp.X3X2X1mX2X1 : X+lp.X2X1) >> 1 :
+    face_idx + dp.ghostOffset[static_cast<int>(kernel_type)];
 #else
-  const int sp_idx = (x3==X3m1 ? X-X3X2X1mX2X1 : X+X2X1) >> 1;
+  const int sp_idx = (x3==lp.X3m1 ? X-lp.X3X2X1mX2X1 : X+lp.X2X1) >> 1;
 #endif
   
   const int ga_idx = sid;
   
   // read gauge matrix from device memory
-  READ_GAUGE_MATRIX(G, GAUGE0TEX, 4, ga_idx, ga_stride);
+  READ_GAUGE_MATRIX(G, GAUGE0TEX, 4, ga_idx, dp.ga_stride);
   
   spinorFloat a0_re, a0_im;
   spinorFloat a1_re, a1_im;
@@ -1234,7 +1234,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[2] || x3<X3m1)) ||
 #endif
   
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // project spinor into half spinors
     a0_re = +i00_re-i20_im;
@@ -1253,7 +1253,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[2] || x3<X3m1)) ||
 #ifdef MULTI_GPU
   } else {
   
-    const int sp_stride_pad = ghostFace[static_cast<int>(kernel_type)];
+    const int sp_stride_pad = lp.ghostFace[static_cast<int>(kernel_type)];
     
     // read half spinor from device memory
     READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx);
@@ -1391,7 +1391,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[2] || x3<X3m1)) ||
 }
 
 #ifdef MULTI_GPU
-if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[2] || x3>0)) ||
+if ( (kernel_type == INTERIOR_KERNEL && (!dp.ghostDim[2] || x3>0)) ||
      (kernel_type == EXTERIOR_KERNEL_Z && x3==0) )
 #endif
 {
@@ -1402,20 +1402,20 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[2] || x3>0)) ||
   // 0 -i 0 1 
   
 #ifdef MULTI_GPU
-  const int sp_idx = (kernel_type == INTERIOR_KERNEL) ? (x3==0 ? X+X3X2X1mX2X1 : X-X2X1) >> 1 :
-    face_idx + param.ghostOffset[static_cast<int>(kernel_type)];
+  const int sp_idx = (kernel_type == INTERIOR_KERNEL) ? (x3==0 ? X+lp.X3X2X1mX2X1 : X-lp.X2X1) >> 1 :
+    face_idx + dp.ghostOffset[static_cast<int>(kernel_type)];
 #else
-  const int sp_idx = (x3==0 ? X+X3X2X1mX2X1 : X-X2X1) >> 1;
+  const int sp_idx = (x3==0 ? X+lp.X3X2X1mX2X1 : X-lp.X2X1) >> 1;
 #endif
   
 #ifdef MULTI_GPU
-  const int ga_idx = ((kernel_type == INTERIOR_KERNEL) ? sp_idx : Vh+face_idx);
+  const int ga_idx = ((kernel_type == INTERIOR_KERNEL) ? sp_idx : lp.Vh+face_idx);
 #else
   const int ga_idx = sp_idx;
 #endif
   
   // read gauge matrix from device memory
-  READ_GAUGE_MATRIX(G, GAUGE1TEX, 5, ga_idx, ga_stride);
+  READ_GAUGE_MATRIX(G, GAUGE1TEX, 5, ga_idx, dp.ga_stride);
   
   spinorFloat a0_re, a0_im;
   spinorFloat a1_re, a1_im;
@@ -1429,7 +1429,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[2] || x3>0)) ||
 #endif
   
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // project spinor into half spinors
     a0_re = +i00_re+i20_im;
@@ -1448,7 +1448,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[2] || x3>0)) ||
 #ifdef MULTI_GPU
   } else {
   
-    const int sp_stride_pad = ghostFace[static_cast<int>(kernel_type)];
+    const int sp_stride_pad = lp.ghostFace[static_cast<int>(kernel_type)];
     
     // read half spinor from device memory
     READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx, sp_norm_idx);
@@ -1586,8 +1586,8 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[2] || x3>0)) ||
 }
 
 #ifdef MULTI_GPU
-if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4<X4m1)) ||
-     (kernel_type == EXTERIOR_KERNEL_T && x4==X4m1) )
+if ( (kernel_type == INTERIOR_KERNEL && (!dp.ghostDim[3] || x4<lp.X4m1)) ||
+     (kernel_type == EXTERIOR_KERNEL_T && x4==lp.X4m1) )
 #endif
 {
   // Projector P3+
@@ -1597,15 +1597,15 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4<X4m1)) ||
   // 0 0 0 0 
   
 #ifdef MULTI_GPU
-  const int sp_idx = (kernel_type == INTERIOR_KERNEL) ? (x4==X4m1 ? X-X4X3X2X1mX3X2X1 : X+X3X2X1) >> 1 :
-    face_idx + param.ghostOffset[static_cast<int>(kernel_type)];
+  const int sp_idx = (kernel_type == INTERIOR_KERNEL) ? (x4==lp.X4m1 ? X-lp.X4X3X2X1mX3X2X1 : X+lp.X3X2X1) >> 1 :
+    face_idx + dp.ghostOffset[static_cast<int>(kernel_type)];
 #else
-  const int sp_idx = (x4==X4m1 ? X-X4X3X2X1mX3X2X1 : X+X3X2X1) >> 1;
+  const int sp_idx = (x4==lp.X4m1 ? X-lp.X4X3X2X1mX3X2X1 : X+lp.X3X2X1) >> 1;
 #endif
   
   const int ga_idx = sid;
   
-  if (gauge_fixed && ga_idx < X4X3X2X1hmX3X2X1h)
+  if (dp.gauge_fixed && ga_idx < lp.X4X3X2X1hmX3X2X1h)
   {
     spinorFloat a0_re, a0_im;
     spinorFloat a1_re, a1_im;
@@ -1619,7 +1619,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4<X4m1)) ||
 #endif
     
       // read spinor from device memory
-      READ_SPINOR_UP(SPINORTEX, sp_stride, sp_idx, sp_idx);
+      READ_SPINOR_UP(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
       
       // project spinor into half spinors
       a0_re = +2*i00_re;
@@ -1638,7 +1638,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4<X4m1)) ||
 #ifdef MULTI_GPU
     } else {
     
-      const int sp_stride_pad = ghostFace[static_cast<int>(kernel_type)];
+      const int sp_stride_pad = lp.ghostFace[static_cast<int>(kernel_type)];
       const int t_proj_scale = TPROJSCALE;
       
       // read half spinor from device memory
@@ -1679,7 +1679,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4<X4m1)) ||
     
   } else {
     // read gauge matrix from device memory
-    READ_GAUGE_MATRIX(G, GAUGE0TEX, 6, ga_idx, ga_stride);
+    READ_GAUGE_MATRIX(G, GAUGE0TEX, 6, ga_idx, dp.ga_stride);
     
     spinorFloat a0_re, a0_im;
     spinorFloat a1_re, a1_im;
@@ -1693,7 +1693,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4<X4m1)) ||
 #endif
     
       // read spinor from device memory
-      READ_SPINOR_UP(SPINORTEX, sp_stride, sp_idx, sp_idx);
+      READ_SPINOR_UP(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
       
       // project spinor into half spinors
       a0_re = +2*i00_re;
@@ -1712,7 +1712,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4<X4m1)) ||
 #ifdef MULTI_GPU
     } else {
     
-      const int sp_stride_pad = ghostFace[static_cast<int>(kernel_type)];
+      const int sp_stride_pad = lp.ghostFace[static_cast<int>(kernel_type)];
       const int t_proj_scale = TPROJSCALE;
       
       // read half spinor from device memory
@@ -1840,7 +1840,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4<X4m1)) ||
 }
 
 #ifdef MULTI_GPU
-if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4>0)) ||
+if ( (kernel_type == INTERIOR_KERNEL && (!dp.ghostDim[3] || x4>0)) ||
      (kernel_type == EXTERIOR_KERNEL_T && x4==0) )
 #endif
 {
@@ -1851,19 +1851,19 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4>0)) ||
   // 0 0 0 2 
   
 #ifdef MULTI_GPU
-  const int sp_idx = (kernel_type == INTERIOR_KERNEL) ? (x4==0 ? X+X4X3X2X1mX3X2X1 : X-X3X2X1) >> 1 :
-    face_idx + param.ghostOffset[static_cast<int>(kernel_type)];
+  const int sp_idx = (kernel_type == INTERIOR_KERNEL) ? (x4==0 ? X+lp.X4X3X2X1mX3X2X1 : X-lp.X3X2X1) >> 1 :
+    face_idx + dp.ghostOffset[static_cast<int>(kernel_type)];
 #else
-  const int sp_idx = (x4==0 ? X+X4X3X2X1mX3X2X1 : X-X3X2X1) >> 1;
+  const int sp_idx = (x4==0 ? X+lp.X4X3X2X1mX3X2X1 : X-lp.X3X2X1) >> 1;
 #endif
   
 #ifdef MULTI_GPU
-  const int ga_idx = ((kernel_type == INTERIOR_KERNEL) ? sp_idx : Vh+face_idx);
+  const int ga_idx = ((kernel_type == INTERIOR_KERNEL) ? sp_idx : lp.Vh+face_idx);
 #else
   const int ga_idx = sp_idx;
 #endif
   
-  if (gauge_fixed && ga_idx < X4X3X2X1hmX3X2X1h)
+  if (dp.gauge_fixed && ga_idx < lp.X4X3X2X1hmX3X2X1h)
   {
     spinorFloat a0_re, a0_im;
     spinorFloat a1_re, a1_im;
@@ -1877,7 +1877,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4>0)) ||
 #endif
     
       // read spinor from device memory
-      READ_SPINOR_DOWN(SPINORTEX, sp_stride, sp_idx, sp_idx);
+      READ_SPINOR_DOWN(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
       
       // project spinor into half spinors
       a0_re = +2*i20_re;
@@ -1896,7 +1896,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4>0)) ||
 #ifdef MULTI_GPU
     } else {
     
-      const int sp_stride_pad = ghostFace[static_cast<int>(kernel_type)];
+      const int sp_stride_pad = lp.ghostFace[static_cast<int>(kernel_type)];
       const int t_proj_scale = TPROJSCALE;
       
       // read half spinor from device memory
@@ -1937,7 +1937,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4>0)) ||
     
   } else {
     // read gauge matrix from device memory
-    READ_GAUGE_MATRIX(G, GAUGE1TEX, 7, ga_idx, ga_stride);
+    READ_GAUGE_MATRIX(G, GAUGE1TEX, 7, ga_idx, dp.ga_stride);
     
     spinorFloat a0_re, a0_im;
     spinorFloat a1_re, a1_im;
@@ -1951,7 +1951,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4>0)) ||
 #endif
     
       // read spinor from device memory
-      READ_SPINOR_DOWN(SPINORTEX, sp_stride, sp_idx, sp_idx);
+      READ_SPINOR_DOWN(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
       
       // project spinor into half spinors
       a0_re = +2*i20_re;
@@ -1970,7 +1970,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4>0)) ||
 #ifdef MULTI_GPU
     } else {
     
-      const int sp_stride_pad = ghostFace[static_cast<int>(kernel_type)];
+      const int sp_stride_pad = lp.ghostFace[static_cast<int>(kernel_type)];
       const int t_proj_scale = TPROJSCALE;
       
       // read half spinor from device memory
@@ -2103,13 +2103,13 @@ int incomplete = 0; // Have all 8 contributions been computed for this site?
 
 switch(kernel_type) { // intentional fall-through
 case INTERIOR_KERNEL:
-  incomplete = incomplete || (param.commDim[3] && (x4==0 || x4==X4m1));
+  incomplete = incomplete || (dp.commDim[3] && (x4==0 || x4==lp.X4m1));
 case EXTERIOR_KERNEL_T:
-  incomplete = incomplete || (param.commDim[2] && (x3==0 || x3==X3m1));
+  incomplete = incomplete || (dp.commDim[2] && (x3==0 || x3==lp.X3m1));
 case EXTERIOR_KERNEL_Z:
-  incomplete = incomplete || (param.commDim[1] && (x2==0 || x2==X2m1));
+  incomplete = incomplete || (dp.commDim[1] && (x2==0 || x2==lp.X2m1));
 case EXTERIOR_KERNEL_Y:
-  incomplete = incomplete || (param.commDim[0] && (x1==0 || x1==X1m1));
+  incomplete = incomplete || (dp.commDim[0] && (x1==0 || x1==lp.X1m1));
 }
 
 if (!incomplete)
@@ -2169,7 +2169,7 @@ if (!incomplete)
   
   // apply first chiral block
   {
-    READ_CLOVER(CLOVERTEX, 0)
+    READ_CLOVER(CLOVERTEX, 0, dp.cl_stride)
     
     spinorFloat a00_re = 0; spinorFloat a00_im = 0;
     spinorFloat a01_re = 0; spinorFloat a01_im = 0;
@@ -2327,7 +2327,7 @@ if (!incomplete)
   
   // apply second chiral block
   {
-    READ_CLOVER(CLOVERTEX, 1)
+    READ_CLOVER(CLOVERTEX, 1, dp.cl_stride)
     
     spinorFloat a20_re = 0; spinorFloat a20_im = 0;
     spinorFloat a21_re = 0; spinorFloat a21_im = 0;
@@ -2537,7 +2537,7 @@ if (!incomplete)
   
 #ifdef DSLASH_XPAY
   
-  READ_ACCUM(ACCUMTEX, sp_stride)
+  READ_ACCUM(ACCUMTEX, dp.sp_stride)
   
 #ifdef SPINOR_DOUBLE
   o00_re = a*o00_re + accum0.x;
@@ -2595,7 +2595,7 @@ if (!incomplete)
 }
 
 // write spinor field back to device memory
-WRITE_SPINOR(sp_stride);
+WRITE_SPINOR(dp.sp_stride);
 
 // undefine to prevent warning when precision is changed
 #undef spinorFloat

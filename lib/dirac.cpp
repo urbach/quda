@@ -10,6 +10,7 @@ Dirac::Dirac(const DiracParam &param)
     verbose(param.verbose)
 {
   for (int i=0; i<4; i++) commDim[i] = param.commDim[i];
+  setLatticeParam(latParam, gauge);
 }
 
 Dirac::Dirac(const Dirac &dirac) 
@@ -18,6 +19,7 @@ Dirac::Dirac(const Dirac &dirac)
     verbose(dirac.verbose)
 {
   for (int i=0; i<4; i++) commDim[i] = dirac.commDim[i];
+  setLatticeParam(latParam, gauge);
 }
 
 Dirac::~Dirac() {

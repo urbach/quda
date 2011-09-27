@@ -70,12 +70,12 @@ void DiracDomainWall::Dslash(cudaColorSpinorField &out, const cudaColorSpinorFie
 			     const QudaParity parity) const
 {
   if ( in.Ndim() != 5 || out.Ndim() != 5) errorQuda("Wrong number of dimensions\n");
-  if (!initDslash) initDslashConstants(gauge, in.Stride());
-  if (!initDomainWall) initDomainWallConstants(in.X(4));
   checkParitySpinor(in, out);
   checkSpinorAlias(in, out);
+  setDslashParam(dslashParam, gauge, in.Stride());
+  setDomainWallParam(latParam, in.X(4));
   
-  domainWallDslashCuda(&out, gauge, &in, parity, dagger, 0, mass, 0, blockDslash);
+  domainWallDslashCuda(&out, gauge, &in, parity, dagger, 0, mass, 0, blockDslash, latParam, dslashParam);
 
   long long Ls = in.X(4);
   long long bulk = (Ls-2)*(in.volume/Ls);
@@ -88,12 +88,12 @@ void DiracDomainWall::DslashXpay(cudaColorSpinorField &out, const cudaColorSpino
 				 const double &k) const
 {
   if ( in.Ndim() != 5 || out.Ndim() != 5) errorQuda("Wrong number of dimensions\n");
-  if (!initDslash) initDslashConstants(gauge, in.Stride());
-  if (!initDomainWall) initDomainWallConstants(in.X(4));
   checkParitySpinor(in, out);
   checkSpinorAlias(in, out);
+  setDslashParam(dslashParam, gauge, in.Stride());
+  setDomainWallParam(latParam, in.X(4));
 
-  domainWallDslashCuda(&out, gauge, &in, parity, dagger, &x, mass, k, blockDslashXpay);
+  domainWallDslashCuda(&out, gauge, &in, parity, dagger, &x, mass, k, blockDslashXpay, latParam, dslashParam);
 
   long long Ls = in.X(4);
   long long bulk = (Ls-2)*(in.volume/Ls);

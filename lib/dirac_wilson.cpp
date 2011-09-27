@@ -43,13 +43,13 @@ DiracWilson& DiracWilson::operator=(const DiracWilson &dirac)
 void DiracWilson::Dslash(cudaColorSpinorField &out, const cudaColorSpinorField &in, 
 			 const QudaParity parity) const
 {
-  if (!initDslash) initDslashConstants(gauge, in.Stride());
+  setDslashParam(dslashParam, gauge, in.Stride());
   checkParitySpinor(in, out);
   checkSpinorAlias(in, out);
 
   setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda
 
-  wilsonDslashCuda(&out, gauge, &in, parity, dagger, 0, 0.0, blockDslash, commDim);
+  wilsonDslashCuda(&out, gauge, &in, parity, dagger, 0, 0.0, blockDslash, commDim, latParam, dslashParam);
 
   flops += 1320ll*in.volume;
 }
@@ -58,13 +58,13 @@ void DiracWilson::DslashXpay(cudaColorSpinorField &out, const cudaColorSpinorFie
 			     const QudaParity parity, const cudaColorSpinorField &x,
 			     const double &k) const
 {
-  if (!initDslash) initDslashConstants(gauge, in.Stride());
+  setDslashParam(dslashParam, gauge, in.Stride());
   checkParitySpinor(in, out);
   checkSpinorAlias(in, out);
 
   setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda
 
-  wilsonDslashCuda(&out, gauge, &in, parity, dagger, &x, k, blockDslashXpay, commDim);
+  wilsonDslashCuda(&out, gauge, &in, parity, dagger, &x, k, blockDslashXpay, commDim, latParam, dslashParam);
 
   flops += 1368ll*in.volume;
 }

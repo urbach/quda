@@ -51,15 +51,14 @@ void DiracTwistedMass::twistedApply(cudaColorSpinorField &out, const cudaColorSp
 				    const QudaTwistGamma5Type twistType) const
 {
   checkParitySpinor(out, in);
-  
-  if (!initDslash) initDslashConstants(gauge, in.stride);
+  setDslashParam(dslashParam, gauge, in.Stride());
 
   if (in.twistFlavor == QUDA_TWIST_NO || in.twistFlavor == QUDA_TWIST_INVALID)
     errorQuda("Twist flavor not set %d\n", in.twistFlavor);
 
   double flavor_mu = in.twistFlavor * mu;
   
-  twistGamma5Cuda(&out, &in, dagger, kappa, flavor_mu, twistType, blockTwist);
+  twistGamma5Cuda(&out, &in, dagger, kappa, flavor_mu, twistType, blockTwist, dslashParam);
 
   flops += 24*in.volume;
 }
@@ -195,9 +194,9 @@ void DiracTwistedMassPC::TwistInv(cudaColorSpinorField &out, const cudaColorSpin
 void DiracTwistedMassPC::Dslash(cudaColorSpinorField &out, const cudaColorSpinorField &in, 
 				const QudaParity parity) const
 {
-  if (!initDslash) initDslashConstants(gauge, in.stride);
   checkParitySpinor(in, out);
   checkSpinorAlias(in, out);
+  setDslashParam(dslashParam, gauge, in.Stride());
 
   if (in.twistFlavor != out.twistFlavor) 
     errorQuda("Twist flavors %d %d don't match", in.twistFlavor, out.twistFlavor);
@@ -208,7 +207,7 @@ void DiracTwistedMassPC::Dslash(cudaColorSpinorField &out, const cudaColorSpinor
     double flavor_mu = in.twistFlavor * mu;
     setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda
     twistedMassDslashCuda(&out, gauge, &in, parity, dagger, 0, kappa, 
-			  flavor_mu, 0.0, blockDslash, commDim);
+			  flavor_mu, 0.0, blockDslash, commDim, latParam, dslashParam);
     flops += (1320+72)*in.volume;
   } else { // safe to use tmp2 here which may alias in
     bool reset = newTmp(&tmp2, in);
@@ -231,9 +230,9 @@ void DiracTwistedMassPC::DslashXpay(cudaColorSpinorField &out, const cudaColorSp
 				    const QudaParity parity, const cudaColorSpinorField &x,
 				    const double &k) const
 {
-  if (!initDslash) initDslashConstants(gauge, in.stride);
   checkParitySpinor(in, out);
   checkSpinorAlias(in, out);
+  setDslashParam(dslashParam, gauge, in.Stride());
 
   if (in.twistFlavor != out.twistFlavor) 
     errorQuda("Twist flavors %d %d don't match", in.twistFlavor, out.twistFlavor);
@@ -244,7 +243,7 @@ void DiracTwistedMassPC::DslashXpay(cudaColorSpinorField &out, const cudaColorSp
     double flavor_mu = in.twistFlavor * mu;
     setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda
     twistedMassDslashCuda(&out, gauge, &in, parity, dagger, &x, kappa, 
-			  flavor_mu, k, blockDslashXpay, commDim);
+			  flavor_mu, k, blockDslashXpay, commDim, latParam, dslashParam);
     flops += (1320+96)*in.volume;
   } else { // tmp1 can alias in, but tmp2 can alias x so must not use this
     bool reset = newTmp(&tmp1, in);

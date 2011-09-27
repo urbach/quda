@@ -187,15 +187,15 @@ volatile spinorFloat o32_im;
 #include "io_spinor.h"
 
 int sid = blockIdx.x*blockDim.x + threadIdx.x;
-if (sid >= param.threads) return;
-int boundaryCrossings = sid/X1h + sid/(X2*X1h) + sid/(X3*X2*X1h) + sid/(X4*X3*X2*X1h);
-int boundaryCrossings4d = sid/X1h + sid/(X2*X1h) + sid/(X3*X2*X1h);
-int X = 2*sid + (boundaryCrossings + param.parity) % 2;
-int xs = X/(X4*X3*X2*X1);
-int x4 = (X/(X3*X2*X1)) % X4;
-int x3 = (X/(X2*X1)) % X3;
-int x2 = (X/X1) % X2;
-int x1 = X % X1;
+if (sid >= dp.threads) return;
+int boundaryCrossings = sid/lp.X1h + sid/(lp.X2*lp.X1h) + sid/(lp.X3*lp.X2*lp.X1h) + sid/(lp.X4*lp.X3*lp.X2*lp.X1h);
+int boundaryCrossings4d = sid/lp.X1h + sid/(lp.X2*lp.X1h) + sid/(lp.X3*lp.X2*lp.X1h);
+int X = 2*sid + (boundaryCrossings + dp.parity) % 2;
+int xs = X/(lp.X4*lp.X3*lp.X2*lp.X1);
+int x4 = (X/(lp.X3*lp.X2*lp.X1)) % lp.X4;
+int x3 = (X/(lp.X2*lp.X1)) % lp.X3;
+int x2 = (X/lp.X1) % lp.X2;
+int x1 = X % lp.X1;
 
 o00_re = o00_im = 0;
 o01_re = o01_im = 0;
@@ -217,14 +217,14 @@ o32_re = o32_im = 0;
   // 0 -i 1 0 
   // -i 0 0 1 
     
-  int sp_idx = ((x1==X1-1) ? X-(X1-1) : X+1) / 2;
-  int ga_idx = sid % Vh;
+  int sp_idx = ((x1==lp.X1-1) ? X-(lp.X1-1) : X+1) / 2;
+  int ga_idx = sid % lp.Vh;
   if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {    
     // read gauge matrix from device memory
-    READ_GAUGE_MATRIX(G, GAUGE0TEX, 0, ga_idx, ga_stride);
+    READ_GAUGE_MATRIX(G, GAUGE0TEX, 0, ga_idx, dp.ga_stride);
     
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(0);
@@ -292,10 +292,10 @@ o32_re = o32_im = 0;
   } else {
     
     // read gauge matrix from device memory
-    READ_GAUGE_MATRIX(G, GAUGE1TEX, 0, ga_idx, ga_stride);
+    READ_GAUGE_MATRIX(G, GAUGE1TEX, 0, ga_idx, dp.ga_stride);
     
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(0);
@@ -369,15 +369,15 @@ o32_re = o32_im = 0;
   // 0 i 1 0 
   // i 0 0 1 
     
-  int sp_idx = ((x1==0)    ? X+(X1-1) : X-1) / 2;
-  int ga_idx = sp_idx % Vh;
+  int sp_idx = ((x1==0)    ? X+(lp.X1-1) : X-1) / 2;
+  int ga_idx = sp_idx % lp.Vh;
 
   if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {    
     // read gauge matrix from device memory
-    READ_GAUGE_MATRIX(G, GAUGE1TEX, 1, ga_idx, ga_stride);
+    READ_GAUGE_MATRIX(G, GAUGE1TEX, 1, ga_idx, dp.ga_stride);
     
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(1);
@@ -443,10 +443,10 @@ o32_re = o32_im = 0;
     o32_im += A2_re;
   } else {
     // read gauge matrix from device memory
-    READ_GAUGE_MATRIX(G, GAUGE0TEX, 1, ga_idx, ga_stride);
+    READ_GAUGE_MATRIX(G, GAUGE0TEX, 1, ga_idx, dp.ga_stride);
     
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(1);
@@ -520,16 +520,16 @@ o32_re = o32_im = 0;
   // 0 -1 1 0 
   // 1 0 0 1 
     
-  int sp_idx = ((x2==X2-1) ? X-(X2-1)*X1 : X+X1) / 2;
-  int ga_idx = sid % Vh;
+  int sp_idx = ((x2==lp.X2-1) ? X-(lp.X2-1)*lp.X1 : X+lp.X1) / 2;
+  int ga_idx = sid % lp.Vh;
   
   if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
     
     // read gauge matrix from device memory
-    READ_GAUGE_MATRIX(G, GAUGE0TEX, 2, ga_idx, ga_stride);
+    READ_GAUGE_MATRIX(G, GAUGE0TEX, 2, ga_idx, dp.ga_stride);
     
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(2);
@@ -597,10 +597,10 @@ o32_re = o32_im = 0;
   } else {
     
     // read gauge matrix from device memory
-    READ_GAUGE_MATRIX(G, GAUGE1TEX, 2, ga_idx, ga_stride);
+    READ_GAUGE_MATRIX(G, GAUGE1TEX, 2, ga_idx, dp.ga_stride);
     
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(2);
@@ -675,16 +675,16 @@ o32_re = o32_im = 0;
     // 0 1 1 0 
     // -1 0 0 1 
     
-    int sp_idx = ((x2==0)    ? X+(X2-1)*X1 : X-X1) / 2;
-    int ga_idx = sp_idx % Vh;
+    int sp_idx = ((x2==0)    ? X+(lp.X2-1)*lp.X1 : X-lp.X1) / 2;
+    int ga_idx = sp_idx % lp.Vh;
   
   if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
     
     // read gauge matrix from device memory
-    READ_GAUGE_MATRIX(G, GAUGE1TEX, 3, ga_idx, ga_stride);
+    READ_GAUGE_MATRIX(G, GAUGE1TEX, 3, ga_idx, dp.ga_stride);
     
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(3);
@@ -750,10 +750,10 @@ o32_re = o32_im = 0;
     o32_im -= A2_im;
   } else {
     // read gauge matrix from device memory
-    READ_GAUGE_MATRIX(G, GAUGE0TEX, 3, ga_idx, ga_stride);
+    READ_GAUGE_MATRIX(G, GAUGE0TEX, 3, ga_idx, dp.ga_stride);
     
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(3);
@@ -827,16 +827,16 @@ o32_re = o32_im = 0;
     // -i 0 1 0 
     // 0 i 0 1 
     
-    int sp_idx = ((x3==X3-1) ? X-(X3-1)*X2*X1 : X+X2*X1) / 2;
-    int ga_idx = sid % Vh;
+    int sp_idx = ((x3==lp.X3-1) ? X-(lp.X3-1)*lp.X2*lp.X1 : X+lp.X2*lp.X1) / 2;
+    int ga_idx = sid % lp.Vh;
   
   if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
     
     // read gauge matrix from device memory
-    READ_GAUGE_MATRIX(G, GAUGE0TEX, 4, ga_idx, ga_stride);
+    READ_GAUGE_MATRIX(G, GAUGE0TEX, 4, ga_idx, dp.ga_stride);
     
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(4);
@@ -904,10 +904,10 @@ o32_re = o32_im = 0;
   } else {
     
     // read gauge matrix from device memory
-    READ_GAUGE_MATRIX(G, GAUGE1TEX, 4, ga_idx, ga_stride);
+    READ_GAUGE_MATRIX(G, GAUGE1TEX, 4, ga_idx, dp.ga_stride);
     
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(4);
@@ -981,16 +981,16 @@ o32_re = o32_im = 0;
     // i 0 1 0 
     // 0 -i 0 1 
     
-    int sp_idx = ((x3==0)    ? X+(X3-1)*X2*X1 : X-X2*X1) / 2;
-    int ga_idx = sp_idx % Vh;
+    int sp_idx = ((x3==0)    ? X+(lp.X3-1)*lp.X2*lp.X1 : X-lp.X2*lp.X1) / 2;
+    int ga_idx = sp_idx % lp.Vh;
     
   if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
     
     // read gauge matrix from device memory
-    READ_GAUGE_MATRIX(G, GAUGE1TEX, 5, ga_idx, ga_stride);
+    READ_GAUGE_MATRIX(G, GAUGE1TEX, 5, ga_idx, dp.ga_stride);
     
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(5);
@@ -1058,10 +1058,10 @@ o32_re = o32_im = 0;
   } else {
     
     // read gauge matrix from device memory
-    READ_GAUGE_MATRIX(G, GAUGE0TEX, 5, ga_idx, ga_stride);
+    READ_GAUGE_MATRIX(G, GAUGE0TEX, 5, ga_idx, dp.ga_stride);
     
     // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
     
     // reconstruct gauge matrix
     RECONSTRUCT_GAUGE_MATRIX(5);
@@ -1136,12 +1136,12 @@ o32_re = o32_im = 0;
     // 0 0 0 0 
     // 0 0 0 0 
     
-    int sp_idx = ((x4==X4-1) ? X-(X4-1)*X3*X2*X1 : X+X3*X2*X1) / 2;
-    int ga_idx = sid % Vh;
+    int sp_idx = ((x4==lp.X4-1) ? X-(lp.X4-1)*lp.X3*lp.X2*lp.X1 : X+lp.X3*lp.X2*lp.X1) / 2;
+    int ga_idx = sid % lp.Vh;
     
-    if (gauge_fixed && ga_idx < (X4-1)*X1h*X2*X3) {
+    if (dp.gauge_fixed && ga_idx < (lp.X4-1)*lp.X1h*lp.X2*lp.X3) {
         // read spinor from device memory
-        READ_SPINOR_UP(SPINORTEX, sp_stride, sp_idx, sp_idx);
+        READ_SPINOR_UP(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
         
         // project spinor into half spinors
         spinorFloat a0_re = +2*i00_re;
@@ -1186,10 +1186,10 @@ o32_re = o32_im = 0;
      if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
        
        // read gauge matrix from device memory
-       READ_GAUGE_MATRIX(G, GAUGE0TEX, 6, ga_idx, ga_stride);
+       READ_GAUGE_MATRIX(G, GAUGE0TEX, 6, ga_idx, dp.ga_stride);
         
         // read spinor from device memory
-        READ_SPINOR_UP(SPINORTEX, sp_stride, sp_idx, sp_idx);
+        READ_SPINOR_UP(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
         
         // reconstruct gauge matrix
         RECONSTRUCT_GAUGE_MATRIX(6);
@@ -1244,10 +1244,10 @@ o32_re = o32_im = 0;
       } else {
         
         // read gauge matrix from device memory
-       READ_GAUGE_MATRIX(G, GAUGE1TEX, 6, ga_idx, ga_stride);
+       READ_GAUGE_MATRIX(G, GAUGE1TEX, 6, ga_idx, dp.ga_stride);
         
         // read spinor from device memory
-        READ_SPINOR_UP(SPINORTEX, sp_stride, sp_idx, sp_idx);
+        READ_SPINOR_UP(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
         
         // reconstruct gauge matrix
         RECONSTRUCT_GAUGE_MATRIX(6);
@@ -1311,12 +1311,12 @@ o32_re = o32_im = 0;
     // 0 0 2 0 
     // 0 0 0 2 
     
-    int sp_idx = ((x4==0)    ? X+(X4-1)*X3*X2*X1 : X-X3*X2*X1) / 2;
-    int ga_idx = sp_idx % Vh;
+    int sp_idx = ((x4==0)    ? X+(lp.X4-1)*lp.X3*lp.X2*lp.X1 : X-lp.X3*lp.X2*lp.X1) / 2;
+    int ga_idx = sp_idx % lp.Vh;
     
-    if (gauge_fixed && ga_idx < (X4-1)*X1h*X2*X3) {
+    if (dp.gauge_fixed && ga_idx < (lp.X4-1)*lp.X1h*lp.X2*lp.X3) {
         // read spinor from device memory
-        READ_SPINOR_DOWN(SPINORTEX, sp_stride, sp_idx, sp_idx);
+        READ_SPINOR_DOWN(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
         
         // project spinor into half spinors
         spinorFloat a0_re = +2*i20_re;
@@ -1361,10 +1361,10 @@ o32_re = o32_im = 0;
       if ( !( (boundaryCrossings-boundaryCrossings4d) % 2) ) {
         
         // read gauge matrix from device memory
-        READ_GAUGE_MATRIX(G, GAUGE1TEX, 7, ga_idx, ga_stride);
+        READ_GAUGE_MATRIX(G, GAUGE1TEX, 7, ga_idx, dp.ga_stride);
         
         // read spinor from device memory
-        READ_SPINOR_DOWN(SPINORTEX, sp_stride, sp_idx, sp_idx);
+        READ_SPINOR_DOWN(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
         
         // reconstruct gauge matrix
         RECONSTRUCT_GAUGE_MATRIX(7);
@@ -1420,10 +1420,10 @@ o32_re = o32_im = 0;
       } else {
         
         // read gauge matrix from device memory
-        READ_GAUGE_MATRIX(G, GAUGE0TEX, 7, ga_idx, ga_stride);
+        READ_GAUGE_MATRIX(G, GAUGE0TEX, 7, ga_idx, dp.ga_stride);
         
         // read spinor from device memory
-        READ_SPINOR_DOWN(SPINORTEX, sp_stride, sp_idx, sp_idx);
+        READ_SPINOR_DOWN(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
         
         // reconstruct gauge matrix
         RECONSTRUCT_GAUGE_MATRIX(7);
@@ -1504,7 +1504,7 @@ o32_re = o32_im = 0;
       //J  The logic sets xs to the s-coordinate of the output
       //J  spinor, which is accumulated by this thread.
       //J  I.e., it uses the thread index to determine xs.
-      int sp_idx = ((xs==0) ? X+(Ls-1)*2*Vh : X-2*Vh) / 2;
+      int sp_idx = ((xs==0) ? X+(lp.Ls-1)*2*lp.Vh : X-2*lp.Vh) / 2;
       // --- Read spinor from device memory. ---
       //J  Q.  How does it know which direction to hop in?  
       //J  A.  It uses sp_idx as the origin and picks up 0*Vh_5d ... 5*Vh_5d
@@ -1514,7 +1514,7 @@ o32_re = o32_im = 0;
       //J      modification?  Does it care?
       //J
       //
-      READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+      READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
       
       if (xs != 0) {
          //J  OK, now the input spinor should be at:
@@ -1642,15 +1642,15 @@ o32_re = o32_im = 0;
       //J  
       //J  Checked logic w/ case examples.
       //J  Cf. hand-written notes 8/6/09 for check of logic.
-      int sp_idx = ((xs==(Ls-1)) ? X-(Ls-1)*2*Vh : X+2*Vh) / 2;
+      int sp_idx = ((xs==(lp.Ls-1)) ? X-(lp.Ls-1)*2*lp.Vh : X+2*lp.Vh) / 2;
          
       //J  Read spinor from device memory.
       //
-      READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+      READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);
 
       // 
       //
-      if ( xs < (Ls-1) ) {
+      if ( xs < (lp.Ls-1) ) {
          //J  Case of not at RH boundary.   Then we just do += P_L psi(s+1).
          
          //J  ------------------------------------
@@ -1768,7 +1768,7 @@ o32_re = o32_im = 0;
 
 
 #ifdef DSLASH_XPAY
-READ_ACCUM(ACCUMTEX, sp_stride)
+READ_ACCUM(ACCUMTEX, dp.sp_stride)
 #ifdef SPINOR_DOUBLE
     o00_re = a*o00_re + accum0.x;
     o00_im = a*o00_im + accum0.y;
@@ -1824,7 +1824,7 @@ READ_ACCUM(ACCUMTEX, sp_stride)
 
 
     // write spinor field back to device memory
-    WRITE_SPINOR(sp_stride);
+    WRITE_SPINOR(dp.sp_stride);
 
 // undefine to prevent warning when precision is changed
 #undef spinorFloat

@@ -2,12 +2,12 @@
 
 // compute an index into the local volume from an index into the face (used by the face packing routines)
 template <int dim, int nLayers>
-static inline __device__ int indexFromFaceIndex(int face_idx, const int &face_volume,
-						const int &face_num, const int &parity)
+static inline __device__ int indexFromFaceIndex(int face_idx, const int &face_volume, const int &face_num,
+						const int &parity, const LatticeParam &lp)
 {
   // dimensions of the face (FIXME: optimize using constant cache)
 
-  int face_X = X1, face_Y = X2, face_Z = X3; // face_T = X4;
+  int face_X = lp.X1, face_Y = lp.X2, face_Z = lp.X3; // face_T = lp.X4;
   switch (dim) {
   case 0:
     face_X = nLayers;
@@ -30,16 +30,16 @@ static inline __device__ int indexFromFaceIndex(int face_idx, const int &face_vo
   int face_parity;
   switch (dim) {
   case 0:
-    face_parity = (parity + face_num * (X1 - nLayers)) & 1;
+    face_parity = (parity + face_num * (lp.X1 - nLayers)) & 1;
     break;
   case 1:
-    face_parity = (parity + face_num * (X2 - nLayers)) & 1;
+    face_parity = (parity + face_num * (lp.X2 - nLayers)) & 1;
     break;
   case 2:
-    face_parity = (parity + face_num * (X3 - nLayers)) & 1;
+    face_parity = (parity + face_num * (lp.X3 - nLayers)) & 1;
     break;
   case 3:
-    face_parity = (parity + face_num * (X4 - nLayers)) & 1;
+    face_parity = (parity + face_num * (lp.X4 - nLayers)) & 1;
     break;
   }
 
@@ -77,22 +77,22 @@ static inline __device__ int indexFromFaceIndex(int face_idx, const int &face_vo
 
   switch (dim) {
   case 0:
-    gap = X1 - nLayers;
+    gap = lp.X1 - nLayers;
     aux = face_idx / face_X;
     idx += (aux + face_num) * gap;
     break;
   case 1:
-    gap = X2 - nLayers;
+    gap = lp.X2 - nLayers;
     aux = face_idx / face_XY;
     idx += (aux + face_num) * gap * face_X;
     break;
   case 2:
-    gap = X3 - nLayers;
+    gap = lp.X3 - nLayers;
     aux = face_idx / face_XYZ;
     idx += (aux + face_num) * gap * face_XY;
     break;
   case 3:
-    gap = X4 - nLayers;
+    gap = lp.X4 - nLayers;
     idx += face_num * gap * face_XYZ;
     break;
   }
@@ -106,27 +106,28 @@ static inline __device__ int indexFromFaceIndex(int face_idx, const int &face_vo
 // compute full coordinates from an index into the face (used by the exterior Dslash kernels)
 template <int nLayers, typename Int>
 static inline __device__ void coordsFromFaceIndex(int &idx, int &cb_idx, Int &X, Int &Y, Int &Z, Int &T, int face_idx,
-						  const int &face_volume, const int &dim, const int &face_num, const int &parity)
+						  const int &face_volume, const int &dim, const int &face_num,
+						  const int &parity, const LatticeParam &lp)
 {
   // dimensions of the face (FIXME: optimize using constant cache)
 
-  int face_X = X1, face_Y = X2, face_Z = X3;
+  int face_X = lp.X1, face_Y = lp.X2, face_Z = lp.X3;
   int face_parity;
   switch (dim) {
   case 0:
     face_X = nLayers;
-    face_parity = (parity + face_num * (X1 - nLayers)) & 1;
+    face_parity = (parity + face_num * (lp.X1 - nLayers)) & 1;
     break;
   case 1:
     face_Y = nLayers;
-    face_parity = (parity + face_num * (X2 - nLayers)) & 1;
+    face_parity = (parity + face_num * (lp.X2 - nLayers)) & 1;
     break;
   case 2:
     face_Z = nLayers;
-    face_parity = (parity + face_num * (X3 - nLayers)) & 1;
+    face_parity = (parity + face_num * (lp.X3 - nLayers)) & 1;
     break;
   case 3:
-    face_parity = (parity + face_num * (X4 - nLayers)) & 1;
+    face_parity = (parity + face_num * (lp.X4 - nLayers)) & 1;
     break;
   }
   int face_XYZ = face_X * face_Y * face_Z;
@@ -178,22 +179,22 @@ static inline __device__ void coordsFromFaceIndex(int &idx, int &cb_idx, Int &X,
   // need to convert to global coords, not face coords
   switch(dim) {
   case 0:
-    x += face_num * (X1-nLayers);
+    x += face_num * (lp.X1-nLayers);
     break;
   case 1:
-    y += face_num * (X2-nLayers);
+    y += face_num * (lp.X2-nLayers);
     break;
   case 2:
-    z += face_num * (X3-nLayers);
+    z += face_num * (lp.X3-nLayers);
     break;
   case 3:
-    t += face_num * (X4-nLayers);
+    t += face_num * (lp.X4-nLayers);
     break;
   }
 
   // compute index into the full local volume
 
-  idx = X1*(X2*(X3*t + z) + y) + x; 
+  idx = lp.X1*(lp.X2*(lp.X3*t + z) + y) + x; 
 
   // compute index into the checkerboard
 
@@ -210,14 +211,15 @@ static inline __device__ void coordsFromFaceIndex(int &idx, int &cb_idx, Int &X,
 
 // compute coordinates from index into the checkerboard (used by the interior Dslash kernels)
 template <typename Int>
-static __device__ __forceinline__ void coordsFromIndex(int &idx, Int &X, Int &Y, Int &Z, Int &T, const int &cb_idx, const int &parity)
+static __device__ __forceinline__ void coordsFromIndex(int &idx, Int &X, Int &Y, Int &Z, Int &T, const int &cb_idx,
+						       const int &parity, const LatticeParam &lp)
 {
 
-  int &LX = X1;
-  int &LY = X2;
-  int &LZ = X3;
-  int &XYZ = X3X2X1;
-  int &XY = X2X1;
+  const int &LX = lp.X1;
+  const int &LY = lp.X2;
+  const int &LZ = lp.X3;
+  const int &XYZ = lp.X3X2X1;
+  const int &XY = lp.X2X1;
 
   idx = 2*cb_idx;
 
@@ -288,7 +290,8 @@ static __device__ __forceinline__ void coordsFromIndex(int &idx, Int &X, Int &Y,
 #define SPINOR_DOUBLE
 template <int dim, int dagger>
 static inline __device__ void packFaceWilsonCore(double2 *out, float *outNorm, const double2 *in, const float *inNorm,
-						 const int &idx, const int &face_idx, const int &face_volume, const int &face_num)
+						 const int &idx, const int &face_idx, const int &face_volume,
+						 const int &face_num, const LatticeParam &lp, const DslashParam &dp)
 {
 #if (__CUDA_ARCH__ >= 130)
     if (dagger) {
@@ -321,7 +324,8 @@ static inline __device__ void packFaceWilsonCore(double2 *out, float *outNorm, c
 #define WRITE_HALF_SPINOR WRITE_HALF_SPINOR_FLOAT4
 template <int dim, int dagger>
 static inline __device__ void packFaceWilsonCore(float4 *out, float *outNorm, const float4 *in, const float *inNorm,
-						 const int &idx, const int &face_idx, const int &face_volume, const int &face_num)
+						 const int &idx, const int &face_idx, const int &face_volume,
+						 const int &face_num, const LatticeParam &lp, const DslashParam &dp)
 {
     if (dagger) {
 #include "wilson_pack_face_dagger_core.h"
@@ -351,7 +355,8 @@ static inline __device__ void packFaceWilsonCore(float4 *out, float *outNorm, co
 #define WRITE_HALF_SPINOR WRITE_HALF_SPINOR_SHORT4
 template <int dim, int dagger>
 static inline __device__ void packFaceWilsonCore(short4 *out, float *outNorm, const short4 *in, const float *inNorm,
-						 const int &idx, const int &face_idx, const int &face_volume, const int &face_num)
+						 const int &idx, const int &face_idx, const int &face_volume,
+						 const int &face_num, const LatticeParam &lp, const DslashParam &dp)
 {
     if (dagger) {
 #include "wilson_pack_face_dagger_core.h"
@@ -367,27 +372,28 @@ static inline __device__ void packFaceWilsonCore(short4 *out, float *outNorm, co
 
 
 template <int dim, int dagger, typename FloatN>
-__global__ void packFaceWilsonKernel(FloatN *out, float *outNorm, const FloatN *in, const float *inNorm, const int face_num, const int parity)
+  __global__ void packFaceWilsonKernel(FloatN *out, float *outNorm, const FloatN *in, const float *inNorm, const int face_num,
+				       const int parity, const LatticeParam lp, const DslashParam dp)
 {
-  int face_volume = ghostFace[dim];
+  int face_volume = lp.ghostFace[dim];
 
   int face_idx = blockIdx.x*blockDim.x + threadIdx.x;
   if (face_idx >= face_volume) return;
 
   // compute an index into the local volume from the index into the face
-  int idx = indexFromFaceIndex<dim, 1>(face_idx, face_volume, face_num, parity);
+  int idx = indexFromFaceIndex<dim, 1>(face_idx, face_volume, face_num, parity, lp);
 
   // read spinor, spin-project, and write half spinor to face
-  packFaceWilsonCore<dim, dagger>(out, outNorm, in, inNorm, idx, face_idx, face_volume, face_num);
+  packFaceWilsonCore<dim, dagger>(out, outNorm, in, inNorm, idx, face_idx, face_volume, face_num, lp, dp);
 }
 
 #endif // GPU_WILSON_DIRAC
 
 
 template <typename FloatN>
-void packFaceWilson(FloatN *faces, float *facesNorm, const FloatN *in, const float *inNorm, 
-		    const int dim, const QudaDirection dir, const int dagger, const int parity, 
-		    const dim3 &gridDim, const dim3 &blockDim, const cudaStream_t &stream)
+void packFaceWilson(FloatN *faces, float *facesNorm, const FloatN *in, const float *inNorm, const int dim,
+		    const QudaDirection dir, const int dagger, const int parity, const LatticeParam &lp,
+		    const DslashParam &dp, const dim3 &gridDim, const dim3 &blockDim, const cudaStream_t &stream)
 {
 #ifdef GPU_WILSON_DIRAC
 
@@ -395,17 +401,17 @@ void packFaceWilson(FloatN *faces, float *facesNorm, const FloatN *in, const flo
 
   if (dagger) {
     switch (dim) {
-    case 0: packFaceWilsonKernel<0,1><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, face_num, parity); break;
-    case 1: packFaceWilsonKernel<1,1><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, face_num, parity); break;
-    case 2: packFaceWilsonKernel<2,1><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, face_num, parity); break;
-    case 3: packFaceWilsonKernel<3,1><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, face_num, parity); break;
+    case 0: packFaceWilsonKernel<0,1><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, face_num, parity, lp, dp); break;
+    case 1: packFaceWilsonKernel<1,1><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, face_num, parity, lp, dp); break;
+    case 2: packFaceWilsonKernel<2,1><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, face_num, parity, lp, dp); break;
+    case 3: packFaceWilsonKernel<3,1><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, face_num, parity, lp, dp); break;
     }
   } else {
     switch (dim) {
-    case 0: packFaceWilsonKernel<0,0><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, face_num, parity); break;
-    case 1: packFaceWilsonKernel<1,0><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, face_num, parity); break;
-    case 2: packFaceWilsonKernel<2,0><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, face_num, parity); break;
-    case 3: packFaceWilsonKernel<3,0><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, face_num, parity); break;
+    case 0: packFaceWilsonKernel<0,0><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, face_num, parity, lp, dp); break;
+    case 1: packFaceWilsonKernel<1,0><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, face_num, parity, lp, dp); break;
+    case 2: packFaceWilsonKernel<2,0><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, face_num, parity, lp, dp); break;
+    case 3: packFaceWilsonKernel<3,0><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, face_num, parity, lp, dp); break;
     }
   }
 #else
@@ -415,8 +421,8 @@ void packFaceWilson(FloatN *faces, float *facesNorm, const FloatN *in, const flo
 
 
 void packFaceWilson(void *ghost_buf, cudaColorSpinorField &in, const int dim, const QudaDirection dir, const int dagger, 
-		    const int parity, const cudaStream_t &stream) {
-
+		    const int parity, const LatticeParam &lp, const DslashParam &dp, const cudaStream_t &stream)
+{
   dim3 blockDim(64, 1, 1); // TODO: make this a parameter for auto-tuning
   dim3 gridDim( (in.ghostFace[dim]+blockDim.x-1) / blockDim.x, 1, 1);
 
@@ -428,15 +434,15 @@ void packFaceWilson(void *ghost_buf, cudaColorSpinorField &in, const int dim, co
   switch(in.precision) {
   case QUDA_DOUBLE_PRECISION:
     packFaceWilson((double2*)ghost_buf, ghostNorm, (double2*)in.v, (float*)in.norm, 
-		   dim, dir, dagger, parity, gridDim, blockDim, stream);
+		   dim, dir, dagger, parity, lp, dp, gridDim, blockDim, stream);
     break;
   case QUDA_SINGLE_PRECISION:
     packFaceWilson((float4*)ghost_buf, ghostNorm, (float4*)in.v, (float*)in.norm, 
-		   dim, dir, dagger, parity, gridDim, blockDim, stream);
+		   dim, dir, dagger, parity, lp, dp, gridDim, blockDim, stream);
     break;
   case QUDA_HALF_PRECISION:
     packFaceWilson((short4*)ghost_buf, ghostNorm, (short4*)in.v, (float*)in.norm, 
-		   dim, dir, dagger, parity, gridDim, blockDim, stream);
+		   dim, dir, dagger, parity, lp, dp, gridDim, blockDim, stream);
     break;
   }  
   CUERR;
@@ -452,9 +458,10 @@ void packFaceWilson(void *ghost_buf, cudaColorSpinorField &in, const int dim, co
 
 #ifdef GPU_STAGGERED_DIRAC
 template <int dir, typename Float2>
-__global__ void packFaceAsqtadKernel(Float2 *out, float *outNorm, const Float2 *in, const float *inNorm, const int parity)
+__global__ void packFaceAsqtadKernel(Float2 *out, float *outNorm, const Float2 *in, const float *inNorm, const int parity,
+				     const LatticeParam lp, const DiracParam dp)
 {
-  int face_volume = ghostFace[dir];
+  int face_volume = lp.ghostFace[dir];
 
   int face_idx = blockIdx.x*blockDim.x + threadIdx.x;
   if (face_idx >= 2*face_volume) return;
@@ -468,11 +475,11 @@ __global__ void packFaceAsqtadKernel(Float2 *out, float *outNorm, const Float2 *
   out += face_num * 3 * face_volume;
 
   // compute an index into the local volume from the index into the face
-  int idx = indexFromFaceIndex<dir, 3>(face_idx, face_volume, face_num, parity);
+  int idx = indexFromFaceIndex<dir, 3>(face_idx, face_volume, face_num, parity, lp);
 
-  out[face_idx + 0*face_volume] = in[idx + 0*sp_stride];
-  out[face_idx + 1*face_volume] = in[idx + 1*sp_stride];
-  out[face_idx + 2*face_volume] = in[idx + 2*sp_stride];
+  out[face_idx + 0*face_volume] = in[idx + 0*dp.sp_stride];
+  out[face_idx + 1*face_volume] = in[idx + 1*dp.sp_stride];
+  out[face_idx + 2*face_volume] = in[idx + 2*dp.sp_stride];
 
   if (typeid(Float2) == typeid(short2)) outNorm[face_idx] = inNorm[idx];
 }
@@ -480,15 +487,15 @@ __global__ void packFaceAsqtadKernel(Float2 *out, float *outNorm, const Float2 *
 
 
 template <typename Float2>
-void packFaceAsqtad(Float2 *faces, float *facesNorm, const Float2 *in, const float *inNorm, int dir,
-		    const dim3 &gridDim, const dim3 &blockDim, const cudaStream_t &stream)
+void packFaceAsqtad(Float2 *faces, float *facesNorm, const Float2 *in, const float *inNorm, int dir, const LatticeParam &lp,
+		    const DslashParam &dp, const dim3 &gridDim, const dim3 &blockDim, const cudaStream_t &stream)
 {
 #ifdef GPU_STAGGERED_DIRAC
   switch (dir) {
-  case 0: packFaceAsqtadKernel<0><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm); break;
-  case 1: packFaceAsqtadKernel<1><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm); break;
-  case 2: packFaceAsqtadKernel<2><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm); break;
-  case 3: packFaceAsqtadKernel<3><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm); break;
+  case 0: packFaceAsqtadKernel<0><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, lp, dp); break;
+  case 1: packFaceAsqtadKernel<1><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, lp, dp); break;
+  case 2: packFaceAsqtadKernel<2><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, lp, dp); break;
+  case 3: packFaceAsqtadKernel<3><<<gridDim, blockDim, 0, stream>>>(faces, facesNorm, in, inNorm, lp, dp); break;
   }
 #else
   errorQuda("Asqtad face packing kernel is not built");

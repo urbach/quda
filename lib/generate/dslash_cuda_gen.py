@@ -341,7 +341,7 @@ int sp_norm_idx;
 #endif // MULTI_GPU half precision
 
 int sid = blockIdx.x*blockDim.x + threadIdx.x;
-if (sid >= param.threads) return;
+if (sid >= dp.threads) return;
 
 #ifdef MULTI_GPU
 int face_idx;
@@ -349,16 +349,16 @@ if (kernel_type == INTERIOR_KERNEL) {
 #endif
 
   // Inline by hand for the moment and assume even dimensions
-  //coordsFromIndex(X, x1, x2, x3, x4, sid, param.parity);
+  //coordsFromIndex(X, x1, x2, x3, x4, sid, dp.parity);
 
   X = 2*sid;
-  int aux1 = X / X1;
-  x1 = X - aux1 * X1;
-  int aux2 = aux1 / X2;
-  x2 = aux1 - aux2 * X2;
-  x4 = aux2 / X3;
-  x3 = aux2 - x4 * X3;
-  aux1 = (param.parity + x4 + x3 + x2) & 1;
+  int aux1 = X / lp.X1;
+  x1 = X - aux1 * lp.X1;
+  int aux2 = aux1 / lp.X2;
+  x2 = aux1 - aux2 * lp.X2;
+  x4 = aux2 / lp.X3;
+  x3 = aux2 - x4 * lp.X3;
+  aux1 = (dp.parity + x4 + x3 + x2) & 1;
   x1 += aux1;
   X += aux1;
 
@@ -376,21 +376,21 @@ if (kernel_type == INTERIOR_KERNEL) {
 } else { // exterior kernel
 
   const int dim = static_cast<int>(kernel_type);
-  const int face_volume = (param.threads >> 1);           // volume of one face
+  const int face_volume = (dp.threads >> 1);           // volume of one face
   const int face_num = (sid >= face_volume);              // is this thread updating face 0 or 1
   face_idx = sid - face_num*face_volume;        // index into the respective face
 
   // ghostOffset is scaled to include body (includes stride) and number of FloatN arrays (SPINOR_HOP)
   // face_idx not sid since faces are spin projected and share the same volume index (modulo UP/DOWN reading)
-  //sp_idx = face_idx + param.ghostOffset[dim];
+  //sp_idx = face_idx + dp.ghostOffset[dim];
 
 #if (DD_PREC==2) // half precision
-  sp_norm_idx = sid + param.ghostNormOffset[static_cast<int>(kernel_type)];
+  sp_norm_idx = sid + dp.ghostNormOffset[static_cast<int>(kernel_type)];
 #endif
 
-  coordsFromFaceIndex<1>(X, sid, x1, x2, x3, x4, face_idx, face_volume, dim, face_num, param.parity);
+  coordsFromFaceIndex<1>(X, sid, x1, x2, x3, x4, face_idx, face_volume, dim, face_num, dp.parity, lp);
 
-  READ_INTERMEDIATE_SPINOR(INTERTEX, sp_stride, sid, sid);
+  READ_INTERMEDIATE_SPINOR(INTERTEX, dp.sp_stride, sid, sid);
 
 """)
 
@@ -398,9 +398,9 @@ if (kernel_type == INTERIOR_KERNEL) {
     for s in range(0,4):
         for c in range(0,3):
             out += out_re(s,c)+" = "+in_re(s,c)+";  "+out_im(s,c)+" = "+in_im(s,c)+";\n"
-    prolog_str+= indent(out)
-    prolog_str+= "}\n"
-    prolog_str+= "#endif // MULTI_GPU\n\n\n"
+    prolog_str += indent(out)
+    prolog_str += "}\n"
+    prolog_str += "#endif // MULTI_GPU\n\n\n"
             
     return prolog_str
 # end def prolog
@@ -421,22 +421,20 @@ def gen(dir, pack_only=False):
         if proj(i,1) == 0j:
             return (0, proj(i,0))
 
-#    boundary = ["x1==X1m1", "x1==0", "x2==X2m1", "x2==0", "x3==X3m1", "x3==0", "x4==X4m1", "x4==0"]
-#    interior = ["x1<X1m1", "x1>0", "x2<X2m1", "x2>0", "x3<X3m1", "x3>0", "x4<X4m1", "x4>0"]
-    boundary = ["x1==X1m1", "x1==0", "x2==X2m1", "x2==0", "x3==X3m1", "x3==0", "x4==X4m1", "x4==0"]
-    interior = ["x1<X1m1", "x1>0", "x2<X2m1", "x2>0", "x3<X3m1", "x3>0", "x4<X4m1", "x4>0"]
+    boundary = ["x1==lp.X1m1", "x1==0", "x2==lp.X2m1", "x2==0", "x3==lp.X3m1", "x3==0", "x4==lp.X4m1", "x4==0"]
+    interior = ["x1<lp.X1m1", "x1>0", "x2<lp.X2m1", "x2>0", "x3<lp.X3m1", "x3>0", "x4<lp.X4m1", "x4>0"]
     dim = ["X", "Y", "Z", "T"]
 
     # index of neighboring site when not on boundary
-    sp_idx = ["X+1", "X-1", "X+X1", "X-X1", "X+X2X1", "X-X2X1", "X+X3X2X1", "X-X3X2X1"]
+    sp_idx = ["X+1", "X-1", "X+lp.X1", "X-lp.X1", "X+lp.X2X1", "X-lp.X2X1", "X+lp.X3X2X1", "X-lp.X3X2X1"]
 
     # index of neighboring site (across boundary)
-    sp_idx_wrap = ["X-X1m1", "X+X1m1", "X-X2X1mX1", "X+X2X1mX1", "X-X3X2X1mX2X1", "X+X3X2X1mX2X1",
-                   "X-X4X3X2X1mX3X2X1", "X+X4X3X2X1mX3X2X1"]
+    sp_idx_wrap = ["X-lp.X1m1", "X+lp.X1m1", "X-lp.X2X1mX1", "X+lp.X2X1mX1", "X-lp.X3X2X1mX2X1", "X+lp.X3X2X1mX2X1",
+                   "X-lp.X4X3X2X1mX3X2X1", "X+lp.X4X3X2X1mX3X2X1"]
 
     cond = ""
     cond += "#ifdef MULTI_GPU\n"
-    cond += "if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim["+`dir/2`+"] || "+interior[dir]+")) ||\n"
+    cond += "if ( (kernel_type == INTERIOR_KERNEL && (!dp.ghostDim["+`dir/2`+"] || "+interior[dir]+")) ||\n"
     cond += "     (kernel_type == EXTERIOR_KERNEL_"+dim[dir/2]+" && "+boundary[dir]+") )\n"
     cond += "#endif\n"
 
@@ -450,7 +448,7 @@ def gen(dir, pack_only=False):
 
     str += "#ifdef MULTI_GPU\n"
     str += "const int sp_idx = (kernel_type == INTERIOR_KERNEL) ? ("+boundary[dir]+" ? "+sp_idx_wrap[dir]+" : "+sp_idx[dir]+") >> 1 :\n"
-    str += "  face_idx + param.ghostOffset[static_cast<int>(kernel_type)];\n"
+    str += "  face_idx + dp.ghostOffset[static_cast<int>(kernel_type)];\n"
     str += "#else\n"
     str += "const int sp_idx = ("+boundary[dir]+" ? "+sp_idx_wrap[dir]+" : "+sp_idx[dir]+") >> 1;\n"
     str += "#endif\n"
@@ -460,7 +458,7 @@ def gen(dir, pack_only=False):
         str += "const int ga_idx = sid;\n"
     else:
         str += "#ifdef MULTI_GPU\n"
-        str += "const int ga_idx = ((kernel_type == INTERIOR_KERNEL) ? sp_idx : Vh+face_idx);\n"
+        str += "const int ga_idx = ((kernel_type == INTERIOR_KERNEL) ? sp_idx : lp.Vh+face_idx);\n"
         str += "#else\n"
         str += "const int ga_idx = sp_idx;\n"
         str += "#endif\n"
@@ -485,17 +483,17 @@ def gen(dir, pack_only=False):
 
     load_spinor = "// read spinor from device memory\n"
     if row_cnt[0] == 0:
-        load_spinor += "READ_SPINOR_DOWN(SPINORTEX, sp_stride, sp_idx, sp_idx);\n"
+        load_spinor += "READ_SPINOR_DOWN(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);\n"
     elif row_cnt[2] == 0:
-        load_spinor += "READ_SPINOR_UP(SPINORTEX, sp_stride, sp_idx, sp_idx);\n"
+        load_spinor += "READ_SPINOR_UP(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);\n"
     else:
-        load_spinor += "READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);\n"
+        load_spinor += "READ_SPINOR(SPINORTEX, dp.sp_stride, sp_idx, sp_idx);\n"
     load_spinor += "\n"
 
     load_half = ""
-    load_half += "const int sp_stride_pad = ghostFace[static_cast<int>(kernel_type)];\n"
+    load_half += "const int sp_stride_pad = lp.ghostFace[static_cast<int>(kernel_type)];\n"
     #load_half += "#if (DD_PREC==2) // half precision\n"
-    #load_half += "const int sp_norm_idx = sid + param.ghostNormOffset[static_cast<int>(kernel_type)];\n"
+    #load_half += "const int sp_norm_idx = sid + dp.ghostNormOffset[static_cast<int>(kernel_type)];\n"
     #load_half += "#endif\n"
 
     if dir >= 6: load_half += "const int t_proj_scale = TPROJSCALE;\n"
@@ -507,7 +505,7 @@ def gen(dir, pack_only=False):
     if (dir+1) % 2 == 0: load_half += "READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx, sp_norm_idx);\n\n"
     else: load_half += "READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx);\n\n"
     load_gauge = "// read gauge matrix from device memory\n"
-    load_gauge += "READ_GAUGE_MATRIX(G, GAUGE"+`dir%2`+"TEX, "+`dir`+", ga_idx, ga_stride);\n\n"
+    load_gauge += "READ_GAUGE_MATRIX(G, GAUGE"+`dir%2`+"TEX, "+`dir`+", ga_idx, dp.ga_stride);\n\n"
 
     reconstruct_gauge = "// reconstruct gauge matrix\n"
     reconstruct_gauge += "RECONSTRUCT_GAUGE_MATRIX("+`dir`+");\n\n"
@@ -613,7 +611,7 @@ def gen(dir, pack_only=False):
         reconstruct += "\n"
 
     if dir >= 6:
-        str += "if (gauge_fixed && ga_idx < X4X3X2X1hmX3X2X1h)\n"
+        str += "if (dp.gauge_fixed && ga_idx < lp.X4X3X2X1hmX3X2X1h)\n"
         str += block(decl_half + prep_half + ident + reconstruct)
         str += " else "
         str += block(load_gauge + decl_half + prep_half + reconstruct_gauge + mult + reconstruct)
@@ -670,7 +668,7 @@ def from_chiral_basis(c): # note: factor of 1/2 is included in clover term norma
 
 
 def clover_mult(chi):
-    str = "READ_CLOVER(CLOVERTEX, "+`chi`+")\n\n"
+    str = "READ_CLOVER(CLOVERTEX, "+`chi`+", dp.cl_stride)\n\n"
 
     for s in range (0,2):
         for c in range (0,3):
@@ -781,7 +779,7 @@ def twisted():
 def xpay():
     str = ""
     str += "#ifdef DSLASH_XPAY\n\n"
-    str += "READ_ACCUM(ACCUMTEX, sp_stride)\n\n"
+    str += "READ_ACCUM(ACCUMTEX, dp.sp_stride)\n\n"
     str += "#ifdef SPINOR_DOUBLE\n"
 
     for s in range(0,4):
@@ -825,13 +823,13 @@ int incomplete = 0; // Have all 8 contributions been computed for this site?
 
 switch(kernel_type) { // intentional fall-through
 case INTERIOR_KERNEL:
-  incomplete = incomplete || (param.commDim[3] && (x4==0 || x4==X4m1));
+  incomplete = incomplete || (dp.commDim[3] && (x4==0 || x4==lp.X4m1));
 case EXTERIOR_KERNEL_T:
-  incomplete = incomplete || (param.commDim[2] && (x3==0 || x3==X3m1));
+  incomplete = incomplete || (dp.commDim[2] && (x3==0 || x3==lp.X3m1));
 case EXTERIOR_KERNEL_Z:
-  incomplete = incomplete || (param.commDim[1] && (x2==0 || x2==X2m1));
+  incomplete = incomplete || (dp.commDim[1] && (x2==0 || x2==lp.X2m1));
 case EXTERIOR_KERNEL_Y:
-  incomplete = incomplete || (param.commDim[0] && (x1==0 || x1==X1m1));
+  incomplete = incomplete || (dp.commDim[0] && (x1==0 || x1==lp.X1m1));
 }
 
 """)    
@@ -842,7 +840,7 @@ case EXTERIOR_KERNEL_Y:
     
     str += "\n\n"
     str += "// write spinor field back to device memory\n"
-    str += "WRITE_SPINOR(sp_stride);\n\n"
+    str += "WRITE_SPINOR(dp.sp_stride);\n\n"
 
     str += "// undefine to prevent warning when precision is changed\n"
     str += "#undef spinorFloat\n"

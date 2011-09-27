@@ -53,11 +53,11 @@
 #endif
 
 #if (DD_PREC == 0)
-#define DD_PARAM4 const double mferm, const double2 *x, const float *xNorm, const double a, const DslashParam param
+#define DD_PARAM4 const double mferm, const double2 *x, const float *xNorm, const double a, const LatticeParam lp, const DslashParam dp
 #elif (DD_PREC == 1) 
-#define DD_PARAM4 const float mferm, const float4 *x, const float *xNorm, const float a, const DslashParam param
+#define DD_PARAM4 const float mferm, const float4 *x, const float *xNorm, const float a, const LatticeParam lp, const DslashParam dp
 #else
-#define DD_PARAM4 const float mferm, const short4 *x, const float *xNorm, const float a, const DslashParam param
+#define DD_PARAM4 const float mferm, const short4 *x, const float *xNorm, const float a, const LatticeParam lp, const DslashParam dp
 #endif
 
 #if (DD_RECON==0) // reconstruct from 8 reals
