@@ -373,6 +373,25 @@ comm_send_to_rank(void* buf, int len, int dst_rank)
 }
 
 unsigned long
+comm_send_to_rank_with_tag(void* buf, int len, int dst_rank, int tag)
+{
+  
+  MPI_Request* request = (MPI_Request*)malloc(sizeof(MPI_Request));
+  if (request == NULL){
+    printf("ERROR: malloc failed for mpi request\n");
+    comm_exit(1);
+  }
+  
+  if(dst_rank < 0 || dst_rank >= comm_size()){
+    printf("ERROR: Invalid dst rank(%d)\n", dst_rank);
+    comm_exit(1);
+  }
+  MPI_Isend(buf, len, MPI_BYTE, dst_rank, tag, MPI_COMM_WORLD, request);  
+  return (unsigned long)request;  
+}
+
+
+unsigned long
 comm_send_with_tag(void* buf, int len, int dst, int tag)
 {
 
@@ -511,6 +530,24 @@ comm_recv_with_tag(void* buf, int len, int src, int tag)
 }
 
 
+unsigned long
+comm_recv_from_rank_with_tag(void* buf, int len, int src_rank, int tag)
+{
+  MPI_Request* request = (MPI_Request*)malloc(sizeof(MPI_Request));
+  if (request == NULL){
+    printf("ERROR: malloc failed for mpi request\n");
+    comm_exit(1);
+  }
+  
+  if(src_rank < 0 || src_rank >= comm_size()){
+    printf("ERROR: Invalid src rank(%d)\n", src_rank);
+    comm_exit(1);
+  }
+  
+  MPI_Irecv(buf, len, MPI_BYTE, src_rank, tag, MPI_COMM_WORLD, request);
+  
+  return (unsigned long)request;
+}
 
 //this request should be some return value from comm_recv
 void 
