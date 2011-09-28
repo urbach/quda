@@ -23,7 +23,7 @@ BUILD_FATLINK = @BUILD_FATLINK@             	        # build code for computing 
 BUILD_UNITARIZE = @BUILD_UNITARIZE@                     # build code for unitarizing fat links?
 BUILD_GAUGE_FORCE = @BUILD_GAUGE_FORCE@         	# build code for (1-loop Symanzik) gauge force?
 BUILD_FERMION_FORCE = @BUILD_FERMION_FORCE@	      	# build code for asqtad fermion force?
-BUILD_HISQ_FERMION_FORCE = @BUILD_HISQ_FERMION_FORCE@   # build code for hisq fermion force?
+BUILD_HISQ_FORCE = @BUILD_HISQ_FORCE@                   # build code for hisq fermion force?
 
 # Multiple GPU options
 BUILD_MULTI_GPU = @BUILD_MULTI_GPU@ # set to 'yes' to build the multi-GPU code
@@ -165,10 +165,10 @@ ifeq ($(strip $(BUILD_FERMION_FORCE)), yes)
   FERMION_FORCE_TEST=fermion_force_test
 endif
 
-ifeq ($(strip $(BUILD_HISQ_FERMION_FORCE)), yes)
-  NVCCOPT += -DGPU_HISQ_FERMION_FORCE
-  COPT += -DGPU_HISQ_FERMION_FORCE
-  FERMION_FORCE_TEST=hisq_force_test
+ifeq ($(strip $(BUILD_HISQ_FORCE)), yes)
+  NVCCOPT += -DGPU_HISQ_FORCE
+  COPT += -DGPU_HISQ_FORCE
+  HISQ_FORCE_TEST=hisq_force_test
 endif
 
 ifeq ($(strip $(HOST_DEBUG)), yes)
