@@ -890,7 +890,7 @@ do_middle_link_kernel(float2* tempxxEven,
 		      float2* momEven, bool threeStaple,
                       float2* momMatrixEven // Just added this in!
 		      ) // are we on a threeStaple?
-{							 // pointer to integer used to reconstruct Qprev
+{		        // pointer to integer used to reconstruct Qprev
     int sid = blockIdx.x * blockDim.x + threadIdx.x;
     
     int z1 = FAST_INT_DIVIDE(sid, X1h);
@@ -1056,23 +1056,9 @@ do_middle_link_kernel(float2* tempxxEven,
 	if(oddBit==1){mycoeff = -coeff;}
 	else{mycoeff = coeff;}
      
-        
-
-	// These lines are important!
         LOAD_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, STORE);
 	SCALAR_MULT_ADD_SU3_MATRIX(store, oprod, mycoeff, store);
         WRITE_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, STORE);
-
-
-/*
-        SCALAR_MULT_MATRIX(mycoeff, oprod, oprod);
-	WRITE_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, OPROD);
-        LOAD_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, OPROD); 
-
-        MAT_MUL_MAT(linka, oprod, linkd);
-	SIMPLE_MAT_FORCE_TO_MOM(linkd, momEven, sid, sig);
-*/
-        //MAT_FORCE_TO_MOM(linkd, momEven, sid, sig, coeff, oddBit);
 
       }
       ASSIGN_MAT(linkc, linkd);
@@ -1092,18 +1078,6 @@ do_middle_link_kernel(float2* tempxxEven,
 	LOAD_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, STORE);
 	SCALAR_MULT_ADD_SU3_MATRIX(store, oprod, mycoeff, store);
 	WRITE_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, STORE);
-
-/*
-        SCALAR_MULT_MATRIX(mycoeff, oprod, oprod);
-	WRITE_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, OPROD);
-        LOAD_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, OPROD); 
-
-        MAT_MUL_MAT(linka, oprod, linkd);
-
-	SIMPLE_MAT_FORCE_TO_MOM(linkd, momEven, sid, sig);
-        //MAT_FORCE_TO_MOM(linkd, momEven, sid, sig, coeff, oddBit);   
-
-*/
       }	
     }
 }
@@ -1391,14 +1365,6 @@ do_side_link_kernel(float2* P3Even, float2* P3Odd,
         SCALAR_MULT_ADD_SU3_MATRIX(store, linkd, mycoeff, store);
         WRITE_MOM_MATRIX_SINGLE(momMatrixOdd, mu, point_d, STORE);
 
-/*
-        SCALAR_MULT_MATRIX(mycoeff, linkd, linkd);
-	WRITE_MOM_MATRIX_SINGLE(momMatrixOdd, mu, point_d, LINKD);
-        LOAD_MOM_MATRIX_SINGLE(momMatrixOdd, mu, point_d, LINKD); 
-	MAT_MUL_MAT(linka, linkd, oprod);
-	SIMPLE_MAT_FORCE_TO_MOM(oprod, momOdd, point_d, mu);
-*/
-
     }else{
 
 	if(TempxOdd){
@@ -1422,16 +1388,7 @@ do_side_link_kernel(float2* P3Even, float2* P3Odd,
         SCALAR_MULT_ADD_SU3_MATRIX(store, linkab, mycoeff, store);
         WRITE_MOM_MATRIX_SINGLE(momMatrixEven, OPP_DIR(mu), sid, STORE);
 
-/*
-	SCALAR_MULT_MATRIX(mycoeff, linkab, linkab);	
-        WRITE_MOM_MATRIX_SINGLE(momMatrixEven, OPP_DIR(mu), sid, LINKAB);
-	LOAD_MOM_MATRIX_SINGLE(momMatrixEven, OPP_DIR(mu), sid, LINKAB);
-	MAT_MUL_MAT(linka, linkab, linkb);
-	// Note that since mu goes backwards, OPP_DIR(mu) goes forwards.
-	SIMPLE_MAT_FORCE_TO_MOM(linkb, momEven, sid, OPP_DIR(mu));	    
-*/
     }
-
 }
 
 
@@ -1745,13 +1702,6 @@ do_all_link_kernel(float2* tempxxEven,
         SCALAR_MULT_ADD_SU3_MATRIX(store, linkd, mycoeff, store);
         WRITE_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, STORE);
 
-/*
-	SCALAR_MULT_MATRIX(mycoeff, linkd, linkd);
-	WRITE_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, LINKD);
-        LOAD_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, LINKD); 
-        MAT_MUL_MAT(linka, linkd, linkb);
-	SIMPLE_MAT_FORCE_TO_MOM(linkb, momEven, sid, sig);
-*/
     }
 
 
@@ -1774,13 +1724,6 @@ do_all_link_kernel(float2* tempxxEven,
      SCALAR_MULT_ADD_SU3_MATRIX(store, temp, mycoeff, store);
      WRITE_MOM_MATRIX_SINGLE(momMatrixOdd, mu, point_d, STORE);
 
-    /*
-     SCALAR_MULT_MATRIX(mycoeff, temp, linkab);
-     WRITE_MOM_MATRIX_SINGLE(momMatrixOdd, mu, point_d, LINKAB);
-     LOAD_MOM_MATRIX_SINGLE(momMatrixOdd, mu, point_d, LINKAB);
-     MAT_MUL_MAT(linkc, linkab, linkd);	
-     SIMPLE_MAT_FORCE_TO_MOM(linkd, momOdd, point_d, mu);
-    */
      MAT_MUL_MAT(linkc, oprod, linkd);	
    }else{
 
@@ -1797,13 +1740,6 @@ do_all_link_kernel(float2* tempxxEven,
      LOAD_MOM_MATRIX_SINGLE(momMatrixEven, OPP_DIR(mu), sid, STORE);
      SCALAR_MULT_ADD_SU3_MATRIX(store, temp, mycoeff, store);
      WRITE_MOM_MATRIX_SINGLE(momMatrixEven, OPP_DIR(mu), sid, STORE);
-    /*
-     SCALAR_MULT_MATRIX(mycoeff, temp, linkab);
-     WRITE_MOM_MATRIX_SINGLE(momMatrixEven, OPP_DIR(mu), sid, LINKAB);
-     LOAD_MOM_MATRIX_SINGLE(momMatrixEven, OPP_DIR(mu), sid, LINKAB);
-     MAT_MUL_MAT(linkc, linkab, linkb); // linkc = U[mu](x)
-     SIMPLE_MAT_FORCE_TO_MOM(linkb, momEven, sid, OPP_DIR(mu));
-   */
      ADJ_MAT_MUL_MAT(linkc, oprod, linkd);	
    }
 		
@@ -2346,7 +2282,6 @@ do_hisq_force_cuda(Real eps, Real weight1, Real weight2,  Real* act_path_coeff, 
 //	    }
 */    
 	}//mu
-
     }//sig
 
 
@@ -2379,10 +2314,7 @@ do_hisq_force_cuda(Real eps, Real weight1, Real weight2,  Real* act_path_coeff, 
 #undef Qnumu
 #undef Qrhonumu
 #undef Q3
-/*
-void hisq_force_cuda(double eps, double weight1, double weight2, void* act_path_coeff,
-		   float2* cudaOprodEven, float2* cudaOprodOdd, FullGauge cudaSiteLink, FullMom cudaMom, QudaGaugeParam* param)
-*/
+
 void
 hisq_force_cuda(double eps, double weight1, double weight2, void* act_path_coeff,
 		   FullOprod cudaOprod, FullGauge cudaSiteLink, FullMom cudaMom, FullGauge cudaMomMatrix, QudaGaugeParam* param)
