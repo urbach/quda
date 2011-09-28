@@ -11,6 +11,9 @@
 #include "hw_quda.h"
 #include <sys/time.h>
 
+
+using namespace hisq::fermion_force;
+
 int device = 0;
 static FullGauge cudaMomMatrix;
 static FullGauge cudaMomMatrix;
