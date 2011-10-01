@@ -42,8 +42,8 @@ class DiracParam {
 
 };
 
-void setDiracParam(DiracParam &diracParam, QudaInvertParam *inv_param, bool pc);
-void setDiracSloppyParam(DiracParam &diracParam, QudaInvertParam *inv_param, bool pc);
+void setDiracParam(DiracParam &diracParam, QudaInvertParam *inv_param, bool pc, int);
+void setDiracSloppyParam(DiracParam &diracParam, QudaInvertParam *inv_param, bool pc, int);
 
 // forward declarations
 class DiracMatrix;

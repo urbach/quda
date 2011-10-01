@@ -13,6 +13,7 @@ extern "C" {
   // be sure to update lib/check_params.h
 #define QUDA_MAX_DIM 6
 #define QUDA_MAX_MULTI_SHIFT 32 // the maximum number of shifts for the multi-shift solver
+#define QUDA_MAX_GPUS_PER_NODE 32
 
   typedef struct QudaGaugeParam_s {
 
@@ -122,11 +123,12 @@ extern "C" {
 
   // Interface functions, found in interface_quda.cpp
   void initQuda(int dev);
+  void initQuda_thread(int dev);
   void qudaSetNumaConfig(char* filename);
-  void loadGaugeQuda(void *h_gauge, QudaGaugeParam *param);
+  void loadGaugeQuda(void *h_gauge, QudaGaugeParam *param, int devid);
   void freeGaugeQuda(void);
 
-  void saveGaugeQuda(void *h_gauge, QudaGaugeParam *param);
+  void saveGaugeQuda(void *h_gauge, QudaGaugeParam *param, int devid);
   void loadCloverQuda(void *h_clover, void *h_clovinv,
 		      QudaInvertParam *inv_param);
   void freeCloverQuda(void);

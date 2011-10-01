@@ -131,11 +131,11 @@ extern "C" {
   extern FullGauge cudaGaugePrecise;
   extern FullGauge cudaGaugeSloppy;
 
-  extern FullGauge cudaFatLinkPrecise;
-  extern FullGauge cudaFatLinkSloppy;
+  extern FullGauge cudaFatLinkPrecise[];
+  extern FullGauge cudaFatLinkSloppy[];
 
-  extern FullGauge cudaLongLinkPrecise;
-  extern FullGauge cudaLongLinkSloppy;
+  extern FullGauge cudaLongLinkPrecise[];
+  extern FullGauge cudaLongLinkSloppy[];
 
 #ifdef __cplusplus
 }

@@ -85,8 +85,9 @@ void SU3Test(int argc, char **argv) {
     printf("done.\n");
   }
 
-  loadGaugeQuda(gauge, &param);
-  saveGaugeQuda(new_gauge, &param);
+  int devid = 0;
+  loadGaugeQuda(gauge, &param, devid);
+  saveGaugeQuda(new_gauge, &param, devid);
 
   check_gauge(gauge, new_gauge, 1e-3, param.cpu_prec);
 

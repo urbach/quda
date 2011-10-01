@@ -301,27 +301,28 @@ invert_test(void)
 		 &gaugeParam);        
    }else{ 
     
+    int devid= 0;
 #ifdef MULTI_GPU
     gaugeParam.type = QUDA_ASQTAD_FAT_LINKS;
     gaugeParam.ga_pad = fat_pad;
     gaugeParam.reconstruct= gaugeParam.reconstruct_sloppy = QUDA_RECONSTRUCT_NO;
-    loadGaugeQuda(fatlink, &gaugeParam);
+    loadGaugeQuda(fatlink, &gaugeParam, devid);
     
     gaugeParam.type = QUDA_ASQTAD_LONG_LINKS;
     gaugeParam.ga_pad = link_pad;
     gaugeParam.reconstruct= link_recon;
     gaugeParam.reconstruct_sloppy = link_recon_sloppy;
-    loadGaugeQuda(longlink, &gaugeParam);
+    loadGaugeQuda(longlink, &gaugeParam, devid);
 
 #else
     gaugeParam.type = QUDA_ASQTAD_FAT_LINKS;
     gaugeParam.reconstruct = gaugeParam.reconstruct_sloppy = QUDA_RECONSTRUCT_NO;
-    loadGaugeQuda(fatlink, &gaugeParam);
+    loadGaugeQuda(fatlink, &gaugeParam, devid);
     
     gaugeParam.type = QUDA_ASQTAD_LONG_LINKS;
     gaugeParam.reconstruct = link_recon;
     gaugeParam.reconstruct_sloppy = link_recon_sloppy;
-    loadGaugeQuda(longlink, &gaugeParam);
+    loadGaugeQuda(longlink, &gaugeParam, devid);
 #endif
   }
 

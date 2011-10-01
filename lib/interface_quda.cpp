@@ -19,6 +19,7 @@
 #include <clover_field.h>
 
 #include <cuda.h>
+#include <gpucomm.h>
 
 #ifdef MULTI_GPU
 #ifdef MPI_COMMS
@@ -38,11 +39,11 @@
 FullGauge cudaGaugePrecise;      // Wilson links
 FullGauge cudaGaugeSloppy;
 
-FullGauge cudaFatLinkPrecise;    // asqtad fat links
-FullGauge cudaFatLinkSloppy;
+FullGauge cudaFatLinkPrecise[QUDA_MAX_GPUS_PER_NODE];    // asqtad fat links
+FullGauge cudaFatLinkSloppy[QUDA_MAX_GPUS_PER_NODE];
 
-FullGauge cudaLongLinkPrecise;   // asqtad long links
-FullGauge cudaLongLinkSloppy;
+FullGauge cudaLongLinkPrecise[QUDA_MAX_GPUS_PER_NODE];   // asqtad long links
+FullGauge cudaLongLinkSloppy[QUDA_MAX_GPUS_PER_NODE];
 
 #define MAX_GPU_NUM_PER_NODE 16
 
@@ -251,15 +252,118 @@ void initQuda(int dev)
   cudaGaugeSloppy.even = NULL;
   cudaGaugeSloppy.odd = NULL;
 
-  cudaFatLinkPrecise.even = NULL;
-  cudaFatLinkPrecise.odd = NULL;
-  cudaFatLinkSloppy.even = NULL;
-  cudaFatLinkSloppy.odd = NULL;
+  cudaFatLinkPrecise[dev].even = NULL;
+  cudaFatLinkPrecise[dev].odd = NULL;
+  cudaFatLinkSloppy[dev].even = NULL;
+  cudaFatLinkSloppy[dev].odd = NULL;
 
-  cudaLongLinkPrecise.even = NULL;
-  cudaLongLinkPrecise.odd = NULL;
-  cudaLongLinkSloppy.even = NULL;
-  cudaLongLinkSloppy.odd = NULL;
+  cudaLongLinkPrecise[dev].even = NULL;
+  cudaLongLinkPrecise[dev].odd = NULL;
+  cudaLongLinkSloppy[dev].even = NULL;
+  cudaLongLinkSloppy[dev].odd = NULL;
+
+  initCache();
+  initBlas();
+}
+
+void initQuda_thread(int dev)
+{
+  static int initialized[QUDA_MAX_GPUS_PER_NODE] = {0};
+  if (initialized[dev]) {
+    return;
+  }
+  initialized[dev] = 1;
+
+#if (CUDA_VERSION >= 4000)
+  //check if CUDA_NIC_INTEROP is set to 1 in the enviroment
+  char* cni_str = getenv("CUDA_NIC_INTEROP");
+  if(cni_str == NULL){
+    errorQuda("Environment variable CUDA_NIC_INTEROP is not set\n");
+  }
+  int cni_int = atoi(cni_str);
+  if (cni_int != 1){
+    errorQuda("Environment variable CUDA_NIC_INTEROP is not set to 1\n");    
+  }
+#endif
+  
+  int deviceCount;
+  cudaGetDeviceCount(&deviceCount);
+  if (deviceCount == 0) {
+    errorQuda("No devices supporting CUDA");
+  }
+  
+  for(int i=0; i<deviceCount; i++) {
+    cudaDeviceProp deviceProp;
+    cudaGetDeviceProperties(&deviceProp, i);
+    printfQuda("QUDA: Found device %d: %s\n", i, deviceProp.name);
+  }
+
+#ifdef QMP_COMMS
+  //need to change code below to adapt to multi-thread approach
+  int ndim;
+  const int *dim;
+
+  if ( QMP_is_initialized() != QMP_TRUE ) {
+    errorQuda("QMP is not initialized");
+  }
+  num_QMP=QMP_get_number_of_nodes();
+  rank_QMP=QMP_get_node_number();
+  
+  dev += rank_QMP % deviceCount;
+  ndim = QMP_get_logical_number_of_dimensions();
+  dim = QMP_get_logical_dimensions();
+
+#elif defined(MPI_COMMS)
+
+  gpucomm_init_thread(dev);
+
+#else
+  if (dev < 0) dev = deviceCount - 1;
+#endif
+  
+  // Used for applying the gauge field boundary condition
+  if( commCoords(3) == 0 ) qudaPt0=true;
+  else qudaPt0=false;
+  
+  if( commCoords(3) == commDim(3)-1 ) qudaPtNm1=true;
+  else qudaPtNm1=false;
+
+  cudaDeviceProp deviceProp;
+  cudaGetDeviceProperties(&deviceProp, dev);
+  if (deviceProp.major < 1) {
+    errorQuda("Device %d does not support CUDA", dev);
+  }
+
+  
+  printfQuda("QUDA: Using device %d: %s\n", dev, deviceProp.name);
+
+  cudaSetDevice(dev);
+#ifdef HAVE_NUMA
+  if(numa_config_set){
+    if(gpu_affinity[dev] >=0){
+      printfQuda("Numa setting to cpu node %d\n", gpu_affinity[dev]);
+      if(numa_run_on_node(gpu_affinity[dev]) != 0){
+        printfQuda("Warning: Setting numa to cpu node %d failed\n", gpu_affinity[dev]);
+      }
+    }
+
+  }
+#endif
+
+  cudaGaugePrecise.even = NULL;
+  cudaGaugePrecise.odd = NULL;
+  cudaGaugeSloppy.even = NULL;
+  cudaGaugeSloppy.odd = NULL;
+
+  cudaFatLinkPrecise[dev].even = NULL;
+  cudaFatLinkPrecise[dev].odd = NULL;
+  cudaFatLinkSloppy[dev].even = NULL;
+  cudaFatLinkSloppy[dev].odd = NULL;
+
+  cudaLongLinkPrecise[dev].even = NULL;
+  cudaLongLinkPrecise[dev].odd = NULL;
+  cudaLongLinkSloppy[dev].even = NULL;
+  cudaLongLinkSloppy[dev].odd = NULL;
 
   initCache();
   initBlas();
@@ -267,7 +371,7 @@ void initQuda(int dev)
 
 
 
-void loadGaugeQuda(void *h_gauge, QudaGaugeParam *param)
+void loadGaugeQuda(void *h_gauge, QudaGaugeParam *param, int devid)
 {
 
   double anisotropy;
@@ -283,12 +387,12 @@ void loadGaugeQuda(void *h_gauge, QudaGaugeParam *param)
     sloppy = &cudaGaugeSloppy;
     break;
   case QUDA_ASQTAD_FAT_LINKS:
-    precise = &cudaFatLinkPrecise;
-    sloppy = &cudaFatLinkSloppy;
+    precise = &cudaFatLinkPrecise[devid];
+    sloppy = &cudaFatLinkSloppy[devid];
     break;
   case QUDA_ASQTAD_LONG_LINKS:
-    precise = &cudaLongLinkPrecise;
-    sloppy = &cudaLongLinkSloppy;
+    precise = &cudaLongLinkPrecise[devid];
+    sloppy = &cudaLongLinkSloppy[devid];
     break;
   default:
     errorQuda("Invalid gauge type");   
@@ -332,7 +436,7 @@ void loadGaugeQuda(void *h_gauge, QudaGaugeParam *param)
 
 
 
-void saveGaugeQuda(void *h_gauge, QudaGaugeParam *param)
+void saveGaugeQuda(void *h_gauge, QudaGaugeParam *param, int devid)
 {
   FullGauge *gauge = NULL;
 
@@ -341,10 +445,10 @@ void saveGaugeQuda(void *h_gauge, QudaGaugeParam *param)
     gauge = &cudaGaugePrecise;
     break;
   case QUDA_ASQTAD_FAT_LINKS:
-    gauge = &cudaFatLinkPrecise;
+    gauge = &cudaFatLinkPrecise[devid];
     break;
   case QUDA_ASQTAD_LONG_LINKS:
-    gauge = &cudaLongLinkPrecise;
+    gauge = &cudaLongLinkPrecise[devid];
     break;
   default:
     errorQuda("Invalid gauge type");   
@@ -421,6 +525,9 @@ void loadCloverQuda(void *h_clover, void *h_clovinv, QudaInvertParam *inv_param)
 
 void freeGaugeQuda(void) 
 {
+
+  int devid=0;
+
   if ( cudaGaugeSloppy.even == cudaGaugePrecise.even ) { 
 	// Buffer shared between precise and sloppy.
 	// Free the precise one, and set the sloppy pointers to NULL
@@ -436,33 +543,34 @@ void freeGaugeQuda(void)
 	checkCudaError();
   }
 
-  if ( cudaFatLinkSloppy.even == cudaFatLinkPrecise.even ) {
+  if ( cudaFatLinkSloppy[devid].even == cudaFatLinkPrecise[devid].even ) {
         // Buffer shared between precise and sloppy.
         // Free the precise one, and set the sloppy pointers to NULL
-        freeGaugeField(&cudaFatLinkPrecise);
+        freeGaugeField(&cudaFatLinkPrecise[devid]);
 	checkCudaError();
-        cudaFatLinkSloppy.even = NULL;
-        cudaFatLinkSloppy.odd = NULL;
+        cudaFatLinkSloppy[devid].even = NULL;
+        cudaFatLinkSloppy[devid].odd = NULL;
   }
   else {
-        freeGaugeField(&cudaFatLinkPrecise);
+
+        freeGaugeField(&cudaFatLinkPrecise[devid]);
 	checkCudaError();
-        freeGaugeField(&cudaFatLinkSloppy);
+        freeGaugeField(&cudaFatLinkSloppy[devid]);
 	checkCudaError();
   }
 
-  if ( cudaLongLinkSloppy.even == cudaLongLinkPrecise.even ) {
+  if ( cudaLongLinkSloppy[devid].even == cudaLongLinkPrecise[devid].even ) {
         // Buffer shared between precise and sloppy.
         // Free the precise one, and set the sloppy pointers to NULL
-        freeGaugeField(&cudaLongLinkPrecise);
+        freeGaugeField(&cudaLongLinkPrecise[devid]);
 	checkCudaError();
-        cudaLongLinkSloppy.even = NULL;
-        cudaLongLinkSloppy.odd = NULL;
+        cudaLongLinkSloppy[devid].even = NULL;
+        cudaLongLinkSloppy[devid].odd = NULL;
   }
   else {
-        freeGaugeField(&cudaLongLinkPrecise);
+        freeGaugeField(&cudaLongLinkPrecise[devid]);
 	checkCudaError();
-        freeGaugeField(&cudaLongLinkSloppy);
+        freeGaugeField(&cudaLongLinkSloppy[devid]);
 	checkCudaError();
   }
 
@@ -496,7 +604,7 @@ void endQuda(void)
 }
 
 
-void setDiracParam(DiracParam &diracParam, QudaInvertParam *inv_param, const bool pc)
+void setDiracParam(DiracParam &diracParam, QudaInvertParam *inv_param, const bool pc, int devid)
 {
   double kappa = inv_param->kappa;
   if (inv_param->dirac_order == QUDA_CPS_WILSON_DIRAC_ORDER) {
@@ -526,8 +634,8 @@ void setDiracParam(DiracParam &diracParam, QudaInvertParam *inv_param, const boo
   diracParam.matpcType = inv_param->matpc_type;
   diracParam.dagger = inv_param->dagger;
   diracParam.gauge = &cudaGaugePrecise;
-  diracParam.fatGauge = &cudaFatLinkPrecise;
-  diracParam.longGauge = &cudaLongLinkPrecise;    
+  diracParam.fatGauge = &cudaFatLinkPrecise[devid];
+  diracParam.longGauge = &cudaLongLinkPrecise[devid];    
   diracParam.clover = cloverPrecise;
   diracParam.kappa = kappa;
   diracParam.mass = inv_param->mass;
@@ -541,13 +649,13 @@ void setDiracParam(DiracParam &diracParam, QudaInvertParam *inv_param, const boo
 }
 
 
-void setDiracSloppyParam(DiracParam &diracParam, QudaInvertParam *inv_param, const bool pc)
+void setDiracSloppyParam(DiracParam &diracParam, QudaInvertParam *inv_param, const bool pc, int devid)
 {
-  setDiracParam(diracParam, inv_param, pc);
+  setDiracParam(diracParam, inv_param, pc, devid);
 
   diracParam.gauge = &cudaGaugeSloppy;
-  diracParam.fatGauge = &cudaFatLinkSloppy;
-  diracParam.longGauge = &cudaLongLinkSloppy;    
+  diracParam.fatGauge = &cudaFatLinkSloppy[devid];
+  diracParam.longGauge = &cudaLongLinkSloppy[devid];    
   diracParam.clover = cloverSloppy;
 
   for (int i=0; i<4; i++) {
@@ -557,13 +665,13 @@ void setDiracSloppyParam(DiracParam &diracParam, QudaInvertParam *inv_param, con
 }
 
 // The preconditioner currently mimicks the sloppy operator with no comms
-void setDiracPreParam(DiracParam &diracParam, QudaInvertParam *inv_param, const bool pc)
+void setDiracPreParam(DiracParam &diracParam, QudaInvertParam *inv_param, const bool pc, int devid)
 {
-  setDiracParam(diracParam, inv_param, pc);
+  setDiracParam(diracParam, inv_param, pc, devid);
 
   diracParam.gauge = &cudaGaugeSloppy;
-  diracParam.fatGauge = &cudaFatLinkSloppy;
-  diracParam.longGauge = &cudaLongLinkSloppy;    
+  diracParam.fatGauge = &cudaFatLinkSloppy[devid];
+  diracParam.longGauge = &cudaLongLinkSloppy[devid];    
   diracParam.clover = cloverSloppy;
 
   for (int i=0; i<4; i++) {
@@ -666,6 +774,7 @@ static void massRescaleCoeff(QudaDslashType dslash_type, double &kappa, QudaSolu
 
 void dslashQuda(void *h_out, void *h_in, QudaInvertParam *inv_param, QudaParity parity)
 {
+  int devid = 0;
   ColorSpinorParam cpuParam(h_in, *inv_param, cudaGaugePrecise.X, 1);
   ColorSpinorParam cudaParam(cpuParam, *inv_param);
 
@@ -687,7 +796,7 @@ void dslashQuda(void *h_out, void *h_in, QudaInvertParam *inv_param, QudaParity 
   bool pc = true;
 
   DiracParam diracParam;
-  setDiracParam(diracParam, inv_param, pc);
+  setDiracParam(diracParam, inv_param, pc, devid);
 
   Dirac *dirac = Dirac::create(diracParam); // create the Dirac operator
   dirac->Dslash(out, in, parity); // apply the operator
@@ -701,6 +810,8 @@ void dslashQuda(void *h_out, void *h_in, QudaInvertParam *inv_param, QudaParity 
 
 void MatQuda(void *h_out, void *h_in, QudaInvertParam *inv_param)
 {
+
+  int devid = 0;
   bool pc = (inv_param->solution_type == QUDA_MATPC_SOLUTION ||
 	     inv_param->solution_type == QUDA_MATPCDAG_MATPC_SOLUTION);
 
@@ -714,7 +825,7 @@ void MatQuda(void *h_out, void *h_in, QudaInvertParam *inv_param)
   cudaColorSpinorField out(in, cudaParam);
 
   DiracParam diracParam;
-  setDiracParam(diracParam, inv_param, pc);
+  setDiracParam(diracParam, inv_param, pc, devid);
 
   Dirac *dirac = Dirac::create(diracParam); // create the Dirac operator
   dirac->M(out, in); // apply the operator
@@ -742,6 +853,8 @@ void MatQuda(void *h_out, void *h_in, QudaInvertParam *inv_param)
 
 void MatDagMatQuda(void *h_out, void *h_in, QudaInvertParam *inv_param)
 {
+  int devid = 0;
+
   bool pc = (inv_param->solution_type == QUDA_MATPC_SOLUTION ||
 	     inv_param->solution_type == QUDA_MATPCDAG_MATPC_SOLUTION);
 
@@ -757,7 +870,7 @@ void MatDagMatQuda(void *h_out, void *h_in, QudaInvertParam *inv_param)
   //  if (inv_param->dirac_order == QUDA_CPS_WILSON_DIRAC_ORDER) kappa *= cudaGaugePrecise.anisotropy;
 
   DiracParam diracParam;
-  setDiracParam(diracParam, inv_param, pc);
+  setDiracParam(diracParam, inv_param, pc, devid);
 
   Dirac *dirac = Dirac::create(diracParam); // create the Dirac operator
   dirac->MdagM(out, in); // apply the operator
@@ -783,12 +896,13 @@ void MatDagMatQuda(void *h_out, void *h_in, QudaInvertParam *inv_param)
 }
 
 void createDirac(DiracParam &diracParam, QudaInvertParam &param, bool pc_solve) {
+  int devid  = 0;
   if (!diracCreation) {
-    setDiracParam(diracParam, &param, pc_solve);
+    setDiracParam(diracParam, &param, pc_solve, devid);
     d = Dirac::create(diracParam); // create the Dirac operator    
-    setDiracSloppyParam(diracParam, &param, pc_solve);
+    setDiracSloppyParam(diracParam, &param, pc_solve, devid);
     dSloppy = Dirac::create(diracParam);
-    setDiracPreParam(diracParam, &param, pc_solve);
+    setDiracPreParam(diracParam, &param, pc_solve, devid);
     dPre = Dirac::create(diracParam);
     diracCreation = true;
   }
@@ -829,6 +943,8 @@ void tuneDirac(QudaInvertParam &param, const cudaColorSpinorField &x) {
 
 void invertQuda(void *hp_x, void *hp_b, QudaInvertParam *param)
 {
+  int devid = 0;
+
   checkInvertParam(param);
   if (param->cuda_prec_sloppy != param->prec_precondition && 
       param->inv_type_precondition != QUDA_INVALID_INVERTER)
@@ -870,7 +986,7 @@ void invertQuda(void *hp_x, void *hp_b, QudaInvertParam *param)
   cudaColorSpinorField *out = NULL;
 
   int *X = param->dslash_type == QUDA_ASQTAD_DSLASH ? 
-    cudaFatLinkPrecise.X : cudaGaugePrecise.X;
+    cudaFatLinkPrecise[devid].X : cudaGaugePrecise.X;
 
   // wrap CPU host side pointers
   ColorSpinorParam cpuParam(hp_b, *param, X, pc_solution);
@@ -987,6 +1103,7 @@ void invertQuda(void *hp_x, void *hp_b, QudaInvertParam *param)
 void invertMultiShiftQuda(void **_hp_x, void *_hp_b, QudaInvertParam *param,
 			  double* offsets, int num_offsets, double* residue_sq)
 {
+  int devid= 0;
   checkInvertParam(param);
 
   param->num_offset = num_offsets;
@@ -1087,7 +1204,7 @@ void invertMultiShiftQuda(void **_hp_x, void *_hp_b, QudaInvertParam *param,
 
   // Grab the dimension array of the input gauge field.
   int *X = ( param->dslash_type == QUDA_ASQTAD_DSLASH ) ? 
-    cudaFatLinkPrecise.X : cudaGaugePrecise.X;
+    cudaFatLinkPrecise[devid].X : cudaGaugePrecise.X;
 
   // Wrap CPU host side pointers
   // 
@@ -1210,14 +1327,15 @@ record_gauge(int* X, void *_fatlink, int _fatlink_pad, void* _longlink, int _lon
 	     QudaReconstructType _longlink_recon, QudaReconstructType _longlink_recon_sloppy,
 	     QudaGaugeParam *_param)
 {
-  
+  int devid= 0;
+
   //the X and precsion in fatlink must be set because we use them in dirac creatation
   //See dirac_staggered.cpp
   for(int i =0;i < 4;i++){
-    cudaFatLinkPrecise.X[i]= cudaFatLinkSloppy.X[i] = X[i];
+    cudaFatLinkPrecise[devid].X[i]= cudaFatLinkSloppy[devid].X[i] = X[i];
   }
-  cudaFatLinkPrecise.precision = _param->cuda_prec;
-  cudaFatLinkSloppy.precision = _param->cuda_prec_sloppy;
+  cudaFatLinkPrecise[devid].precision = _param->cuda_prec;
+  cudaFatLinkSloppy[devid].precision = _param->cuda_prec_sloppy;
 
   fatlink = _fatlink;
   fatlink_pad = _fatlink_pad;
@@ -1237,67 +1355,69 @@ record_gauge(int* X, void *_fatlink, int _fatlink_pad, void* _longlink, int _lon
 void 
 do_create_precise_cuda_gauge(void)
 {
+  int devid = 0;
   QudaPrecision prec = gauge_param->cuda_prec;
   QudaPrecision prec_sloppy = gauge_param->cuda_prec_sloppy;
 
   //the sloppy gauge field will be filled, and needs to backup
-  FullGauge tmp_fat = cudaFatLinkSloppy;
-  FullGauge tmp_long= cudaLongLinkSloppy;
+  FullGauge tmp_fat = cudaFatLinkSloppy[devid];
+  FullGauge tmp_long= cudaLongLinkSloppy[devid];
 
   //create precise links
   gauge_param->cuda_prec = gauge_param->cuda_prec_sloppy = prec;
   gauge_param->type = QUDA_ASQTAD_FAT_LINKS;
   gauge_param->ga_pad = fatlink_pad;
   gauge_param->reconstruct = gauge_param->reconstruct_sloppy = QUDA_RECONSTRUCT_NO;
-  loadGaugeQuda(fatlink, gauge_param);
+  loadGaugeQuda(fatlink, gauge_param, devid);
 
   
   gauge_param->type = QUDA_ASQTAD_LONG_LINKS;
   gauge_param->ga_pad = longlink_pad;
   gauge_param->reconstruct = longlink_recon;
   gauge_param->reconstruct_sloppy = longlink_recon_sloppy;
-  loadGaugeQuda(longlink, gauge_param);
+  loadGaugeQuda(longlink, gauge_param, devid);
 
   //set prec/prec_sloppy it back
   gauge_param->cuda_prec = prec;
   gauge_param->cuda_prec_sloppy =prec_sloppy;
   
   //set the sloopy gauge filed back
-  cudaFatLinkSloppy = tmp_fat;
-  cudaLongLinkSloppy = tmp_long;
+  cudaFatLinkSloppy[devid] = tmp_fat;
+  cudaLongLinkSloppy[devid] = tmp_long;
   return;
 }
 
 void 
 do_create_sloppy_cuda_gauge(void)
 {
+  int devid= 0;
   QudaPrecision prec = gauge_param->cuda_prec;
   QudaPrecision prec_sloppy = gauge_param->cuda_prec_sloppy;  
 
   //the precise gauge field will be filled, and needs to backup
-  FullGauge tmp_fat = cudaFatLinkPrecise;
-  FullGauge tmp_long= cudaLongLinkPrecise;
+  FullGauge tmp_fat = cudaFatLinkPrecise[devid];
+  FullGauge tmp_long= cudaLongLinkPrecise[devid];
   
   //create sloppy links
   gauge_param->cuda_prec = gauge_param->cuda_prec_sloppy = prec_sloppy; 
   gauge_param->type = QUDA_ASQTAD_FAT_LINKS;
   gauge_param->ga_pad = fatlink_pad;
   gauge_param->reconstruct = gauge_param->reconstruct_sloppy = QUDA_RECONSTRUCT_NO;
-  loadGaugeQuda(fatlink, gauge_param);
+  loadGaugeQuda(fatlink, gauge_param, devid);
   
   gauge_param->type = QUDA_ASQTAD_LONG_LINKS;
   gauge_param->ga_pad = longlink_pad;
   gauge_param->reconstruct = longlink_recon;
   gauge_param->reconstruct_sloppy = longlink_recon_sloppy;
-  loadGaugeQuda(longlink, gauge_param);
+  loadGaugeQuda(longlink, gauge_param, devid);
   
   //set prec/prec_sloppy it back
   gauge_param->cuda_prec = prec;
   gauge_param->cuda_prec_sloppy =prec_sloppy;
   
   //set the sloopy gauge filed back
-  cudaFatLinkPrecise = tmp_fat;
-  cudaLongLinkPrecise = tmp_long;  
+  cudaFatLinkPrecise[devid] = tmp_fat;
+  cudaLongLinkPrecise[devid] = tmp_long;  
   return;
 }
 
@@ -1306,7 +1426,7 @@ void
 invertMultiShiftQudaMixed(void **_hp_x, void *_hp_b, QudaInvertParam *param,
 			  double* offsets, int num_offsets, double* residue_sq)
 {
-
+  int devid;
   QudaPrecision high_prec = param->cuda_prec;
   param->cuda_prec = param->cuda_prec_sloppy;
   
@@ -1410,7 +1530,7 @@ invertMultiShiftQudaMixed(void **_hp_x, void *_hp_b, QudaInvertParam *param,
 
   // Grab the dimension array of the input gauge field.
   int *X = ( param->dslash_type == QUDA_ASQTAD_DSLASH ) ? 
-    cudaFatLinkPrecise.X : cudaGaugePrecise.X;
+    cudaFatLinkPrecise[devid].X : cudaGaugePrecise.X;
 
   // Wrap CPU host side pointers
   // 
@@ -1547,8 +1667,11 @@ void initCommsQuda(int argc, char **argv, const int *X, const int nDim) {
 
   QMP_declare_logical_topology(X, nDim);
 #elif defined(MPI_COMMS)
-  MPI_Init (&argc, &argv);  
-
+  int provided;
+  MPI_Init_thread (&argc, &argv, MPI_THREAD_MULTIPLE, &provided);  
+  if(provided != MPI_THREAD_MULTIPLE){
+    errorQuda("This MPI does  not support MPI_THREAD_MULTIPLE\n");
+  }
   int volume = 1;
   for (int d=0; d<nDim; d++) volume *= X[d];
   int size = -1;
@@ -1558,7 +1681,9 @@ void initCommsQuda(int argc, char **argv, const int *X, const int nDim) {
 	      size, volume);
 
   comm_set_gridsize(X[0], X[1], X[2], X[3]);  
-  comm_init();
+  //comm_init();
+  int nthreads = 1; //num of threads or GPUs I am going to use
+  gpucomm_init_master(nthreads);
 #endif
 
 #endif

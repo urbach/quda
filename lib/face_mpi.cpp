@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <mpicomm.h>
+#include <gpucomm.h>
 #include <cuda.h>
 
 #include <fat_force_quda.h>
@@ -40,6 +41,8 @@ FaceBuffer::FaceBuffer(const int *X, const int nDim, const int Ninternal,
   memset(send_request1, 0, sizeof(send_request2));
   memset(send_request1, 0, sizeof(recv_request1));
   for(int dir =0 ; dir < 4;dir++){
+    printf("nFace=%d, faceVolumeCB[dir]=%d, nInternal=%d, precison=%d\n",
+	   nFace, faceVolumeCB[dir], Ninternal, precision);
     nbytes[dir] = nFace*faceVolumeCB[dir]*Ninternal*precision;
     if (precision == QUDA_HALF_PRECISION) nbytes[dir] += nFace*faceVolumeCB[dir]*sizeof(float);
     
@@ -53,7 +56,7 @@ FaceBuffer::FaceBuffer(const int *X, const int nDim, const int Ninternal,
     cudaMallocHost((void**)&back_nbr_spinor[dir], nbytes[dir]); CUERR;
     
     if (fwd_nbr_spinor[dir] == NULL || back_nbr_spinor[dir] == NULL)
-      errorQuda("malloc failed for fwd_nbr_spinor/back_nbr_spinor"); 
+      errorQuda("malloc failed for fwd_nbr_spinor/back_nbr_spinor(requesting %d bytes\n", nbytes[dir]); 
 
 #ifdef GPU_DIRECT
     pageable_fwd_nbr_spinor_sendbuf[dir] = fwd_nbr_spinor_sendbuf[dir];
@@ -260,17 +263,32 @@ void FaceBuffer::exchangeCpuSpinor(cpuColorSpinorField &spinor, int oddBit, int 
   int downtags[4] = {XDOWN, YDOWN, ZDOWN, TDOWN};
   
   for(int i= 0;i < 4; i++){
+    
     recv_request1[i] = comm_recv_with_tag(spinor.backGhostFaceBuffer[i], len[i], back_nbr[i], uptags[i]);
     recv_request2[i] = comm_recv_with_tag(spinor.fwdGhostFaceBuffer[i], len[i], fwd_nbr[i], downtags[i]);    
     send_request1[i]= comm_send_with_tag(spinor.fwdGhostFaceSendBuffer[i], len[i], fwd_nbr[i], uptags[i]);
     send_request2[i] = comm_send_with_tag(spinor.backGhostFaceSendBuffer[i], len[i], back_nbr[i], downtags[i]);
+    
+    /*
+    recv_request1[i] = gpucomm_recv_from_nbr_with_tag(spinor.backGhostFaceBuffer[i], len[i], back_nbr[i], uptags[i]);
+    recv_request2[i] = gpucomm_recv_from_nbr_with_tag(spinor.fwdGhostFaceBuffer[i], len[i], fwd_nbr[i], downtags[i]);    
+    send_request1[i]= gpucomm_send_to_nbr_with_tag(spinor.fwdGhostFaceSendBuffer[i], len[i], fwd_nbr[i], uptags[i]);
+    send_request2[i] = gpucomm_send_to_nbr_with_tag(spinor.backGhostFaceSendBuffer[i], len[i], back_nbr[i], downtags[i]);
+    */
   }
-
+  
   for(int i=0;i < 4;i++){
+    
     comm_wait(recv_request1[i]);
     comm_wait(recv_request2[i]);
     comm_wait(send_request1[i]);
     comm_wait(send_request2[i]);
+    /*
+    gpucomm_wait(recv_request1[i]);
+    gpucomm_wait(recv_request2[i]);
+    gpucomm_wait(send_request1[i]);
+    gpucomm_wait(send_request2[i]);    
+    */
   }
 
 }
@@ -284,12 +302,21 @@ void FaceBuffer::exchangeCpuLink(void** ghost_link, void** link_sendbuf) {
   for(int dir =0; dir < 4; dir++)
     {
       int len = 2*nFace*faceVolumeCB[dir]*Ninternal;
-      unsigned long recv_request = 
-	comm_recv_with_tag(ghost_link[dir], len*precision, back_nbrs[dir], uptags[dir]);
-      unsigned long send_request = 
-	comm_send_with_tag(link_sendbuf[dir], len*precision, fwd_nbrs[dir], uptags[dir]);
-      comm_wait(recv_request);
-      comm_wait(send_request);
+      if(gpucomm_I_am_master()){
+	unsigned long recv_request = 
+	  comm_recv_with_tag(ghost_link[dir], len*precision, back_nbrs[dir], uptags[dir]);
+	unsigned long send_request = 
+	  comm_send_with_tag(link_sendbuf[dir], len*precision, fwd_nbrs[dir], uptags[dir]);
+	comm_wait(recv_request);
+	comm_wait(send_request);
+      }else{
+	unsigned long recv_request = 
+	  gpucomm_recv_from_nbr_with_tag(ghost_link[dir], len*precision, back_nbrs[dir], uptags[dir]);
+	unsigned long send_request = 
+	  gpucomm_send_to_nbr_with_tag(link_sendbuf[dir], len*precision, fwd_nbrs[dir], uptags[dir]);
+	gpucomm_wait(recv_request);
+	gpucomm_wait(send_request);
+      }
     }
 }
 

@@ -17,20 +17,29 @@
 #include "gauge_quda.h"
 
 #include <face_quda.h>
+#include <gpucomm.h>
 
 #include <assert.h>
 
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #define staggeredSpinorSiteSize 6
+
+typedef struct thread_arg_s{
+  double secs;
+  int devid;
+  int gpu_lattice[4];
+}thread_arg_t;
+
 // What test are we doing (0 = dslash, 1 = MatPC, 2 = Mat)
 int test_type = 0;
 int device = 0;
 
-QudaGaugeParam gaugeParam;
+QudaGaugeParam gaugeParam, nodeGaugeParam;
 QudaInvertParam inv_param;
 
-FullGauge cudaFatLink;
-FullGauge cudaLongLink;
+
+FullGauge cudaFatLink[QUDA_MAX_GPUS_PER_NODE];
+FullGauge cudaLongLink[QUDA_MAX_GPUS_PER_NODE];
 
 cpuColorSpinorField *spinor, *spinorOut, *spinorRef;
 cudaColorSpinorField *cudaSpinor, *cudaSpinorOut;
@@ -39,6 +48,7 @@ cudaColorSpinorField* tmp;
 
 void *hostGauge[4];
 void *fatlink[4], *longlink[4];
+void *gpu_fatlink[QUDA_MAX_GPUS_PER_NODE][4], *gpu_longlink[QUDA_MAX_GPUS_PER_NODE][4];
 
 #ifdef MULTI_GPU
 void* ghost_fatlink[4], *ghost_longlink[4];
@@ -58,6 +68,7 @@ extern QudaReconstructType link_recon;
 extern QudaPrecision prec;
 
 int X[4];
+int nodeX[4];
 
 
 Dirac* dirac;
@@ -95,35 +106,68 @@ setDimConstants(int *X)
   Vsh[3] = Vsh_t;
 }
 
-void init()
-{    
+static void 
+init_master(int* node_lattice)
+{
+  nodeGaugeParam = newQudaGaugeParam();
+  for(int i =0;i < 4;i++){
+    nodeGaugeParam.X[i] = nodeX[i]=node_lattice[i];
+  }
+  
+  setDims(nodeGaugeParam.X);
+  
+  setDimConstants(nodeGaugeParam.X);
+  
+  nodeGaugeParam.cpu_prec = QUDA_DOUBLE_PRECISION;
+  nodeGaugeParam.cuda_prec = prec;
+  nodeGaugeParam.reconstruct = link_recon;
+  nodeGaugeParam.reconstruct_sloppy = nodeGaugeParam.reconstruct;
+  nodeGaugeParam.cuda_prec_sloppy = nodeGaugeParam.cuda_prec;
+  
+  nodeGaugeParam.tadpole_coeff = 0.8;
+  nodeGaugeParam.gauge_order = QUDA_QDP_GAUGE_ORDER;
+  nodeGaugeParam.t_boundary = QUDA_ANTI_PERIODIC_T;
+  nodeGaugeParam.gauge_fix = QUDA_GAUGE_FIXED_NO;
+  nodeGaugeParam.gaugeGiB = 0;
 
-  initQuda(device);
+  int tmpint = MAX(nodeX[1]*nodeX[2]*nodeX[3], nodeX[0]*nodeX[2]*nodeX[3]);
+  tmpint = MAX(tmpint, nodeX[0]*nodeX[1]*nodeX[3]);
+  tmpint = MAX(tmpint, nodeX[0]*nodeX[1]*nodeX[2]);
+  
+  
+  nodeGaugeParam.ga_pad = tmpint;
+  size_t gSize = (nodeGaugeParam.cpu_prec == QUDA_DOUBLE_PRECISION) ? sizeof(double) : sizeof(float);
+  
+  for (int dir = 0; dir < 4; dir++) {
+    fatlink[dir] = malloc(V*gaugeSiteSize*gSize);
+    longlink[dir] = malloc(V*gaugeSiteSize*gSize);
+    if (fatlink[dir] == NULL || longlink[dir] == NULL){
+      errorQuda("ERROR: malloc failed for fatlink/longlink");
+    }
+  }
+  construct_fat_long_gauge_field(fatlink, longlink, 1, nodeGaugeParam.cpu_prec, &nodeGaugeParam);
+  
+  
+  return;
+}
+
+static void 
+init(int devid, int* gpu_lattice)
+{    
+  int gpuX[4];
+  initQuda_thread(devid);
+
+  gpucomm_print();
 
   gaugeParam = newQudaGaugeParam();
   inv_param = newQudaInvertParam();
   
-  gaugeParam.X[0] = X[0] = xdim;
-  gaugeParam.X[1] = X[1] = ydim;
-  gaugeParam.X[2] = X[2] = zdim;
-  gaugeParam.X[3] = X[3] = tdim;
-
-  setDims(gaugeParam.X);
-
-  setDimConstants(gaugeParam.X);
-
-  gaugeParam.cpu_prec = QUDA_DOUBLE_PRECISION;
-  gaugeParam.cuda_prec = prec;
-  gaugeParam.reconstruct = link_recon;
-  gaugeParam.reconstruct_sloppy = gaugeParam.reconstruct;
-  gaugeParam.cuda_prec_sloppy = gaugeParam.cuda_prec;
-    
-  gaugeParam.tadpole_coeff = 0.8;
-  gaugeParam.gauge_order = QUDA_QDP_GAUGE_ORDER;
-  gaugeParam.t_boundary = QUDA_ANTI_PERIODIC_T;
-  gaugeParam.gauge_fix = QUDA_GAUGE_FIXED_NO;
-  gaugeParam.gaugeGiB = 0;
-    
+  //cooy all other params from nodeGaugeParam
+  memcpy(&gaugeParam, &nodeGaugeParam, sizeof(gaugeParam));
+  for(int i =0;i < 4;i++){
+    gaugeParam.X[i] = gpuX[i] = gpu_lattice[i];
+  }
+  
   inv_param.cpu_prec = QUDA_DOUBLE_PRECISION;
   inv_param.cuda_prec = prec;
   inv_param.dirac_order = QUDA_DIRAC_ORDER;
@@ -131,10 +175,10 @@ void init()
   inv_param.dagger = dagger;
   inv_param.matpc_type = QUDA_MATPC_EVEN_EVEN;
   inv_param.dslash_type = QUDA_ASQTAD_DSLASH;
-
-  int tmpint = MAX(X[1]*X[2]*X[3], X[0]*X[2]*X[3]);
-  tmpint = MAX(tmpint, X[0]*X[1]*X[3]);
-  tmpint = MAX(tmpint, X[0]*X[1]*X[2]);
+  
+  int tmpint = MAX(gpuX[1]*gpuX[2]*gpuX[3], gpuX[0]*gpuX[2]*gpuX[3]);
+  tmpint = MAX(tmpint, gpuX[0]*gpuX[1]*gpuX[3]);
+  tmpint = MAX(tmpint, gpuX[0]*gpuX[1]*gpuX[2]);
   
   
   gaugeParam.ga_pad = tmpint;
@@ -176,76 +220,68 @@ void init()
   spinor->Source(QUDA_RANDOM_SOURCE);
 
   size_t gSize = (gaugeParam.cpu_prec == QUDA_DOUBLE_PRECISION) ? sizeof(double) : sizeof(float);
-    
+  
+  int gpuV = gpuX[0]*gpuX[1]*gpuX[2]*gpuX[3];
   for (int dir = 0; dir < 4; dir++) {
-    fatlink[dir] = malloc(V*gaugeSiteSize*gSize);
-    longlink[dir] = malloc(V*gaugeSiteSize*gSize);
-  }
-  if (fatlink == NULL || longlink == NULL){
-    errorQuda("ERROR: malloc failed for fatlink/longlink");
-  }
-  construct_fat_long_gauge_field(fatlink, longlink, 1, gaugeParam.cpu_prec, &gaugeParam);
-  
-
-#ifdef MULTI_GPU
-
-  //exchange_init_dims(X);
-  ghost_fatlink[0] = malloc(Vs_x*gaugeSiteSize*gSize);
-  ghost_fatlink[1] = malloc(Vs_y*gaugeSiteSize*gSize);
-  ghost_fatlink[2] = malloc(Vs_z*gaugeSiteSize*gSize);
-  ghost_fatlink[3] = malloc(Vs_t*gaugeSiteSize*gSize);
-  ghost_longlink[0] = malloc(3*Vs_x*gaugeSiteSize*gSize);
-  ghost_longlink[1] = malloc(3*Vs_y*gaugeSiteSize*gSize);
-  ghost_longlink[2] = malloc(3*Vs_z*gaugeSiteSize*gSize);
-  ghost_longlink[3] = malloc(3*Vs_t*gaugeSiteSize*gSize);
-  if (ghost_fatlink[0] == NULL || ghost_longlink[0] == NULL ||
-      ghost_fatlink[1] == NULL || ghost_longlink[1] == NULL ||
-      ghost_fatlink[2] == NULL || ghost_longlink[2] == NULL ||
-      ghost_fatlink[3] == NULL || ghost_longlink[3] == NULL){
-    errorQuda("ERROR: malloc failed for ghost fatlink/longlink");
-  }
-  //exchange_cpu_links(fatlink, ghost_fatlink[3], longlink, ghost_longlink[3], gaugeParam.cpu_prec);
-  //exchange_cpu_links4dir(fatlink, ghost_fatlink, longlink, ghost_longlink, gaugeParam.cpu_prec);
-
-  void *fat_send[4], *long_send[4];
-  fat_send[0] = malloc(Vs_x*gaugeSiteSize*gSize);
-  fat_send[1] = malloc(Vs_y*gaugeSiteSize*gSize);
-  fat_send[2] = malloc(Vs_z*gaugeSiteSize*gSize);
-  fat_send[3] = malloc(Vs_t*gaugeSiteSize*gSize);
-  long_send[0] = malloc(3*Vs_x*gaugeSiteSize*gSize);
-  long_send[1] = malloc(3*Vs_y*gaugeSiteSize*gSize);
-  long_send[2] = malloc(3*Vs_z*gaugeSiteSize*gSize);
-  long_send[3] = malloc(3*Vs_t*gaugeSiteSize*gSize);
-
-  set_dim(Z);
-  pack_ghost(fatlink, fat_send, 1, gaugeParam.cpu_prec);
-  pack_ghost(longlink, long_send, 3, gaugeParam.cpu_prec);
-
-
-  {
-    FaceBuffer faceBuf(X, 4, 18, 1, gaugeParam.cpu_prec);
-    faceBuf.exchangeCpuLink((void**)ghost_fatlink, (void**)fat_send);
-  }
-
-  {    
-    FaceBuffer faceBuf(X, 4, 18, 3, gaugeParam.cpu_prec);
-    faceBuf.exchangeCpuLink((void**)ghost_longlink, (void**)long_send);
-  }
-
-  for (int i=0; i<4; i++) {
-    free(fat_send[i]);
-    free(long_send[i]);
+    gpu_fatlink[devid][dir] = malloc(gpuV*gaugeSiteSize*gSize);
+    gpu_longlink[devid][dir] = malloc(gpuV*gaugeSiteSize*gSize);
+    if (gpu_fatlink[devid][dir] == NULL || gpu_longlink[devid][dir] == NULL){
+      errorQuda("ERROR: malloc failed for gpu_fatlink/gpu_longlink");
+    }
   }
   
-#endif   
+  //copy data from the node level fatlink/longlink to the gpu level fatlink/longlink
+  int local_gpu_grid_size[4];
+  int local_gpu_coord[4];
+  for(int i=0; i < 4; i++){
+    local_gpu_grid_size[i] = gpucomm_local_grid_size(i);
+    local_gpu_coord[i] = gpucomm_local_coord(i);    
+  }
+  
+  //we need to convert local gpu index into nodde level index and get the data 
+  //frm node level fatlink and longlink
+  //we assume all gpuX[] are the same for all threads
+  for(int x1 = 0 ; x1 < gpuX[0]; x1 ++)
+    for(int x2 = 0 ; x2 < gpuX[1]; x2 ++)
+      for(int x3 = 0 ; x3 < gpuX[2]; x3 ++)
+	for(int x4 = 0 ; x4 < gpuX[3]; x4 ++){
+	  int gx1 = local_gpu_coord[0]*gpuX[0]+x1;
+	  int gx2 = local_gpu_coord[1]*gpuX[1]+x2;
+	  int gx3 = local_gpu_coord[2]*gpuX[2]+x3;
+	  int gx4 = local_gpu_coord[3]*gpuX[3]+x4;
+	  
+	  int gidx = gx4*(nodeX[0]*nodeX[1]*nodeX[2])+gx3*(nodeX[0]*nodeX[1])
+	    + gx2*nodeX[0]+gx1;
+	  int idx = x4*(gpuX[0]*gpuX[1]*gpuX[2])+x3*(gpuX[0]*gpuX[1])
+	    + x2*gpuX[0] + x1;
+	  
+	  //we have made assumption that gpu_lattice[] are all even numbers
+	  //those numbers are checked in gpucomm_partition_node()
+	  //so site even/odd-ess for node level and gpu level is the same
+	  
+	  if((x1+x2+x3+x4)%2 == 1){
+	    gidx += nodeX[0]*nodeX[1]*nodeX[2]*nodeX[3]/2;
+	    idx += gpuX[0]*gpuX[1]*gpuX[2]*gpuX[3]/2;
+	  }
+	  
+	  //copy 4 directions
+	  for(int dir=0; dir < 4; dir++){
+	    char* src = (char*)fatlink[dir];
+	    char* dst = (char*)gpu_fatlink[devid][dir];
+	    memcpy(dst + idx, src + gidx, gSize*gaugeSiteSize);
 
+	    src = (char*)longlink[dir];
+	    dst = (char*)gpu_longlink[devid][dir];
+	    memcpy(dst + idx, src + gidx, gSize*gaugeSiteSize);
+	  }	  
+	}
   
   gaugeParam.type = QUDA_ASQTAD_FAT_LINKS;
 #ifdef MULTI_GPU
-  int x_face_size = X[1]*X[2]*X[3]/2;
-  int y_face_size = X[0]*X[2]*X[3]/2;
-  int z_face_size = X[0]*X[1]*X[3]/2;
-  int t_face_size = X[0]*X[1]*X[2]/2;
+  int x_face_size = gpuX[1]*gpuX[2]*gpuX[3]/2;
+  int y_face_size = gpuX[0]*gpuX[2]*gpuX[3]/2;
+  int z_face_size = gpuX[0]*gpuX[1]*gpuX[3]/2;
+  int t_face_size = gpuX[0]*gpuX[1]*gpuX[2]/2;
   int pad_size =MAX(x_face_size, y_face_size);
   pad_size = MAX(pad_size, z_face_size);
   pad_size = MAX(pad_size, t_face_size);
@@ -253,7 +289,7 @@ void init()
 #endif
   gaugeParam.reconstruct= gaugeParam.reconstruct_sloppy = QUDA_RECONSTRUCT_NO;
   printfQuda("Fat links sending..."); 
-  loadGaugeQuda(fatlink, &gaugeParam);
+  loadGaugeQuda(gpu_fatlink[devid], &gaugeParam, devid);
   printfQuda("Fat links sent"); 
   
   gaugeParam.type = QUDA_ASQTAD_LONG_LINKS;  
@@ -262,16 +298,16 @@ void init()
 #endif
   gaugeParam.reconstruct= gaugeParam.reconstruct_sloppy = link_recon;
   printfQuda("Long links sending..."); 
-  loadGaugeQuda(longlink, &gaugeParam);
+  loadGaugeQuda(gpu_longlink[devid], &gaugeParam, devid);
   printfQuda("Long links sent..."); 
 
-  cudaFatLink = cudaFatLinkPrecise;
-  cudaLongLink = cudaLongLinkPrecise;
+  cudaFatLink[devid] = cudaFatLinkPrecise[devid];
+  cudaLongLink[devid] = cudaLongLinkPrecise[devid];
   
   printfQuda("Sending fields to GPU..."); 
-    
+  
   if (!transfer) {
-
+    
     //csParam.verbose = QUDA_DEBUG_VERBOSE;
 	
     csParam.fieldLocation = QUDA_CUDA_FIELD_LOCATION;
@@ -307,9 +343,9 @@ void init()
 
     bool pc = (test_type != 2);
     DiracParam diracParam;
-    setDiracParam(diracParam, &inv_param, pc);
-    diracParam.fatGauge = &cudaFatLinkPrecise;
-    diracParam.longGauge = &cudaLongLinkPrecise;
+    setDiracParam(diracParam, &inv_param, pc, devid);
+    diracParam.fatGauge = &cudaFatLink[devid];
+    diracParam.longGauge = &cudaLongLink[devid];
 
     //diracParam.verbose = QUDA_DEBUG_VERBOSE;
     diracParam.tmp1=tmp;
@@ -411,6 +447,61 @@ double dslashCUDA() {
 
 void staggeredDslashRef()
 {
+
+  size_t gSize = (gaugeParam.cpu_prec == QUDA_DOUBLE_PRECISION) ? sizeof(double) : sizeof(float);
+  
+#ifdef MULTI_GPU
+
+  //exchange_init_dims(X);
+  ghost_fatlink[0] = malloc(Vs_x*gaugeSiteSize*gSize);
+  ghost_fatlink[1] = malloc(Vs_y*gaugeSiteSize*gSize);
+  ghost_fatlink[2] = malloc(Vs_z*gaugeSiteSize*gSize);
+  ghost_fatlink[3] = malloc(Vs_t*gaugeSiteSize*gSize);
+  ghost_longlink[0] = malloc(3*Vs_x*gaugeSiteSize*gSize);
+  ghost_longlink[1] = malloc(3*Vs_y*gaugeSiteSize*gSize);
+  ghost_longlink[2] = malloc(3*Vs_z*gaugeSiteSize*gSize);
+  ghost_longlink[3] = malloc(3*Vs_t*gaugeSiteSize*gSize);
+  if (ghost_fatlink[0] == NULL || ghost_longlink[0] == NULL ||
+      ghost_fatlink[1] == NULL || ghost_longlink[1] == NULL ||
+      ghost_fatlink[2] == NULL || ghost_longlink[2] == NULL ||
+      ghost_fatlink[3] == NULL || ghost_longlink[3] == NULL){
+    errorQuda("ERROR: malloc failed for ghost fatlink/longlink");
+  }
+  //exchange_cpu_links(fatlink, ghost_fatlink[3], longlink, ghost_longlink[3], gaugeParam.cpu_prec);
+  //exchange_cpu_links4dir(fatlink, ghost_fatlink, longlink, ghost_longlink, gaugeParam.cpu_prec);
+
+  void *fat_send[4], *long_send[4];
+  fat_send[0] = malloc(Vs_x*gaugeSiteSize*gSize);
+  fat_send[1] = malloc(Vs_y*gaugeSiteSize*gSize);
+  fat_send[2] = malloc(Vs_z*gaugeSiteSize*gSize);
+  fat_send[3] = malloc(Vs_t*gaugeSiteSize*gSize);
+  long_send[0] = malloc(3*Vs_x*gaugeSiteSize*gSize);
+  long_send[1] = malloc(3*Vs_y*gaugeSiteSize*gSize);
+  long_send[2] = malloc(3*Vs_z*gaugeSiteSize*gSize);
+  long_send[3] = malloc(3*Vs_t*gaugeSiteSize*gSize);
+
+  set_dim(Z);
+  pack_ghost(fatlink, fat_send, 1, gaugeParam.cpu_prec);
+  pack_ghost(longlink, long_send, 3, gaugeParam.cpu_prec);
+  
+  {
+    FaceBuffer faceBuf(X, 4, 18, 1, gaugeParam.cpu_prec);
+    faceBuf.exchangeCpuLink((void**)ghost_fatlink, (void**)fat_send);
+  }
+
+  {    
+    FaceBuffer faceBuf(X, 4, 18, 3, gaugeParam.cpu_prec);
+    faceBuf.exchangeCpuLink((void**)ghost_longlink, (void**)long_send);
+  }
+
+  for (int i=0; i<4; i++) {
+    free(fat_send[i]);
+    free(long_send[i]);
+  }
+  
+#endif   
+
+
 #ifndef MULTI_GPU
   int cpu_parity = 0;
 #endif
@@ -466,55 +557,27 @@ void staggeredDslashRef()
     
 }
 
-static int dslashTest() 
+void* dslashTest(void* _arg) 
 {
-  int accuracy_level = 0;
   
-  init();
+  thread_arg_t* arg = (thread_arg_t*)_arg;
+  int devid = arg->devid;
+  
+  init(devid, arg->gpu_lattice);
     
   int attempts = 1;
     
   for (int i=0; i<attempts; i++) {
-	
+    
     double secs = dslashCUDA();
     
     if (!transfer) *spinorOut = *cudaSpinorOut;
-      
+    
     printfQuda("\n%fms per loop\n", 1000*secs);
-    staggeredDslashRef();
-	
-    unsigned long long flops = dirac->Flops();
-    int link_floats = 8*gaugeParam.reconstruct+8*18;
-    int spinor_floats = 8*6*2 + 6;
-    int link_float_size = prec;
-    int spinor_float_size = 0;
-    
-    link_floats = test_type ? (2*link_floats) : link_floats;
-    spinor_floats = test_type ? (2*spinor_floats) : spinor_floats;
-
-    int bytes_for_one_site = link_floats * link_float_size + spinor_floats * spinor_float_size;
-    if (prec == QUDA_HALF_PRECISION) bytes_for_one_site += (8*2 + 1)*4;	
-
-    printfQuda("GFLOPS = %f\n", 1.0e-9*flops/secs);
-    printfQuda("GiB/s = %f\n\n", 1.0*Vh*bytes_for_one_site/((secs/loops)*(1<<30)));
-	
-    if (!transfer) {
-      double spinor_ref_norm2 = norm2(*spinorRef);
-      double cuda_spinor_out_norm2 =  norm2(*cudaSpinorOut);
-      double spinor_out_norm2 =  norm2(*spinorOut);
-      printfQuda("Results: CPU=%f, CUDA=%f, CPU-CUDA=%f\n",  spinor_ref_norm2, cuda_spinor_out_norm2,
-		 spinor_out_norm2);
-    } else {
-      double spinor_ref_norm2 = norm2(*spinorRef);
-      double spinor_out_norm2 =  norm2(*spinorOut);
-      printfQuda("Result: CPU=%f , CPU-CUDA=%f", spinor_ref_norm2, spinor_out_norm2);
-    }
-    
-    accuracy_level = cpuColorSpinorField::Compare(*spinorRef, *spinorOut);	
+    arg->secs = secs;
   }
-  end();
-  
-  return accuracy_level;
+
+  return NULL;
 }
 
 
@@ -580,11 +643,72 @@ int main(int argc, char **argv)
   
   //qudaSetNumaConfig("/usr/local/gpu_numa_config.txt");
   initCommsQuda(argc, argv, gridsize_from_cmdline, 4);
+
+  
+  int node_lattice[4] = {xdim, ydim, zdim, tdim};
+  int gpu_lattice[4];
+  gpucomm_partition_node(node_lattice, gpu_lattice);
   
   display_test_info();
 
+  init_master(node_lattice);
+
+
   int ret =1;
-  int accuracy_level = dslashTest();
+  int nthreads = 1;
+  thread_arg_t arg[QUDA_MAX_GPUS_PER_NODE];
+  pthread_t pid[QUDA_MAX_GPUS_PER_NODE];
+  for(int j = 0; j < nthreads; j++){
+    arg[j].devid= j;
+    for(int k =0; k < 4; k++){
+      arg[j].gpu_lattice[k] = gpu_lattice[k];
+    }
+
+    pthread_create(&pid[j], NULL, dslashTest, &arg[j]);
+    }
+  
+  for(int j=0; j < nthreads; j++){
+    pthread_join(pid[j], NULL);
+  }
+
+
+  double secs = arg[0].secs;
+  
+  staggeredDslashRef();
+  
+  unsigned long long flops = dirac->Flops();
+  int link_floats = 8*gaugeParam.reconstruct+8*18;
+  int spinor_floats = 8*6*2 + 6;
+  int link_float_size = prec;
+  int spinor_float_size = 0;
+  
+  link_floats = test_type ? (2*link_floats) : link_floats;
+  spinor_floats = test_type ? (2*spinor_floats) : spinor_floats;
+  
+  int bytes_for_one_site = link_floats * link_float_size + spinor_floats * spinor_float_size;
+  if (prec == QUDA_HALF_PRECISION) bytes_for_one_site += (8*2 + 1)*4;	
+  
+  printfQuda("GFLOPS = %f\n", 1.0e-9*flops/secs);
+  printfQuda("GiB/s = %f\n\n", 1.0*Vh*bytes_for_one_site/((secs/loops)*(1<<30)));
+  
+  if (!transfer) {
+    double spinor_ref_norm2 = norm2(*spinorRef);
+    double cuda_spinor_out_norm2 =  norm2(*cudaSpinorOut);
+    double spinor_out_norm2 =  norm2(*spinorOut);
+    printfQuda("Results: CPU=%f, CUDA=%f, CPU-CUDA=%f\n",  spinor_ref_norm2, cuda_spinor_out_norm2,
+	       spinor_out_norm2);
+  } else {
+    double spinor_ref_norm2 = norm2(*spinorRef);
+    double spinor_out_norm2 =  norm2(*spinorOut);
+    printfQuda("Result: CPU=%f , CPU-CUDA=%f", spinor_ref_norm2, spinor_out_norm2);
+  }
+  
+  int accuracy_level = cpuColorSpinorField::Compare(*spinorRef, *spinorOut);	
+  
+  
+  //FIXM: disable the cleanup for now
+  //end();
+  
 
   printfQuda("accuracy_level =%d\n", accuracy_level);
   if (accuracy_level >= 1) ret = 0;    //probably no error, -1 means no matching  
