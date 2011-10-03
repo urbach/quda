@@ -965,7 +965,6 @@ void twistGamma5Cuda(cudaColorSpinorField *out, const cudaColorSpinorField *in,
 #include "fermion_force_quda.cu"
 #endif
 
-
-#ifdef GPU_FERMION_FORCE
-#include "hisq_level2_fermion_force.cu"
+#ifdef GPU_HISQ_FORCE
+#include "hisq_level2_force_quda.cu"
 #endif

@@ -1204,6 +1204,38 @@ createHwCPU(void* hw,  QudaPrecision precision)
   return;
 }
 
+// New version of the routine given above, takes into account the fact that hw does not have a direction index
+void
+createHwCPU2(void *hw, QudaPrecision precision)
+{
+  // hw[volume][0], hw[volume][1] 
+  // hwSiteSize = 12  (2*3 complex numbers per half-wilson vector)
+  for(int i=0; i<V; i++){
+    if(precision == QUDA_DOUBLE_PRECISION){
+      double* thishw = (double*)hw;
+      for(int k=0; k<hwSiteSize; k++){
+  thishw[i*hwSiteSize+k] = 1.0*rand()/RAND_MAX;
+      }
+    }else{
+      float* thishw=(float*)hw;
+      for(int k=0; k<hwSiteSize; k++){
+  thishw[i*hwSiteSize+k] = 1.0*rand()/RAND_MAX;
+//  printf("element = %f\n", thishw[i*hwSiteSize+k]);
+      }
+    }
+  } // end loop over volume
+  return;
+}
+
+
+
+
+
+
+
+
+
+
 
 template <typename Float>
 void compare_mom(Float *momA, Float *momB, int len) {

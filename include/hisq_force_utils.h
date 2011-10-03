@@ -33,6 +33,19 @@ extern "C" {
       } FullCompMatrix; // compressed matrix 
 
 
+
+
+     FullMatrix createMatQuda(int *X, QudaPrecision precision);
+		 FullCompMatrix createCompMatQuda(int *X, QudaPrecision precision);
+     void freeMatQuda(FullMatrix mat);
+     void freeCompMatQuda(FullCompMatrix mat);
+
+
+
+
+
+
+
       typedef struct {
         size_t bytes;
         QudaPrecision precision;

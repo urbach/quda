@@ -24,10 +24,107 @@ static int volumeCB; // checkboarded volume
 extern float fat_link_max;
 
 #include <pack_gauge.h>
+#include <hisq_force_utils.h>
 
 // The following routines are needed to test the hisq fermion force code
 namespace hisq{
   namespace fermion_force{
+
+
+    static ParityMatrix
+      allocateParityMatrix(int *X, QudaPrecision precision, bool compressed)
+      {
+        if(precision == QUDA_DOUBLE_PRECISION && compressed) {
+          printf("Error: double precision not supported for compressed matrix\n");
+          exit(0); 
+        }
+
+        ParityMatrix ret;
+
+        ret.precision = precision;
+        ret.X[0] = X[0]/2;
+        ret.volume = X[0]/2;
+        for(int d=1; d<4; d++){
+          ret.X[d] = X[d];
+          ret.volume *= X[d]; 
+        } 
+        ret.Nc = 3;
+        if(compressed){
+          // store the matrices in a compressed form => 6 complex numbers per matrix
+          // = 12 real number => store as 3 float4s
+          ret.length = ret.volume*ret.Nc*4; // => number of real numbers  
+        }else{
+          // store as float2 or double2
+          ret.length = ret.volume*ret.Nc*ret.Nc*2; // => number of real numbers   
+        }
+
+        if(precision == QUDA_DOUBLE_PRECISION){
+          if(compressed){
+            printf("Error allocating compressed matrix in double precision\n");
+            exit(0);  
+          }
+          ret.bytes = ret.length*sizeof(double);
+        }
+        else { // QUDA_SINGLE_PRECISION
+          ret.bytes = ret.length*sizeof(float);
+        }
+
+        if(cudaMalloc((void**)&ret.data, ret.bytes) == cudaErrorMemoryAllocation){
+          printf("Error  allocating matrix\n");
+          exit(0);
+        }
+
+        cudaMemset(ret.data, 0, ret.bytes);
+
+        return ret;
+      }
+
+    FullMatrix
+      createMatQuda(int *X, QudaPrecision precision)
+      {
+        FullMatrix ret;
+        ret.even = allocateParityMatrix(X, precision, false); // compressed = false
+        ret.odd  = allocateParityMatrix(X, precision, false); // compressed = false
+        return ret;
+      }
+
+
+    FullCompMatrix
+      createCompMatQuda(int *X, QudaPrecision precision)
+      {
+        FullCompMatrix ret;
+        ret.even = allocateParityMatrix(X, precision, true); // compressed = true
+        ret.odd  = allocateParityMatrix(X, precision, true); // compressed = true
+        return ret;
+      }
+
+
+    static void
+      freeParityMatQuda(ParityMatrix parity_mat)
+      {
+        cudaFree(parity_mat.data);
+        parity_mat.data = NULL;
+      }
+
+
+    void
+      freeMatQuda(FullMatrix mat)
+      {
+        freeParityMatQuda(mat.even);
+        freeParityMatQuda(mat.odd);
+      }
+
+
+    void
+      freeCompMatQuda(FullCompMatrix mat)
+      {
+        freeParityMatQuda(mat.even);
+        freeParityMatQuda(mat.odd);
+      }
+
+
+
+
 
     static void pack18Oprod(float2 *res, float *g, int dir, int Vh){
       float2 *r = res + dir*9*Vh;
@@ -203,13 +300,18 @@ namespace hisq{
           size_t bytes, int Vh)
       {
         // Use pinned memory 
-        float2 *packedEven, *packedOdd;
+	      float2 *packedEven, *packedOdd;
+				checkCudaError();
+
         cudaMallocHost((void**)&packedEven, bytes);
         cudaMallocHost((void**)&packedOdd, bytes);
+        checkCudaError();
 
 
         packOprodField(packedEven, (float*)cpuOprod, 0, Vh);
         packOprodField(packedOdd,  (float*)cpuOprod, 1, Vh);
+        checkCudaError();
+
 
         cudaMemset(cudaOprodEven, 0, bytes);
         cudaMemset(cudaOprodOdd, 0, bytes);
@@ -230,8 +332,13 @@ namespace hisq{
         void *cudaOprodOdd,
         void  *oprod,
         int vol){
-      int bytes = 8*vol*18*sizeof(float);
-      loadOprodFromCPUArrayQuda(cudaOprodEven, cudaOprodOdd, oprod, bytes, vol);
+        checkCudaError();
+        int bytes = 8*vol*18*sizeof(float);
+
+				std::cout << "vol = " << vol << std::endl;
+        std::cout << "bytes = " << bytes << std::endl;
+        checkCudaError();
+        loadOprodFromCPUArrayQuda(cudaOprodEven, cudaOprodOdd, oprod, bytes, vol);
     }
 
 

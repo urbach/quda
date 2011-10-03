@@ -5,76 +5,57 @@
 #include "force_common.h"
 #include "hw_quda.h"
 
-
-// The following code computes the contribution 
-// of level2 hisq smearing to the fermion force. 
-// Well, in fact, right now, the routines 
-// below return a momentum, whereas they should 
-// actually return a color-matrix, which is 
-// later combined with contributions from the
-// link unitarization and level1 smearing to 
-// give the net force.
-
+namespace hisq {
+  namespace fermion_force {
 
 
 #define LOAD_ANTI_HERMITIAN LOAD_ANTI_HERMITIAN_SINGLE
 
+#define FAST_INT_DIVIDE(a,b) (a/b)
+
 #define LOAD_HW_SINGLE(hw, idx, var)	do{	      \
-	var##0 = hw[idx + 0*Vh];		      \
-	var##1 = hw[idx + 1*Vh];		      \
-	var##2 = hw[idx + 2*Vh];		      \
-	var##3 = hw[idx + 3*Vh];		      \
-	var##4 = hw[idx + 4*Vh];		      \
-	var##5 = hw[idx + 5*Vh];		      \
-    }while(0)
+  var##0 = hw[idx + 0*Vh];		      \
+  var##1 = hw[idx + 1*Vh];		      \
+  var##2 = hw[idx + 2*Vh];		      \
+  var##3 = hw[idx + 3*Vh];		      \
+  var##4 = hw[idx + 4*Vh];		      \
+  var##5 = hw[idx + 5*Vh];		      \
+}while(0)
 
 
 #define WRITE_HW_SINGLE(hw, idx, var)	do{				\
-	hw[idx + 0*Vh] = var##0;					\
-	hw[idx + 1*Vh] = var##1;					\
-	hw[idx + 2*Vh] = var##2;					\
-	hw[idx + 3*Vh] = var##3;					\
-	hw[idx + 4*Vh] = var##4;					\
-	hw[idx + 5*Vh] = var##5;					\
-    }while(0)
+  hw[idx + 0*Vh] = var##0;					\
+  hw[idx + 1*Vh] = var##1;					\
+  hw[idx + 2*Vh] = var##2;					\
+  hw[idx + 3*Vh] = var##3;					\
+  hw[idx + 4*Vh] = var##4;					\
+  hw[idx + 5*Vh] = var##5;					\
+}while(0)
 
 #define LOAD_HW(hw, idx, var) LOAD_HW_SINGLE(hw, idx, var)
 #define WRITE_HW(hw, idx, var) WRITE_HW_SINGLE(hw, idx, var)
 #define LOAD_MATRIX(src, dir, idx, var) LOAD_MATRIX_12_SINGLE(src, dir, idx, var)
-//#define LOAD_ANTI_HERMITIAN(mom, mydir, idx, AH);
+  //#define LOAD_ANTI_HERMITIAN(mom, mydir, idx, AH);
 
 #define FF_SITE_MATRIX_LOAD_TEX 1
 
 #if (FF_SITE_MATRIX_LOAD_TEX == 1)
-#define linkEvenTex siteLink0TexSingle
-#define linkOddTex siteLink1TexSingle
+#define linkEvenTex siteLink0TexSingle_recon
+#define linkOddTex siteLink1TexSingle_recon
 #define FF_LOAD_MATRIX(src, dir, idx, var) LOAD_MATRIX_12_SINGLE_TEX(src##Tex, dir, idx, var)
 #else
 #define FF_LOAD_MATRIX(src, dir, idx, var) LOAD_MATRIX_12_SINGLE(src, dir, idx, var)
 #endif
 
-// The following macros are needed for the hisq routines:
+  // The following macros are needed for the hisq routines:
 
-// Load the outer product from memory
-// This is an array of 3x3 complex matrices. 
-// These matrices are not unitary, and so they 
-// are stored as 9 complex numbers
-/*
-#define LOAD_MATRIX_18_SINGLE(gauge, dir, idx, var)		\
-  var##0 = gauge[idx + dir*Vhx9];				\
-  var##1 = gauge[idx + dir*Vhx9 + Vh];				\
-  var##2 = gauge[idx + dir*Vhx9 + Vhx2];			\
-  var##3 = gauge[idx + dir*Vhx9 + Vhx3];			\
-  var##4 = gauge[idx + dir*Vhx9 + Vhx4];			\
-  var##5 = gauge[idx + dir*Vhx9 + Vhx5];			\
-  var##6 = gauge[idx + dir*Vhx9 + Vhx6];			\
-  var##7 = gauge[idx + dir*Vhx9 + Vhx7];			\
-  var##8 = gauge[idx + dir*Vhx9 + Vhx8];
-*/
-
+  // Load the outer product from memory
+  // This is an array of 3x3 complex matrices. 
+  // These matrices are not unitary, and so they 
+  // are stored as 9 complex numbers
 
 #define LOAD_MOM_MATRIX_SINGLE(mom, dir, idx, var)	\
-  var##0 = mom[idx + dir*Vhx9];				\
+    var##0 = mom[idx + dir*Vhx9];			\
   var##1 = mom[idx + dir*Vhx9 + Vh];			\
   var##2 = mom[idx + dir*Vhx9 + Vhx2];			\
   var##3 = mom[idx + dir*Vhx9 + Vhx3];			\
@@ -88,7 +69,7 @@
 
 
 #define LOAD_MATRIX_18_SINGLE(gauge, idx, var)			\
-  var##0 = gauge[idx];						\
+    var##0 = gauge[idx];					\
   var##1 = gauge[idx + Vh];					\
   var##2 = gauge[idx + Vhx2];					\
   var##3 = gauge[idx + Vhx3];					\
@@ -100,50 +81,50 @@
 
 
 
-// Write to an array of float2 
+  // Write to an array of float2 
 #define WRITE_MATRIX_18_SINGLE(mat, idx, var) do{ \
- 	mat[idx + 0*Vh] = var##0;  \
-	mat[idx + 1*Vh] = var##1;  \
-	mat[idx + 2*Vh] = var##2;  \
-	mat[idx + 3*Vh] = var##3;  \
-	mat[idx + 4*Vh] = var##4;  \
-	mat[idx + 5*Vh] = var##5;  \
-	mat[idx + 6*Vh] = var##6;  \
-	mat[idx + 7*Vh] = var##7;  \
-	mat[idx + 8*Vh] = var##8;  \
+  mat[idx + 0*Vh] = var##0;  \
+  mat[idx + 1*Vh] = var##1;  \
+  mat[idx + 2*Vh] = var##2;  \
+  mat[idx + 3*Vh] = var##3;  \
+  mat[idx + 4*Vh] = var##4;  \
+  mat[idx + 5*Vh] = var##5;  \
+  mat[idx + 6*Vh] = var##6;  \
+  mat[idx + 7*Vh] = var##7;  \
+  mat[idx + 8*Vh] = var##8;  \
 }while(0)
 
 #define WRITE_MOM_MATRIX_SINGLE(mat, dir, idx, var) do{ \
- 	mat[idx + dir*Vhx9 + 0*Vh] = var##0;  \
-	mat[idx + dir*Vhx9 + 1*Vh] = var##1;  \
-	mat[idx + dir*Vhx9 + 2*Vh] = var##2;  \
-	mat[idx + dir*Vhx9 + 3*Vh] = var##3;  \
-	mat[idx + dir*Vhx9 + 4*Vh] = var##4;  \
-	mat[idx + dir*Vhx9 + 5*Vh] = var##5;  \
-	mat[idx + dir*Vhx9 + 6*Vh] = var##6;  \
-	mat[idx + dir*Vhx9 + 7*Vh] = var##7;  \
-	mat[idx + dir*Vhx9 + 8*Vh] = var##8;  \
+  mat[idx + dir*Vhx9 + 0*Vh] = var##0;  \
+  mat[idx + dir*Vhx9 + 1*Vh] = var##1;  \
+  mat[idx + dir*Vhx9 + 2*Vh] = var##2;  \
+  mat[idx + dir*Vhx9 + 3*Vh] = var##3;  \
+  mat[idx + dir*Vhx9 + 4*Vh] = var##4;  \
+  mat[idx + dir*Vhx9 + 5*Vh] = var##5;  \
+  mat[idx + dir*Vhx9 + 6*Vh] = var##6;  \
+  mat[idx + dir*Vhx9 + 7*Vh] = var##7;  \
+  mat[idx + dir*Vhx9 + 8*Vh] = var##8;  \
 }while(0)
 
 
 #define ACCUMULATE_MOM_MATRIX_SINGLE(mat, dir, idx, var) do{ \
-        mat[idx + dir*Vhx9 + 0*Vh] = var##0;  \
-        mat[idx + dir*Vhx9 + 1*Vh] = var##1;  \
-        mat[idx + dir*Vhx9 + 2*Vh] = var##2;  \
-        mat[idx + dir*Vhx9 + 3*Vh] = var##3;  \
-        mat[idx + dir*Vhx9 + 4*Vh] = var##4;  \
-        mat[idx + dir*Vhx9 + 5*Vh] = var##5;  \
-        mat[idx + dir*Vhx9 + 6*Vh] = var##6;  \
-        mat[idx + dir*Vhx9 + 7*Vh] = var##7;  \
-        mat[idx + dir*Vhx9 + 8*Vh] = var##8;  \
+  mat[idx + dir*Vhx9 + 0*Vh] = var##0;  \
+  mat[idx + dir*Vhx9 + 1*Vh] = var##1;  \
+  mat[idx + dir*Vhx9 + 2*Vh] = var##2;  \
+  mat[idx + dir*Vhx9 + 3*Vh] = var##3;  \
+  mat[idx + dir*Vhx9 + 4*Vh] = var##4;  \
+  mat[idx + dir*Vhx9 + 5*Vh] = var##5;  \
+  mat[idx + dir*Vhx9 + 6*Vh] = var##6;  \
+  mat[idx + dir*Vhx9 + 7*Vh] = var##7;  \
+  mat[idx + dir*Vhx9 + 8*Vh] = var##8;  \
 }while(0)
 
 
-// Write to an array of float4 
+  // Write to an array of float4 
 #define WRITE_MATRIX_12_SINGLE(mat, idx, var) do{ \
-	mat[idx + 0*Vh] = var##0;  \
-	mat[idx + 1*Vh] = var##1;  \
-	mat[idx + 2*Vh] = var##2;  \
+  mat[idx + 0*Vh] = var##0;  \
+  mat[idx + 1*Vh] = var##1;  \
+  mat[idx + 2*Vh] = var##2;  \
 }while(0)
 
 
@@ -254,45 +235,45 @@
 
 
 #define ADJ_MAT(a, b) \
- b##00_re =  a##00_re; \
- b##00_im = -a##00_im; \
- b##01_re =  a##10_re; \
- b##01_im = -a##10_im; \
- b##02_re =  a##20_re; \
- b##02_im = -a##20_im; \
- b##10_re =  a##01_re; \
- b##10_im = -a##01_im; \
- b##11_re =  a##11_re; \
- b##11_im = -a##11_im; \
- b##12_re =  a##21_re; \
- b##12_im = -a##21_im; \
- b##20_re =  a##02_re; \
- b##20_im = -a##02_im; \
- b##21_re =  a##12_re; \
- b##21_im = -a##12_im; \
- b##22_re =  a##22_re; \
- b##22_im = -a##22_im; 
+    b##00_re =  a##00_re; \
+  b##00_im = -a##00_im; \
+  b##01_re =  a##10_re; \
+  b##01_im = -a##10_im; \
+  b##02_re =  a##20_re; \
+  b##02_im = -a##20_im; \
+  b##10_re =  a##01_re; \
+  b##10_im = -a##01_im; \
+  b##11_re =  a##11_re; \
+  b##11_im = -a##11_im; \
+  b##12_re =  a##21_re; \
+  b##12_im = -a##21_im; \
+  b##20_re =  a##02_re; \
+  b##20_im = -a##02_im; \
+  b##21_re =  a##12_re; \
+  b##21_im = -a##12_im; \
+  b##22_re =  a##22_re; \
+  b##22_im = -a##22_im; 
 
 
 #define ASSIGN_MAT(a, b) \
- b##00_re =  a##00_re; \
- b##00_im =  a##00_im; \
- b##01_re =  a##01_re; \
- b##01_im =  a##01_im; \
- b##02_re =  a##02_re; \
- b##02_im =  a##02_im; \
- b##10_re =  a##10_re; \
- b##10_im =  a##10_im; \
- b##11_re =  a##11_re; \
- b##11_im =  a##11_im; \
- b##12_re =  a##12_re; \
- b##12_im =  a##12_im; \
- b##20_re =  a##20_re; \
- b##20_im =  a##20_im; \
- b##21_re =  a##21_re; \
- b##21_im =  a##21_im; \
- b##22_re =  a##22_re; \
- b##22_im =  a##22_im; \
+    b##00_re =  a##00_re; \
+  b##00_im =  a##00_im; \
+  b##01_re =  a##01_re; \
+  b##01_im =  a##01_im; \
+  b##02_re =  a##02_re; \
+  b##02_im =  a##02_im; \
+  b##10_re =  a##10_re; \
+  b##10_im =  a##10_im; \
+  b##11_re =  a##11_re; \
+  b##11_im =  a##11_im; \
+  b##12_re =  a##12_re; \
+  b##12_im =  a##12_im; \
+  b##20_re =  a##20_re; \
+  b##20_im =  a##20_im; \
+  b##21_re =  a##21_re; \
+  b##21_im =  a##21_im; \
+  b##22_re =  a##22_re; \
+  b##22_im =  a##22_im; \
 
 
 
@@ -300,216 +281,216 @@
 
 
 #define SET_IDENTITY(b) \
- b##00_re =  1; \
- b##00_im =  0; \
- b##01_re =  0; \
- b##01_im =  0; \
- b##02_re =  0; \
- b##02_im =  0; \
- b##10_re =  0; \
- b##10_im =  0; \
- b##11_re =  1; \
- b##11_im =  0; \
- b##12_re =  0; \
- b##12_im =  0; \
- b##20_re =  0; \
- b##20_im =  0; \
- b##21_re =  0; \
- b##21_im =  0; \
- b##22_re =  1; \
- b##22_im =  0; 
+    b##00_re =  1; \
+  b##00_im =  0; \
+  b##01_re =  0; \
+  b##01_im =  0; \
+  b##02_re =  0; \
+  b##02_im =  0; \
+  b##10_re =  0; \
+  b##10_im =  0; \
+  b##11_re =  1; \
+  b##11_im =  0; \
+  b##12_re =  0; \
+  b##12_im =  0; \
+  b##20_re =  0; \
+  b##20_im =  0; \
+  b##21_re =  0; \
+  b##21_im =  0; \
+  b##22_re =  1; \
+  b##22_im =  0; 
 
 
 
 #define MAT_MUL_MAT(a, b, c) \
- c##00_re = a##00_re*b##00_re - a##00_im*b##00_im + a##01_re*b##10_re - a##01_im*b##10_im + a##02_re*b##20_re - a##02_im*b##20_im; \
- c##00_im = a##00_re*b##00_im + a##00_im*b##00_re + a##01_re*b##10_im + a##01_im*b##10_re + a##02_re*b##20_im + a##02_im*b##20_re; \
- c##01_re = a##00_re*b##01_re - a##00_im*b##01_im + a##01_re*b##11_re - a##01_im*b##11_im + a##02_re*b##21_re - a##02_im*b##21_im; \
- c##01_im = a##00_re*b##01_im + a##00_im*b##01_re + a##01_re*b##11_im + a##01_im*b##11_re + a##02_re*b##21_im + a##02_im*b##21_re; \
- c##02_re = a##00_re*b##02_re - a##00_im*b##02_im + a##01_re*b##12_re - a##01_im*b##12_im + a##02_re*b##22_re - a##02_im*b##22_im; \
- c##02_im = a##00_re*b##02_im + a##00_im*b##02_re + a##01_re*b##12_im + a##01_im*b##12_re + a##02_re*b##22_im + a##02_im*b##22_re; \
- c##10_re = a##10_re*b##00_re - a##10_im*b##00_im + a##11_re*b##10_re - a##11_im*b##10_im + a##12_re*b##20_re - a##12_im*b##20_im; \
- c##10_im = a##10_re*b##00_im + a##10_im*b##00_re + a##11_re*b##10_im + a##11_im*b##10_re + a##12_re*b##20_im + a##12_im*b##20_re; \
- c##11_re = a##10_re*b##01_re - a##10_im*b##01_im + a##11_re*b##11_re - a##11_im*b##11_im + a##12_re*b##21_re - a##12_im*b##21_im; \
- c##11_im = a##10_re*b##01_im + a##10_im*b##01_re + a##11_re*b##11_im + a##11_im*b##11_re + a##12_re*b##21_im + a##12_im*b##21_re; \
- c##12_re = a##10_re*b##02_re - a##10_im*b##02_im + a##11_re*b##12_re - a##11_im*b##12_im + a##12_re*b##22_re - a##12_im*b##22_im; \
- c##12_im = a##10_re*b##02_im + a##10_im*b##02_re + a##11_re*b##12_im + a##11_im*b##12_re + a##12_re*b##22_im + a##12_im*b##22_re; \
- c##20_re = a##20_re*b##00_re - a##20_im*b##00_im + a##21_re*b##10_re - a##21_im*b##10_im + a##22_re*b##20_re - a##22_im*b##20_im; \
- c##20_im = a##20_re*b##00_im + a##20_im*b##00_re + a##21_re*b##10_im + a##21_im*b##10_re + a##22_re*b##20_im + a##22_im*b##20_re; \
- c##21_re = a##20_re*b##01_re - a##20_im*b##01_im + a##21_re*b##11_re - a##21_im*b##11_im + a##22_re*b##21_re - a##22_im*b##21_im; \
- c##21_im = a##20_re*b##01_im + a##20_im*b##01_re + a##21_re*b##11_im + a##21_im*b##11_re + a##22_re*b##21_im + a##22_im*b##21_re; \
- c##22_re = a##20_re*b##02_re - a##20_im*b##02_im + a##21_re*b##12_re - a##21_im*b##12_im + a##22_re*b##22_re - a##22_im*b##22_im; \
- c##22_im = a##20_re*b##02_im + a##20_im*b##02_re + a##21_re*b##12_im + a##21_im*b##12_re + a##22_re*b##22_im + a##22_im*b##22_re; 
- 
+    c##00_re = a##00_re*b##00_re - a##00_im*b##00_im + a##01_re*b##10_re - a##01_im*b##10_im + a##02_re*b##20_re - a##02_im*b##20_im; \
+  c##00_im = a##00_re*b##00_im + a##00_im*b##00_re + a##01_re*b##10_im + a##01_im*b##10_re + a##02_re*b##20_im + a##02_im*b##20_re; \
+  c##01_re = a##00_re*b##01_re - a##00_im*b##01_im + a##01_re*b##11_re - a##01_im*b##11_im + a##02_re*b##21_re - a##02_im*b##21_im; \
+  c##01_im = a##00_re*b##01_im + a##00_im*b##01_re + a##01_re*b##11_im + a##01_im*b##11_re + a##02_re*b##21_im + a##02_im*b##21_re; \
+  c##02_re = a##00_re*b##02_re - a##00_im*b##02_im + a##01_re*b##12_re - a##01_im*b##12_im + a##02_re*b##22_re - a##02_im*b##22_im; \
+  c##02_im = a##00_re*b##02_im + a##00_im*b##02_re + a##01_re*b##12_im + a##01_im*b##12_re + a##02_re*b##22_im + a##02_im*b##22_re; \
+  c##10_re = a##10_re*b##00_re - a##10_im*b##00_im + a##11_re*b##10_re - a##11_im*b##10_im + a##12_re*b##20_re - a##12_im*b##20_im; \
+  c##10_im = a##10_re*b##00_im + a##10_im*b##00_re + a##11_re*b##10_im + a##11_im*b##10_re + a##12_re*b##20_im + a##12_im*b##20_re; \
+  c##11_re = a##10_re*b##01_re - a##10_im*b##01_im + a##11_re*b##11_re - a##11_im*b##11_im + a##12_re*b##21_re - a##12_im*b##21_im; \
+  c##11_im = a##10_re*b##01_im + a##10_im*b##01_re + a##11_re*b##11_im + a##11_im*b##11_re + a##12_re*b##21_im + a##12_im*b##21_re; \
+  c##12_re = a##10_re*b##02_re - a##10_im*b##02_im + a##11_re*b##12_re - a##11_im*b##12_im + a##12_re*b##22_re - a##12_im*b##22_im; \
+  c##12_im = a##10_re*b##02_im + a##10_im*b##02_re + a##11_re*b##12_im + a##11_im*b##12_re + a##12_re*b##22_im + a##12_im*b##22_re; \
+  c##20_re = a##20_re*b##00_re - a##20_im*b##00_im + a##21_re*b##10_re - a##21_im*b##10_im + a##22_re*b##20_re - a##22_im*b##20_im; \
+  c##20_im = a##20_re*b##00_im + a##20_im*b##00_re + a##21_re*b##10_im + a##21_im*b##10_re + a##22_re*b##20_im + a##22_im*b##20_re; \
+  c##21_re = a##20_re*b##01_re - a##20_im*b##01_im + a##21_re*b##11_re - a##21_im*b##11_im + a##22_re*b##21_re - a##22_im*b##21_im; \
+  c##21_im = a##20_re*b##01_im + a##20_im*b##01_re + a##21_re*b##11_im + a##21_im*b##11_re + a##22_re*b##21_im + a##22_im*b##21_re; \
+  c##22_re = a##20_re*b##02_re - a##20_im*b##02_im + a##21_re*b##12_re - a##21_im*b##12_im + a##22_re*b##22_re - a##22_im*b##22_im; \
+  c##22_im = a##20_re*b##02_im + a##20_im*b##02_re + a##21_re*b##12_im + a##21_im*b##12_re + a##22_re*b##22_im + a##22_im*b##22_re; 
+
 #define MAT_MUL_ADJ_MAT(a, b, c) \
- c##00_re =    a##00_re*b##00_re + a##00_im*b##00_im + a##01_re*b##01_re + a##01_im*b##01_im + a##02_re*b##02_re + a##02_im*b##02_im; \
- c##00_im =  - a##00_re*b##00_im + a##00_im*b##00_re - a##01_re*b##01_im + a##01_im*b##01_re - a##02_re*b##02_im + a##02_im*b##02_re; \
- c##01_re =    a##00_re*b##10_re + a##00_im*b##10_im + a##01_re*b##11_re + a##01_im*b##11_im + a##02_re*b##12_re + a##02_im*b##12_im; \
- c##01_im =  - a##00_re*b##10_im + a##00_im*b##10_re - a##01_re*b##11_im + a##01_im*b##11_re - a##02_re*b##12_im + a##02_im*b##12_re; \
- c##02_re =    a##00_re*b##20_re + a##00_im*b##20_im + a##01_re*b##21_re + a##01_im*b##21_im + a##02_re*b##22_re + a##02_im*b##22_im; \
- c##02_im =  - a##00_re*b##20_im + a##00_im*b##20_re - a##01_re*b##21_im + a##01_im*b##21_re - a##02_re*b##22_im + a##02_im*b##22_re; \
- c##10_re =    a##10_re*b##00_re + a##10_im*b##00_im + a##11_re*b##01_re + a##11_im*b##01_im + a##12_re*b##02_re + a##12_im*b##02_im; \
- c##10_im =  - a##10_re*b##00_im + a##10_im*b##00_re - a##11_re*b##01_im + a##11_im*b##01_re - a##12_re*b##02_im + a##12_im*b##02_re; \
- c##11_re =    a##10_re*b##10_re + a##10_im*b##10_im + a##11_re*b##11_re + a##11_im*b##11_im + a##12_re*b##12_re + a##12_im*b##12_im; \
- c##11_im =  - a##10_re*b##10_im + a##10_im*b##10_re - a##11_re*b##11_im + a##11_im*b##11_re - a##12_re*b##12_im + a##12_im*b##12_re; \
- c##12_re =    a##10_re*b##20_re + a##10_im*b##20_im + a##11_re*b##21_re + a##11_im*b##21_im + a##12_re*b##22_re + a##12_im*b##22_im; \
- c##12_im =  - a##10_re*b##20_im + a##10_im*b##20_re - a##11_re*b##21_im + a##11_im*b##21_re - a##12_re*b##22_im + a##12_im*b##22_re; \
- c##20_re =    a##20_re*b##00_re + a##20_im*b##00_im + a##21_re*b##01_re + a##21_im*b##01_im + a##22_re*b##02_re + a##22_im*b##02_im; \
- c##20_im =  - a##20_re*b##00_im + a##20_im*b##00_re - a##21_re*b##01_im + a##21_im*b##01_re - a##22_re*b##02_im + a##22_im*b##02_re; \
- c##21_re =    a##20_re*b##10_re + a##20_im*b##10_im + a##21_re*b##11_re + a##21_im*b##11_im + a##22_re*b##12_re + a##22_im*b##12_im; \
- c##21_im =  - a##20_re*b##10_im + a##20_im*b##10_re - a##21_re*b##11_im + a##21_im*b##11_re - a##22_re*b##12_im + a##22_im*b##12_re; \
- c##22_re =    a##20_re*b##20_re + a##20_im*b##20_im + a##21_re*b##21_re + a##21_im*b##21_im + a##22_re*b##22_re + a##22_im*b##22_im; \
- c##22_im =  - a##20_re*b##20_im + a##20_im*b##20_re - a##21_re*b##21_im + a##21_im*b##21_re - a##22_re*b##22_im + a##22_im*b##22_re; 
- 
+    c##00_re =    a##00_re*b##00_re + a##00_im*b##00_im + a##01_re*b##01_re + a##01_im*b##01_im + a##02_re*b##02_re + a##02_im*b##02_im; \
+  c##00_im =  - a##00_re*b##00_im + a##00_im*b##00_re - a##01_re*b##01_im + a##01_im*b##01_re - a##02_re*b##02_im + a##02_im*b##02_re; \
+  c##01_re =    a##00_re*b##10_re + a##00_im*b##10_im + a##01_re*b##11_re + a##01_im*b##11_im + a##02_re*b##12_re + a##02_im*b##12_im; \
+  c##01_im =  - a##00_re*b##10_im + a##00_im*b##10_re - a##01_re*b##11_im + a##01_im*b##11_re - a##02_re*b##12_im + a##02_im*b##12_re; \
+  c##02_re =    a##00_re*b##20_re + a##00_im*b##20_im + a##01_re*b##21_re + a##01_im*b##21_im + a##02_re*b##22_re + a##02_im*b##22_im; \
+  c##02_im =  - a##00_re*b##20_im + a##00_im*b##20_re - a##01_re*b##21_im + a##01_im*b##21_re - a##02_re*b##22_im + a##02_im*b##22_re; \
+  c##10_re =    a##10_re*b##00_re + a##10_im*b##00_im + a##11_re*b##01_re + a##11_im*b##01_im + a##12_re*b##02_re + a##12_im*b##02_im; \
+  c##10_im =  - a##10_re*b##00_im + a##10_im*b##00_re - a##11_re*b##01_im + a##11_im*b##01_re - a##12_re*b##02_im + a##12_im*b##02_re; \
+  c##11_re =    a##10_re*b##10_re + a##10_im*b##10_im + a##11_re*b##11_re + a##11_im*b##11_im + a##12_re*b##12_re + a##12_im*b##12_im; \
+  c##11_im =  - a##10_re*b##10_im + a##10_im*b##10_re - a##11_re*b##11_im + a##11_im*b##11_re - a##12_re*b##12_im + a##12_im*b##12_re; \
+  c##12_re =    a##10_re*b##20_re + a##10_im*b##20_im + a##11_re*b##21_re + a##11_im*b##21_im + a##12_re*b##22_re + a##12_im*b##22_im; \
+  c##12_im =  - a##10_re*b##20_im + a##10_im*b##20_re - a##11_re*b##21_im + a##11_im*b##21_re - a##12_re*b##22_im + a##12_im*b##22_re; \
+  c##20_re =    a##20_re*b##00_re + a##20_im*b##00_im + a##21_re*b##01_re + a##21_im*b##01_im + a##22_re*b##02_re + a##22_im*b##02_im; \
+  c##20_im =  - a##20_re*b##00_im + a##20_im*b##00_re - a##21_re*b##01_im + a##21_im*b##01_re - a##22_re*b##02_im + a##22_im*b##02_re; \
+  c##21_re =    a##20_re*b##10_re + a##20_im*b##10_im + a##21_re*b##11_re + a##21_im*b##11_im + a##22_re*b##12_re + a##22_im*b##12_im; \
+  c##21_im =  - a##20_re*b##10_im + a##20_im*b##10_re - a##21_re*b##11_im + a##21_im*b##11_re - a##22_re*b##12_im + a##22_im*b##12_re; \
+  c##22_re =    a##20_re*b##20_re + a##20_im*b##20_im + a##21_re*b##21_re + a##21_im*b##21_im + a##22_re*b##22_re + a##22_im*b##22_im; \
+  c##22_im =  - a##20_re*b##20_im + a##20_im*b##20_re - a##21_re*b##21_im + a##21_im*b##21_re - a##22_re*b##22_im + a##22_im*b##22_re; 
+
 #define ADJ_MAT_MUL_MAT(a, b, c) \
- c##00_re = a##00_re*b##00_re + a##00_im*b##00_im + a##10_re*b##10_re + a##10_im*b##10_im + a##20_re*b##20_re + a##20_im*b##20_im; \
- c##00_im = a##00_re*b##00_im - a##00_im*b##00_re + a##10_re*b##10_im - a##10_im*b##10_re + a##20_re*b##20_im - a##20_im*b##20_re; \
- c##01_re = a##00_re*b##01_re + a##00_im*b##01_im + a##10_re*b##11_re + a##10_im*b##11_im + a##20_re*b##21_re + a##20_im*b##21_im; \
- c##01_im = a##00_re*b##01_im - a##00_im*b##01_re + a##10_re*b##11_im - a##10_im*b##11_re + a##20_re*b##21_im - a##20_im*b##21_re; \
- c##02_re = a##00_re*b##02_re + a##00_im*b##02_im + a##10_re*b##12_re + a##10_im*b##12_im + a##20_re*b##22_re + a##20_im*b##22_im; \
- c##02_im = a##00_re*b##02_im - a##00_im*b##02_re + a##10_re*b##12_im - a##10_im*b##12_re + a##20_re*b##22_im - a##20_im*b##22_re; \
- c##10_re = a##01_re*b##00_re + a##01_im*b##00_im + a##11_re*b##10_re + a##11_im*b##10_im + a##21_re*b##20_re + a##21_im*b##20_im; \
- c##10_im = a##01_re*b##00_im - a##01_im*b##00_re + a##11_re*b##10_im - a##11_im*b##10_re + a##21_re*b##20_im - a##21_im*b##20_re; \
- c##11_re = a##01_re*b##01_re + a##01_im*b##01_im + a##11_re*b##11_re + a##11_im*b##11_im + a##21_re*b##21_re + a##21_im*b##21_im; \
- c##11_im = a##01_re*b##01_im - a##01_im*b##01_re + a##11_re*b##11_im - a##11_im*b##11_re + a##21_re*b##21_im - a##21_im*b##21_re; \
- c##12_re = a##01_re*b##02_re + a##01_im*b##02_im + a##11_re*b##12_re + a##11_im*b##12_im + a##21_re*b##22_re + a##21_im*b##22_im; \
- c##12_im = a##01_re*b##02_im - a##01_im*b##02_re + a##11_re*b##12_im - a##11_im*b##12_re + a##21_re*b##22_im - a##21_im*b##22_re; \
- c##20_re = a##02_re*b##00_re + a##02_im*b##00_im + a##12_re*b##10_re + a##12_im*b##10_im + a##22_re*b##20_re + a##22_im*b##20_im; \
- c##20_im = a##02_re*b##00_im - a##02_im*b##00_re + a##12_re*b##10_im - a##12_im*b##10_re + a##22_re*b##20_im - a##22_im*b##20_re; \
- c##21_re = a##02_re*b##01_re + a##02_im*b##01_im + a##12_re*b##11_re + a##12_im*b##11_im + a##22_re*b##21_re + a##22_im*b##21_im; \
- c##21_im = a##02_re*b##01_im - a##02_im*b##01_re + a##12_re*b##11_im - a##12_im*b##11_re + a##22_re*b##21_im - a##22_im*b##21_re; \
- c##22_re = a##02_re*b##02_re + a##02_im*b##02_im + a##12_re*b##12_re + a##12_im*b##12_im + a##22_re*b##22_re + a##22_im*b##22_im; \
- c##22_im = a##02_re*b##02_im - a##02_im*b##02_re + a##12_re*b##12_im - a##12_im*b##12_re + a##22_re*b##22_im - a##22_im*b##22_re; 
+    c##00_re = a##00_re*b##00_re + a##00_im*b##00_im + a##10_re*b##10_re + a##10_im*b##10_im + a##20_re*b##20_re + a##20_im*b##20_im; \
+  c##00_im = a##00_re*b##00_im - a##00_im*b##00_re + a##10_re*b##10_im - a##10_im*b##10_re + a##20_re*b##20_im - a##20_im*b##20_re; \
+  c##01_re = a##00_re*b##01_re + a##00_im*b##01_im + a##10_re*b##11_re + a##10_im*b##11_im + a##20_re*b##21_re + a##20_im*b##21_im; \
+  c##01_im = a##00_re*b##01_im - a##00_im*b##01_re + a##10_re*b##11_im - a##10_im*b##11_re + a##20_re*b##21_im - a##20_im*b##21_re; \
+  c##02_re = a##00_re*b##02_re + a##00_im*b##02_im + a##10_re*b##12_re + a##10_im*b##12_im + a##20_re*b##22_re + a##20_im*b##22_im; \
+  c##02_im = a##00_re*b##02_im - a##00_im*b##02_re + a##10_re*b##12_im - a##10_im*b##12_re + a##20_re*b##22_im - a##20_im*b##22_re; \
+  c##10_re = a##01_re*b##00_re + a##01_im*b##00_im + a##11_re*b##10_re + a##11_im*b##10_im + a##21_re*b##20_re + a##21_im*b##20_im; \
+  c##10_im = a##01_re*b##00_im - a##01_im*b##00_re + a##11_re*b##10_im - a##11_im*b##10_re + a##21_re*b##20_im - a##21_im*b##20_re; \
+  c##11_re = a##01_re*b##01_re + a##01_im*b##01_im + a##11_re*b##11_re + a##11_im*b##11_im + a##21_re*b##21_re + a##21_im*b##21_im; \
+  c##11_im = a##01_re*b##01_im - a##01_im*b##01_re + a##11_re*b##11_im - a##11_im*b##11_re + a##21_re*b##21_im - a##21_im*b##21_re; \
+  c##12_re = a##01_re*b##02_re + a##01_im*b##02_im + a##11_re*b##12_re + a##11_im*b##12_im + a##21_re*b##22_re + a##21_im*b##22_im; \
+  c##12_im = a##01_re*b##02_im - a##01_im*b##02_re + a##11_re*b##12_im - a##11_im*b##12_re + a##21_re*b##22_im - a##21_im*b##22_re; \
+  c##20_re = a##02_re*b##00_re + a##02_im*b##00_im + a##12_re*b##10_re + a##12_im*b##10_im + a##22_re*b##20_re + a##22_im*b##20_im; \
+  c##20_im = a##02_re*b##00_im - a##02_im*b##00_re + a##12_re*b##10_im - a##12_im*b##10_re + a##22_re*b##20_im - a##22_im*b##20_re; \
+  c##21_re = a##02_re*b##01_re + a##02_im*b##01_im + a##12_re*b##11_re + a##12_im*b##11_im + a##22_re*b##21_re + a##22_im*b##21_im; \
+  c##21_im = a##02_re*b##01_im - a##02_im*b##01_re + a##12_re*b##11_im - a##12_im*b##11_re + a##22_re*b##21_im - a##22_im*b##21_re; \
+  c##22_re = a##02_re*b##02_re + a##02_im*b##02_im + a##12_re*b##12_re + a##12_im*b##12_im + a##22_re*b##22_re + a##22_im*b##22_im; \
+  c##22_im = a##02_re*b##02_im - a##02_im*b##02_re + a##12_re*b##12_im - a##12_im*b##12_re + a##22_re*b##22_im - a##22_im*b##22_re; 
 
 #define ADJ_MAT_MUL_ADJ_MAT(a, b, c) \
- c##00_re =    a##00_re*b##00_re - a##00_im*b##00_im + a##10_re*b##01_re - a##10_im*b##01_im + a##20_re*b##02_re - a##20_im*b##02_im; \
- c##00_im =  - a##00_re*b##00_im - a##00_im*b##00_re - a##10_re*b##01_im - a##10_im*b##01_re - a##20_re*b##02_im - a##20_im*b##02_re; \
- c##01_re =    a##00_re*b##10_re - a##00_im*b##10_im + a##10_re*b##11_re - a##10_im*b##11_im + a##20_re*b##12_re - a##20_im*b##12_im; \
- c##01_im =  - a##00_re*b##10_im - a##00_im*b##10_re - a##10_re*b##11_im - a##10_im*b##11_re - a##20_re*b##12_im - a##20_im*b##12_re; \
- c##02_re =    a##00_re*b##20_re - a##00_im*b##20_im + a##10_re*b##21_re - a##10_im*b##21_im + a##20_re*b##22_re - a##20_im*b##22_im; \
- c##02_im =  - a##00_re*b##20_im - a##00_im*b##20_re - a##10_re*b##21_im - a##10_im*b##21_re - a##20_re*b##22_im - a##20_im*b##22_re; \
- c##10_re =    a##01_re*b##00_re - a##01_im*b##00_im + a##11_re*b##01_re - a##11_im*b##01_im + a##21_re*b##02_re - a##21_im*b##02_im; \
- c##10_im =  - a##01_re*b##00_im - a##01_im*b##00_re - a##11_re*b##01_im - a##11_im*b##01_re - a##21_re*b##02_im - a##21_im*b##02_re; \
- c##11_re =    a##01_re*b##10_re - a##01_im*b##10_im + a##11_re*b##11_re - a##11_im*b##11_im + a##21_re*b##12_re - a##21_im*b##12_im; \
- c##11_im =  - a##01_re*b##10_im - a##01_im*b##10_re - a##11_re*b##11_im - a##11_im*b##11_re - a##21_re*b##12_im - a##21_im*b##12_re; \
- c##12_re =    a##01_re*b##20_re - a##01_im*b##20_im + a##11_re*b##21_re - a##11_im*b##21_im + a##21_re*b##22_re - a##21_im*b##22_im; \
- c##12_im =  - a##01_re*b##20_im - a##01_im*b##20_re - a##11_re*b##21_im - a##11_im*b##21_re - a##21_re*b##22_im - a##21_im*b##22_re; \
- c##20_re =    a##02_re*b##00_re - a##02_im*b##00_im + a##12_re*b##01_re - a##12_im*b##01_im + a##22_re*b##02_re - a##22_im*b##02_im; \
- c##20_im =  - a##02_re*b##00_im - a##02_im*b##00_re - a##12_re*b##01_im - a##12_im*b##01_re - a##22_re*b##02_im - a##22_im*b##02_re; \
- c##21_re =    a##02_re*b##10_re - a##02_im*b##10_im + a##12_re*b##11_re - a##12_im*b##11_im + a##22_re*b##12_re - a##22_im*b##12_im; \
- c##21_im =  - a##02_re*b##10_im - a##02_im*b##10_re - a##12_re*b##11_im - a##12_im*b##11_re - a##22_re*b##12_im - a##22_im*b##12_re; \
- c##22_re =    a##02_re*b##20_re - a##02_im*b##20_im + a##12_re*b##21_re - a##12_im*b##21_im + a##22_re*b##22_re - a##22_im*b##22_im; \
- c##22_im =  - a##02_re*b##20_im - a##02_im*b##20_re - a##12_re*b##21_im - a##12_im*b##21_re - a##22_re*b##22_im - a##22_im*b##22_re; 
+    c##00_re =    a##00_re*b##00_re - a##00_im*b##00_im + a##10_re*b##01_re - a##10_im*b##01_im + a##20_re*b##02_re - a##20_im*b##02_im; \
+  c##00_im =  - a##00_re*b##00_im - a##00_im*b##00_re - a##10_re*b##01_im - a##10_im*b##01_re - a##20_re*b##02_im - a##20_im*b##02_re; \
+  c##01_re =    a##00_re*b##10_re - a##00_im*b##10_im + a##10_re*b##11_re - a##10_im*b##11_im + a##20_re*b##12_re - a##20_im*b##12_im; \
+  c##01_im =  - a##00_re*b##10_im - a##00_im*b##10_re - a##10_re*b##11_im - a##10_im*b##11_re - a##20_re*b##12_im - a##20_im*b##12_re; \
+  c##02_re =    a##00_re*b##20_re - a##00_im*b##20_im + a##10_re*b##21_re - a##10_im*b##21_im + a##20_re*b##22_re - a##20_im*b##22_im; \
+  c##02_im =  - a##00_re*b##20_im - a##00_im*b##20_re - a##10_re*b##21_im - a##10_im*b##21_re - a##20_re*b##22_im - a##20_im*b##22_re; \
+  c##10_re =    a##01_re*b##00_re - a##01_im*b##00_im + a##11_re*b##01_re - a##11_im*b##01_im + a##21_re*b##02_re - a##21_im*b##02_im; \
+  c##10_im =  - a##01_re*b##00_im - a##01_im*b##00_re - a##11_re*b##01_im - a##11_im*b##01_re - a##21_re*b##02_im - a##21_im*b##02_re; \
+  c##11_re =    a##01_re*b##10_re - a##01_im*b##10_im + a##11_re*b##11_re - a##11_im*b##11_im + a##21_re*b##12_re - a##21_im*b##12_im; \
+  c##11_im =  - a##01_re*b##10_im - a##01_im*b##10_re - a##11_re*b##11_im - a##11_im*b##11_re - a##21_re*b##12_im - a##21_im*b##12_re; \
+  c##12_re =    a##01_re*b##20_re - a##01_im*b##20_im + a##11_re*b##21_re - a##11_im*b##21_im + a##21_re*b##22_re - a##21_im*b##22_im; \
+  c##12_im =  - a##01_re*b##20_im - a##01_im*b##20_re - a##11_re*b##21_im - a##11_im*b##21_re - a##21_re*b##22_im - a##21_im*b##22_re; \
+  c##20_re =    a##02_re*b##00_re - a##02_im*b##00_im + a##12_re*b##01_re - a##12_im*b##01_im + a##22_re*b##02_re - a##22_im*b##02_im; \
+  c##20_im =  - a##02_re*b##00_im - a##02_im*b##00_re - a##12_re*b##01_im - a##12_im*b##01_re - a##22_re*b##02_im - a##22_im*b##02_re; \
+  c##21_re =    a##02_re*b##10_re - a##02_im*b##10_im + a##12_re*b##11_re - a##12_im*b##11_im + a##22_re*b##12_re - a##22_im*b##12_im; \
+  c##21_im =  - a##02_re*b##10_im - a##02_im*b##10_re - a##12_re*b##11_im - a##12_im*b##11_re - a##22_re*b##12_im - a##22_im*b##12_re; \
+  c##22_re =    a##02_re*b##20_re - a##02_im*b##20_im + a##12_re*b##21_re - a##12_im*b##21_im + a##22_re*b##22_re - a##22_im*b##22_im; \
+  c##22_im =  - a##02_re*b##20_im - a##02_im*b##20_re - a##12_re*b##21_im - a##12_im*b##21_re - a##22_re*b##22_im - a##22_im*b##22_re; 
 
-// end of macros specific to hisq routines
+  // end of macros specific to hisq routines
 
 #define MAT_MUL_HW(M, HW, HWOUT)					\
     HWOUT##00_re = (M##00_re * HW##00_re - M##00_im * HW##00_im)	\
-	+          (M##01_re * HW##01_re - M##01_im * HW##01_im)	\
-	+          (M##02_re * HW##02_re - M##02_im * HW##02_im);	\
-    HWOUT##00_im = (M##00_re * HW##00_im + M##00_im * HW##00_re)	\
-	+          (M##01_re * HW##01_im + M##01_im * HW##01_re)	\
-	+          (M##02_re * HW##02_im + M##02_im * HW##02_re);	\
-    HWOUT##01_re = (M##10_re * HW##00_re - M##10_im * HW##00_im)	\
-	+          (M##11_re * HW##01_re - M##11_im * HW##01_im)	\
-	+          (M##12_re * HW##02_re - M##12_im * HW##02_im);	\
-    HWOUT##01_im = (M##10_re * HW##00_im + M##10_im * HW##00_re) 	\
-	+          (M##11_re * HW##01_im + M##11_im * HW##01_re)	\
-	+          (M##12_re * HW##02_im + M##12_im * HW##02_re);	\
-    HWOUT##02_re = (M##20_re * HW##00_re - M##20_im * HW##00_im)	\
-	+          (M##21_re * HW##01_re - M##21_im * HW##01_im)	\
-	+          (M##22_re * HW##02_re - M##22_im * HW##02_im);	\
-    HWOUT##02_im = (M##20_re * HW##00_im + M##20_im * HW##00_re)	\
-	+          (M##21_re * HW##01_im + M##21_im * HW##01_re)	\
-	+          (M##22_re * HW##02_im + M##22_im * HW##02_re);	\
-    HWOUT##10_re = (M##00_re * HW##10_re - M##00_im * HW##10_im)	\
-	+          (M##01_re * HW##11_re - M##01_im * HW##11_im)	\
-	+          (M##02_re * HW##12_re - M##02_im * HW##12_im);	\
-    HWOUT##10_im = (M##00_re * HW##10_im + M##00_im * HW##10_re)	\
-	+          (M##01_re * HW##11_im + M##01_im * HW##11_re)	\
-	+          (M##02_re * HW##12_im + M##02_im * HW##12_re);	\
-    HWOUT##11_re = (M##10_re * HW##10_re - M##10_im * HW##10_im)	\
-	+          (M##11_re * HW##11_re - M##11_im * HW##11_im)	\
-	+          (M##12_re * HW##12_re - M##12_im * HW##12_im);	\
-    HWOUT##11_im = (M##10_re * HW##10_im + M##10_im * HW##10_re) 	\
-	+          (M##11_re * HW##11_im + M##11_im * HW##11_re)	\
-	+          (M##12_re * HW##12_im + M##12_im * HW##12_re);	\
-    HWOUT##12_re = (M##20_re * HW##10_re - M##20_im * HW##10_im)	\
-	+          (M##21_re * HW##11_re - M##21_im * HW##11_im)	\
-	+          (M##22_re * HW##12_re - M##22_im * HW##12_im);	\
-    HWOUT##12_im = (M##20_re * HW##10_im + M##20_im * HW##10_re)	\
-	+          (M##21_re * HW##11_im + M##21_im * HW##11_re)	\
-	+          (M##22_re * HW##12_im + M##22_im * HW##12_re);
+  +          (M##01_re * HW##01_re - M##01_im * HW##01_im)	\
+  +          (M##02_re * HW##02_re - M##02_im * HW##02_im);	\
+  HWOUT##00_im = (M##00_re * HW##00_im + M##00_im * HW##00_re)	\
+  +          (M##01_re * HW##01_im + M##01_im * HW##01_re)	\
+  +          (M##02_re * HW##02_im + M##02_im * HW##02_re);	\
+  HWOUT##01_re = (M##10_re * HW##00_re - M##10_im * HW##00_im)	\
+  +          (M##11_re * HW##01_re - M##11_im * HW##01_im)	\
+  +          (M##12_re * HW##02_re - M##12_im * HW##02_im);	\
+  HWOUT##01_im = (M##10_re * HW##00_im + M##10_im * HW##00_re) 	\
+  +          (M##11_re * HW##01_im + M##11_im * HW##01_re)	\
+  +          (M##12_re * HW##02_im + M##12_im * HW##02_re);	\
+  HWOUT##02_re = (M##20_re * HW##00_re - M##20_im * HW##00_im)	\
+  +          (M##21_re * HW##01_re - M##21_im * HW##01_im)	\
+  +          (M##22_re * HW##02_re - M##22_im * HW##02_im);	\
+  HWOUT##02_im = (M##20_re * HW##00_im + M##20_im * HW##00_re)	\
+  +          (M##21_re * HW##01_im + M##21_im * HW##01_re)	\
+  +          (M##22_re * HW##02_im + M##22_im * HW##02_re);	\
+  HWOUT##10_re = (M##00_re * HW##10_re - M##00_im * HW##10_im)	\
+  +          (M##01_re * HW##11_re - M##01_im * HW##11_im)	\
+  +          (M##02_re * HW##12_re - M##02_im * HW##12_im);	\
+  HWOUT##10_im = (M##00_re * HW##10_im + M##00_im * HW##10_re)	\
+  +          (M##01_re * HW##11_im + M##01_im * HW##11_re)	\
+  +          (M##02_re * HW##12_im + M##02_im * HW##12_re);	\
+  HWOUT##11_re = (M##10_re * HW##10_re - M##10_im * HW##10_im)	\
+  +          (M##11_re * HW##11_re - M##11_im * HW##11_im)	\
+  +          (M##12_re * HW##12_re - M##12_im * HW##12_im);	\
+  HWOUT##11_im = (M##10_re * HW##10_im + M##10_im * HW##10_re) 	\
+  +          (M##11_re * HW##11_im + M##11_im * HW##11_re)	\
+  +          (M##12_re * HW##12_im + M##12_im * HW##12_re);	\
+  HWOUT##12_re = (M##20_re * HW##10_re - M##20_im * HW##10_im)	\
+  +          (M##21_re * HW##11_re - M##21_im * HW##11_im)	\
+  +          (M##22_re * HW##12_re - M##22_im * HW##12_im);	\
+  HWOUT##12_im = (M##20_re * HW##10_im + M##20_im * HW##10_re)	\
+  +          (M##21_re * HW##11_im + M##21_im * HW##11_re)	\
+  +          (M##22_re * HW##12_im + M##22_im * HW##12_re);
 
 
 #define ADJ_MAT_MUL_HW(M, HW, HWOUT)					\
     HWOUT##00_re = (M##00_re * HW##00_re + M##00_im * HW##00_im)	\
-	+          (M##10_re * HW##01_re + M##10_im * HW##01_im)	\
-	+          (M##20_re * HW##02_re + M##20_im * HW##02_im);	\
-    HWOUT##00_im = (M##00_re * HW##00_im - M##00_im * HW##00_re)	\
-	+          (M##10_re * HW##01_im - M##10_im * HW##01_re)	\
-	+          (M##20_re * HW##02_im - M##20_im * HW##02_re);	\
-    HWOUT##01_re = (M##01_re * HW##00_re + M##01_im * HW##00_im)	\
-	+          (M##11_re * HW##01_re + M##11_im * HW##01_im)	\
-	+          (M##21_re * HW##02_re + M##21_im * HW##02_im);	\
-    HWOUT##01_im = (M##01_re * HW##00_im - M##01_im * HW##00_re)	\
-	+          (M##11_re * HW##01_im - M##11_im * HW##01_re)	\
-	+          (M##21_re * HW##02_im - M##21_im * HW##02_re);	\
-    HWOUT##02_re = (M##02_re * HW##00_re + M##02_im * HW##00_im)	\
-	+          (M##12_re * HW##01_re + M##12_im * HW##01_im)	\
-	+          (M##22_re * HW##02_re + M##22_im * HW##02_im);	\
-    HWOUT##02_im = (M##02_re * HW##00_im - M##02_im * HW##00_re)	\
-	+          (M##12_re * HW##01_im - M##12_im * HW##01_re)	\
-	+          (M##22_re * HW##02_im - M##22_im * HW##02_re);	\
-    HWOUT##10_re = (M##00_re * HW##10_re + M##00_im * HW##10_im)	\
-	+          (M##10_re * HW##11_re + M##10_im * HW##11_im)	\
-	+          (M##20_re * HW##12_re + M##20_im * HW##12_im);	\
-    HWOUT##10_im = (M##00_re * HW##10_im - M##00_im * HW##10_re)	\
-	+          (M##10_re * HW##11_im - M##10_im * HW##11_re)	\
-	+          (M##20_re * HW##12_im - M##20_im * HW##12_re);	\
-    HWOUT##11_re = (M##01_re * HW##10_re + M##01_im * HW##10_im)	\
-	+          (M##11_re * HW##11_re + M##11_im * HW##11_im)	\
-	+          (M##21_re * HW##12_re + M##21_im * HW##12_im);	\
-    HWOUT##11_im = (M##01_re * HW##10_im - M##01_im * HW##10_re)	\
-	+          (M##11_re * HW##11_im - M##11_im * HW##11_re)	\
-	+          (M##21_re * HW##12_im - M##21_im * HW##12_re);	\
-    HWOUT##12_re = (M##02_re * HW##10_re + M##02_im * HW##10_im)	\
-	+          (M##12_re * HW##11_re + M##12_im * HW##11_im)	\
-	+          (M##22_re * HW##12_re + M##22_im * HW##12_im);	\
-    HWOUT##12_im = (M##02_re * HW##10_im - M##02_im * HW##10_re)	\
-	+          (M##12_re * HW##11_im - M##12_im * HW##11_re)	\
-	+          (M##22_re * HW##12_im - M##22_im * HW##12_re);
+  +          (M##10_re * HW##01_re + M##10_im * HW##01_im)	\
+  +          (M##20_re * HW##02_re + M##20_im * HW##02_im);	\
+  HWOUT##00_im = (M##00_re * HW##00_im - M##00_im * HW##00_re)	\
+  +          (M##10_re * HW##01_im - M##10_im * HW##01_re)	\
+  +          (M##20_re * HW##02_im - M##20_im * HW##02_re);	\
+  HWOUT##01_re = (M##01_re * HW##00_re + M##01_im * HW##00_im)	\
+  +          (M##11_re * HW##01_re + M##11_im * HW##01_im)	\
+  +          (M##21_re * HW##02_re + M##21_im * HW##02_im);	\
+  HWOUT##01_im = (M##01_re * HW##00_im - M##01_im * HW##00_re)	\
+  +          (M##11_re * HW##01_im - M##11_im * HW##01_re)	\
+  +          (M##21_re * HW##02_im - M##21_im * HW##02_re);	\
+  HWOUT##02_re = (M##02_re * HW##00_re + M##02_im * HW##00_im)	\
+  +          (M##12_re * HW##01_re + M##12_im * HW##01_im)	\
+  +          (M##22_re * HW##02_re + M##22_im * HW##02_im);	\
+  HWOUT##02_im = (M##02_re * HW##00_im - M##02_im * HW##00_re)	\
+  +          (M##12_re * HW##01_im - M##12_im * HW##01_re)	\
+  +          (M##22_re * HW##02_im - M##22_im * HW##02_re);	\
+  HWOUT##10_re = (M##00_re * HW##10_re + M##00_im * HW##10_im)	\
+  +          (M##10_re * HW##11_re + M##10_im * HW##11_im)	\
+  +          (M##20_re * HW##12_re + M##20_im * HW##12_im);	\
+  HWOUT##10_im = (M##00_re * HW##10_im - M##00_im * HW##10_re)	\
+  +          (M##10_re * HW##11_im - M##10_im * HW##11_re)	\
+  +          (M##20_re * HW##12_im - M##20_im * HW##12_re);	\
+  HWOUT##11_re = (M##01_re * HW##10_re + M##01_im * HW##10_im)	\
+  +          (M##11_re * HW##11_re + M##11_im * HW##11_im)	\
+  +          (M##21_re * HW##12_re + M##21_im * HW##12_im);	\
+  HWOUT##11_im = (M##01_re * HW##10_im - M##01_im * HW##10_re)	\
+  +          (M##11_re * HW##11_im - M##11_im * HW##11_re)	\
+  +          (M##21_re * HW##12_im - M##21_im * HW##12_re);	\
+  HWOUT##12_re = (M##02_re * HW##10_re + M##02_im * HW##10_im)	\
+  +          (M##12_re * HW##11_re + M##12_im * HW##11_im)	\
+  +          (M##22_re * HW##12_re + M##22_im * HW##12_im);	\
+  HWOUT##12_im = (M##02_re * HW##10_im - M##02_im * HW##10_re)	\
+  +          (M##12_re * HW##11_im - M##12_im * HW##11_re)	\
+  +          (M##22_re * HW##12_im - M##22_im * HW##12_re);
 
 
 #define SU3_PROJECTOR(va, vb, m)					\
     m##00_re = va##0_re * vb##0_re + va##0_im * vb##0_im;		\
-    m##00_im = va##0_im * vb##0_re - va##0_re * vb##0_im;		\
-    m##01_re = va##0_re * vb##1_re + va##0_im * vb##1_im;		\
-    m##01_im = va##0_im * vb##1_re - va##0_re * vb##1_im;		\
-    m##02_re = va##0_re * vb##2_re + va##0_im * vb##2_im;		\
-    m##02_im = va##0_im * vb##2_re - va##0_re * vb##2_im;		\
-    m##10_re = va##1_re * vb##0_re + va##1_im * vb##0_im;		\
-    m##10_im = va##1_im * vb##0_re - va##1_re * vb##0_im;		\
-    m##11_re = va##1_re * vb##1_re + va##1_im * vb##1_im;		\
-    m##11_im = va##1_im * vb##1_re - va##1_re * vb##1_im;		\
-    m##12_re = va##1_re * vb##2_re + va##1_im * vb##2_im;		\
-    m##12_im = va##1_im * vb##2_re - va##1_re * vb##2_im;		\
-    m##20_re = va##2_re * vb##0_re + va##2_im * vb##0_im;		\
-    m##20_im = va##2_im * vb##0_re - va##2_re * vb##0_im;		\
-    m##21_re = va##2_re * vb##1_re + va##2_im * vb##1_im;		\
-    m##21_im = va##2_im * vb##1_re - va##2_re * vb##1_im;		\
-    m##22_re = va##2_re * vb##2_re + va##2_im * vb##2_im;		\
-    m##22_im = va##2_im * vb##2_re - va##2_re * vb##2_im;
+  m##00_im = va##0_im * vb##0_re - va##0_re * vb##0_im;		\
+  m##01_re = va##0_re * vb##1_re + va##0_im * vb##1_im;		\
+  m##01_im = va##0_im * vb##1_re - va##0_re * vb##1_im;		\
+  m##02_re = va##0_re * vb##2_re + va##0_im * vb##2_im;		\
+  m##02_im = va##0_im * vb##2_re - va##0_re * vb##2_im;		\
+  m##10_re = va##1_re * vb##0_re + va##1_im * vb##0_im;		\
+  m##10_im = va##1_im * vb##0_re - va##1_re * vb##0_im;		\
+  m##11_re = va##1_re * vb##1_re + va##1_im * vb##1_im;		\
+  m##11_im = va##1_im * vb##1_re - va##1_re * vb##1_im;		\
+  m##12_re = va##1_re * vb##2_re + va##1_im * vb##2_im;		\
+  m##12_im = va##1_im * vb##2_re - va##1_re * vb##2_im;		\
+  m##20_re = va##2_re * vb##0_re + va##2_im * vb##0_im;		\
+  m##20_im = va##2_im * vb##0_re - va##2_re * vb##0_im;		\
+  m##21_re = va##2_re * vb##1_re + va##2_im * vb##1_im;		\
+  m##21_im = va##2_im * vb##1_re - va##2_re * vb##1_im;		\
+  m##22_re = va##2_re * vb##2_re + va##2_im * vb##2_im;		\
+  m##22_im = va##2_im * vb##2_re - va##2_re * vb##2_im;
 
-//vc = va + vb*s 
+  //vc = va + vb*s 
 #define SCALAR_MULT_ADD_SU3_VECTOR(va, vb, s, vc) do {	\
-	vc##0_re = va##0_re + vb##0_re * s;		\
-	vc##0_im = va##0_im + vb##0_im * s;		\
-	vc##1_re = va##1_re + vb##1_re * s;		\
-	vc##1_im = va##1_im + vb##1_im * s;		\
-	vc##2_re = va##2_re + vb##2_re * s;		\
-	vc##2_im = va##2_im + vb##2_im * s;		\
-    }while (0)
+  vc##0_re = va##0_re + vb##0_re * s;		\
+  vc##0_im = va##0_im + vb##0_im * s;		\
+  vc##1_re = va##1_re + vb##1_re * s;		\
+  vc##1_im = va##1_im + vb##1_im * s;		\
+  vc##2_re = va##2_re + vb##2_re * s;		\
+  vc##2_im = va##2_im + vb##2_im * s;		\
+}while (0)
 
 
 #define SCALAR_MULT_ADD_MATRIX(a, b, scalar, c) do{ \
@@ -558,168 +539,168 @@
 
 
 #define FF_COMPUTE_NEW_FULL_IDX_PLUS_UPDATE(mydir, idx, new_idx) do {	\
-        switch(mydir){                                                  \
-        case 0:                                                         \
-            new_idx = ( (new_x1==X1m1)?idx-X1m1:idx+1);			\
-            new_x1 = (new_x1==X1m1)?0:new_x1+1;                         \
-            break;                                                      \
-        case 1:                                                         \
-            new_idx = ( (new_x2==X2m1)?idx-X2X1mX1:idx+X1);		\
-            new_x2 = (new_x2==X2m1)?0:new_x2+1;                         \
-            break;                                                      \
-        case 2:                                                         \
-            new_idx = ( (new_x3==X3m1)?idx-X3X2X1mX2X1:idx+X2X1);	\
-            new_x3 = (new_x3==X3m1)?0:new_x3+1;                         \
-            break;                                                      \
-        case 3:                                                         \
-            new_idx = ( (new_x4==X4m1)?idx-X4X3X2X1mX3X2X1:idx+X3X2X1); \
-            new_x4 = (new_x4==X4m1)?0:new_x4+1;                         \
-            break;                                                      \
-        }                                                               \
-    }while(0)
+  switch(mydir){                                                  \
+    case 0:                                                         \
+                                                                    new_idx = ( (new_x1==X1m1)?idx-X1m1:idx+1);			\
+    new_x1 = (new_x1==X1m1)?0:new_x1+1;                         \
+    break;                                                      \
+    case 1:                                                         \
+                                                                    new_idx = ( (new_x2==X2m1)?idx-X2X1mX1:idx+X1);		\
+    new_x2 = (new_x2==X2m1)?0:new_x2+1;                         \
+    break;                                                      \
+    case 2:                                                         \
+                                                                    new_idx = ( (new_x3==X3m1)?idx-X3X2X1mX2X1:idx+X2X1);	\
+    new_x3 = (new_x3==X3m1)?0:new_x3+1;                         \
+    break;                                                      \
+    case 3:                                                         \
+                                                                    new_idx = ( (new_x4==X4m1)?idx-X4X3X2X1mX3X2X1:idx+X3X2X1); \
+    new_x4 = (new_x4==X4m1)?0:new_x4+1;                         \
+    break;                                                      \
+  }                                                               \
+}while(0)
 
 #define FF_COMPUTE_NEW_FULL_IDX_MINUS_UPDATE(mydir, idx, new_idx) do {	\
-        switch(mydir){                                                  \
-        case 0:                                                         \
-            new_idx = ( (new_x1==0)?idx+X1m1:idx-1);			\
-            new_x1 = (new_x1==0)?X1m1:new_x1 - 1;                       \
-            break;                                                      \
-        case 1:                                                         \
-            new_idx = ( (new_x2==0)?idx+X2X1mX1:idx-X1);		\
-            new_x2 = (new_x2==0)?X2m1:new_x2 - 1;                       \
-            break;                                                      \
-        case 2:                                                         \
-            new_idx = ( (new_x3==0)?idx+X3X2X1mX2X1:idx-X2X1);		\
-            new_x3 = (new_x3==0)?X3m1:new_x3 - 1;                       \
-            break;                                                      \
-        case 3:                                                         \
-            new_idx = ( (new_x4==0)?idx+X4X3X2X1mX3X2X1:idx-X3X2X1);	\
-            new_x4 = (new_x4==0)?X4m1:new_x4 - 1;                       \
-            break;                                                      \
-        }                                                               \
-    }while(0)
+  switch(mydir){                                                  \
+    case 0:                                                         \
+                                                                    new_idx = ( (new_x1==0)?idx+X1m1:idx-1);			\
+    new_x1 = (new_x1==0)?X1m1:new_x1 - 1;                       \
+    break;                                                      \
+    case 1:                                                         \
+                                                                    new_idx = ( (new_x2==0)?idx+X2X1mX1:idx-X1);		\
+    new_x2 = (new_x2==0)?X2m1:new_x2 - 1;                       \
+    break;                                                      \
+    case 2:                                                         \
+                                                                    new_idx = ( (new_x3==0)?idx+X3X2X1mX2X1:idx-X2X1);		\
+    new_x3 = (new_x3==0)?X3m1:new_x3 - 1;                       \
+    break;                                                      \
+    case 3:                                                         \
+                                                                    new_idx = ( (new_x4==0)?idx+X4X3X2X1mX3X2X1:idx-X3X2X1);	\
+    new_x4 = (new_x4==0)?X4m1:new_x4 - 1;                       \
+    break;                                                      \
+  }                                                               \
+}while(0)
 
 
 
 #define FF_COMPUTE_NEW_FULL_IDX_PLUS(old_x1, old_x2, old_x3, old_x4, idx, mydir, new_idx) do { \
-        switch(mydir){                                                  \
-        case 0:                                                         \
-            new_idx = ( (old_x1==X1m1)?idx-X1m1:idx+1);			\
-            break;                                                      \
-        case 1:                                                         \
-            new_idx = ( (old_x2==X2m1)?idx-X2X1mX1:idx+X1);		\
-            break;                                                      \
-        case 2:                                                         \
-            new_idx = ( (old_x3==X3m1)?idx-X3X2X1mX2X1:idx+X2X1);	\
-            break;                                                      \
-        case 3:                                                         \
-            new_idx = ( (old_x4==X4m1)?idx-X4X3X2X1mX3X2X1:idx+X3X2X1); \
-            break;                                                      \
-        }                                                               \
-    }while(0)
+  switch(mydir){                                                  \
+    case 0:                                                         \
+                                                                    new_idx = ( (old_x1==X1m1)?idx-X1m1:idx+1);			\
+    break;                                                      \
+    case 1:                                                         \
+                                                                    new_idx = ( (old_x2==X2m1)?idx-X2X1mX1:idx+X1);		\
+    break;                                                      \
+    case 2:                                                         \
+                                                                    new_idx = ( (old_x3==X3m1)?idx-X3X2X1mX2X1:idx+X2X1);	\
+    break;                                                      \
+    case 3:                                                         \
+                                                                    new_idx = ( (old_x4==X4m1)?idx-X4X3X2X1mX3X2X1:idx+X3X2X1); \
+    break;                                                      \
+  }                                                               \
+}while(0)
 
 #define FF_COMPUTE_NEW_FULL_IDX_MINUS(old_x1, old_x2, old_x3, old_x4, idx, mydir, new_idx) do { \
-        switch(mydir){                                                  \
-        case 0:                                                         \
-            new_idx = ( (old_x1==0)?idx+X1m1:idx-1);			\
-            break;                                                      \
-        case 1:                                                         \
-            new_idx = ( (old_x2==0)?idx+X2X1mX1:idx-X1);		\
-            break;                                                      \
-        case 2:                                                         \
-            new_idx = ( (old_x3==0)?idx+X3X2X1mX2X1:idx-X2X1);		\
-            break;                                                      \
-        case 3:                                                         \
-            new_idx = ( (old_x4==0)?idx+X4X3X2X1mX3X2X1:idx-X3X2X1);	\
-            break;                                                      \
-        }                                                               \
-    }while(0)
+  switch(mydir){                                                  \
+    case 0:                                                         \
+                                                                    new_idx = ( (old_x1==0)?idx+X1m1:idx-1);			\
+    break;                                                      \
+    case 1:                                                         \
+                                                                    new_idx = ( (old_x2==0)?idx+X2X1mX1:idx-X1);		\
+    break;                                                      \
+    case 2:                                                         \
+                                                                    new_idx = ( (old_x3==0)?idx+X3X2X1mX2X1:idx-X2X1);		\
+    break;                                                      \
+    case 3:                                                         \
+                                                                    new_idx = ( (old_x4==0)?idx+X4X3X2X1mX3X2X1:idx-X3X2X1);	\
+    break;                                                      \
+  }                                                               \
+}while(0)
 
-//this macro require linka, linkb, and ah variables defined
+  //this macro require linka, linkb, and ah variables defined
 #define ADD_FORCE_TO_MOM(hw1, hw2, mom, idx, dir, cf,oddness) do{	\
-	float my_coeff;						\
-	int mydir;							\
-	if (GOES_BACKWARDS(dir)){					\
-	    mydir=OPP_DIR(dir);						\
-	    my_coeff = -cf;						\
-	}else{								\
-	    mydir=dir;							\
-	    my_coeff = cf;						\
-	}								\
-	float tmp_coeff;						\
-	tmp_coeff = my_coeff;					        \
-	if(oddness){							\
-	    tmp_coeff = - my_coeff;					\
-	}								\
-	LOAD_ANTI_HERMITIAN(mom, mydir, idx, AH);			\
-	UNCOMPRESS_ANTI_HERMITIAN(ah, linka);				\
-	SU3_PROJECTOR(hw1##0, hw2##0, linkb);				\
-	SCALAR_MULT_ADD_SU3_MATRIX(linka, linkb, tmp_coeff, linka);	\
-	SU3_PROJECTOR(hw1##1, hw2##1, linkb);				\
-	SCALAR_MULT_ADD_SU3_MATRIX(linka, linkb, tmp_coeff, linka);	\
-	MAKE_ANTI_HERMITIAN(linka, ah);					\
-	WRITE_ANTI_HERMITIAN_SINGLE(mom, mydir, idx, AH);		\
-    }while(0)
+  float my_coeff;						\
+  int mydir;							\
+  if (GOES_BACKWARDS(dir)){					\
+    mydir=OPP_DIR(dir);						\
+    my_coeff = -cf;						\
+  }else{								\
+    mydir=dir;							\
+    my_coeff = cf;						\
+  }								\
+  float tmp_coeff;						\
+  tmp_coeff = my_coeff;					        \
+  if(oddness){							\
+    tmp_coeff = - my_coeff;					\
+  }								\
+  LOAD_ANTI_HERMITIAN(mom, mydir, idx, AH);			\
+  UNCOMPRESS_ANTI_HERMITIAN(ah, linka);				\
+  SU3_PROJECTOR(hw1##0, hw2##0, linkb);				\
+  SCALAR_MULT_ADD_SU3_MATRIX(linka, linkb, tmp_coeff, linka);	\
+  SU3_PROJECTOR(hw1##1, hw2##1, linkb);				\
+  SCALAR_MULT_ADD_SU3_MATRIX(linka, linkb, tmp_coeff, linka);	\
+  MAKE_ANTI_HERMITIAN(linka, ah);					\
+  WRITE_ANTI_HERMITIAN_SINGLE(mom, mydir, idx, AH);		\
+}while(0)
 
 
 
-//this macro require linka, linkb and ah variables defined
+  //this macro require linka, linkb and ah variables defined
 #define ADD_MAT_FORCE_TO_MOM(mat1, mat2, mom, idx, dir, cf,oddness) do{	\
-	float my_coeff;							\
-	int mydir;							\
-	if (GOES_BACKWARDS(dir)){					\
-	    mydir=OPP_DIR(dir);						\
-	    my_coeff = -cf;						\
-	}else{								\
-	    mydir=dir;							\
-	    my_coeff = cf;						\
-	}								\
-	float tmp_coeff;						\
-	tmp_coeff = my_coeff;						\
-	if(oddness){							\
-	    tmp_coeff = - my_coeff;					\
-	}								\
-	LOAD_ANTI_HERMITIAN(mom, mydir, idx, AH);			\
-	UNCOMPRESS_ANTI_HERMITIAN(ah, linka);				\
-	MAT_MUL_ADJ_MAT(mat1, mat2, linkb)					\
-	SCALAR_MULT_ADD_SU3_MATRIX(linka, linkb, tmp_coeff, linka);	\
-	MAKE_ANTI_HERMITIAN(linka, ah);					\
-	WRITE_ANTI_HERMITIAN_SINGLE(mom, mydir, idx, AH);		\
-    }while(0)
+  float my_coeff;							\
+  int mydir;							\
+  if (GOES_BACKWARDS(dir)){					\
+    mydir=OPP_DIR(dir);						\
+    my_coeff = -cf;						\
+  }else{								\
+    mydir=dir;							\
+    my_coeff = cf;						\
+  }								\
+  float tmp_coeff;						\
+  tmp_coeff = my_coeff;						\
+  if(oddness){							\
+    tmp_coeff = - my_coeff;					\
+  }								\
+  LOAD_ANTI_HERMITIAN(mom, mydir, idx, AH);			\
+  UNCOMPRESS_ANTI_HERMITIAN(ah, linka);				\
+  MAT_MUL_ADJ_MAT(mat1, mat2, linkb)					\
+  SCALAR_MULT_ADD_SU3_MATRIX(linka, linkb, tmp_coeff, linka);	\
+  MAKE_ANTI_HERMITIAN(linka, ah);					\
+  WRITE_ANTI_HERMITIAN_SINGLE(mom, mydir, idx, AH);		\
+}while(0)
 
 
 
-//this macro require linka, linkb and ah variables defined
+  //this macro require linka, linkb and ah variables defined
 #define MAT_FORCE_TO_MOM(mat, mom, idx, dir, cf,oddness) do{	\
-	float my_coeff;							\
-	int mydir;							\
-	if (GOES_BACKWARDS(dir)){					\
-	    mydir=OPP_DIR(dir);						\
-	    my_coeff = -cf;						\
-	}else{								\
-	    mydir=dir;							\
-	    my_coeff = cf;						\
-	}								\
-	float tmp_coeff;						\
-	tmp_coeff = my_coeff;						\
-	if(oddness){							\
-	    tmp_coeff = - my_coeff;					\
-	}								\
-	LOAD_ANTI_HERMITIAN(mom, mydir, idx, AH);			\
-	UNCOMPRESS_ANTI_HERMITIAN(ah, linka);				\
-	SCALAR_MULT_ADD_SU3_MATRIX(linka, mat, tmp_coeff, linka);	\
-	MAKE_ANTI_HERMITIAN(linka, ah);					\
-	WRITE_ANTI_HERMITIAN_SINGLE(mom, mydir, idx, AH);		\
-    }while(0)
+  float my_coeff;							\
+  int mydir;							\
+  if (GOES_BACKWARDS(dir)){					\
+    mydir=OPP_DIR(dir);						\
+    my_coeff = -cf;						\
+  }else{								\
+    mydir=dir;							\
+    my_coeff = cf;						\
+  }								\
+  float tmp_coeff;						\
+  tmp_coeff = my_coeff;						\
+  if(oddness){							\
+    tmp_coeff = - my_coeff;					\
+  }								\
+  LOAD_ANTI_HERMITIAN(mom, mydir, idx, AH);			\
+  UNCOMPRESS_ANTI_HERMITIAN(ah, linka);				\
+  SCALAR_MULT_ADD_SU3_MATRIX(linka, mat, tmp_coeff, linka);	\
+  MAKE_ANTI_HERMITIAN(linka, ah);					\
+  WRITE_ANTI_HERMITIAN_SINGLE(mom, mydir, idx, AH);		\
+}while(0)
 
 
 #define SIMPLE_MAT_FORCE_TO_MOM(mat, mom, idx, dir) do{		\
-	LOAD_ANTI_HERMITIAN(mom, dir, idx, AH);			\
-	UNCOMPRESS_ANTI_HERMITIAN(ah, linka);			\
-	SCALAR_MULT_ADD_SU3_MATRIX(linka, mat, 1.0, linka);	\
-	MAKE_ANTI_HERMITIAN(linka, ah);				\
-	WRITE_ANTI_HERMITIAN_SINGLE(mom, dir, idx, AH);		\
-    }while(0)
+  LOAD_ANTI_HERMITIAN(mom, dir, idx, AH);			\
+  UNCOMPRESS_ANTI_HERMITIAN(ah, linka);			\
+  SCALAR_MULT_ADD_SU3_MATRIX(linka, mat, 1.0, linka);	\
+  MAKE_ANTI_HERMITIAN(linka, ah);				\
+  WRITE_ANTI_HERMITIAN_SINGLE(mom, dir, idx, AH);		\
+}while(0)
 
 
 
@@ -728,30 +709,30 @@
 
 
 #define FF_COMPUTE_RECONSTRUCT_SIGN(sign, dir, i1,i2,i3,i4) do {        \
-        sign =1;                                                        \
-        switch(dir){                                                    \
-        case XUP:                                                       \
-            if ( (i4 & 1) == 1){                                        \
-                sign = -1;                                              \
-            }                                                           \
-            break;                                                      \
-        case YUP:                                                       \
-            if ( ((i4+i1) & 1) == 1){                                   \
-                sign = -1;                                              \
-            }                                                           \
-            break;                                                      \
-        case ZUP:                                                       \
-            if ( ((i4+i1+i2) & 1) == 1){                                \
-                sign = -1;                                              \
-            }                                                           \
-            break;                                                      \
-        case TUP:                                                       \
-            if (i4 == X4m1 ){                                           \
-                sign = -1;                                              \
-            }                                                           \
-            break;                                                      \
-        }                                                               \
-    }while (0)
+  sign =1;                                                        \
+  switch(dir){                                                    \
+    case XUP:                                                       \
+                                                                    if ( (i4 & 1) == 1){                                        \
+                                                                      sign = 1;                                              \
+                                                                    }                                                           \
+    break;                                                      \
+    case YUP:                                                       \
+                                                                    if ( ((i4+i1) & 1) == 1){                                   \
+                                                                      sign = 1;                                              \
+                                                                    }                                                           \
+    break;                                                      \
+    case ZUP:                                                       \
+                                                                    if ( ((i4+i1+i2) & 1) == 1){                                \
+                                                                      sign = 1;                                              \
+                                                                    }                                                           \
+    break;                                                      \
+    case TUP:                                                       \
+                                                                    if (i4 == X4m1 ){                                           \
+                                                                      sign = 1;                                              \
+                                                                    }                                                           \
+    break;                                                      \
+  }                                                               \
+}while (0)
 
 
 #define hwa00_re HWA0.x
@@ -820,56 +801,59 @@
 #define hwe12_im HWE5.y
 
 
-void
+  void
 hisq_force_init_cuda(QudaGaugeParam* param)
 {
-    static int fermion_force_init_cuda_flag = 0; 
-    
-    if (fermion_force_init_cuda_flag){
-	return;
-    }
-    
-    fermion_force_init_cuda_flag=1;
-    
-    init_kernel_cuda(param);    
+  static int fermion_force_init_cuda_flag = 0; 
+
+  if (fermion_force_init_cuda_flag){
+    return;
+  }
+
+  fermion_force_init_cuda_flag=1;
+
+  init_kernel_cuda(param);    
 }
 
 
 
 
 template<int oddBit>
-__global__ void 
+  __global__ void 
 do_compute_force_kernel(float4* linkEven, float4* linkOdd,
-		     float2* momMatrixEven, float2* momMatrixOdd,
-		     int sig,
-		     float2* momEven, float2* momOdd)
+    float2* momMatrixEven, float2* momMatrixOdd,
+    int sig,
+    float2* momEven, float2* momOdd)
 {
-   int sid = blockIdx.x * blockDim.x + threadIdx.x;
+  int sid = blockIdx.x * blockDim.x + threadIdx.x;
 
-    int z1 = FAST_INT_DIVIDE(sid, X1h);
-    int x1h = sid - z1*X1h;
-    int z2 = FAST_INT_DIVIDE(z1, X2);
-    int x2 = z1 - z2*X2;
-    int x4 = FAST_INT_DIVIDE(z2, X3);
-    int x3 = z2 - x4*X3;
-    int x1odd = (x2 + x3 + x4 + oddBit) & 1;
-    int x1 = 2*x1h + x1odd;
-    int X = 2*sid + x1odd;
+  int z1 = FAST_INT_DIVIDE(sid, X1h);
+  int x1h = sid - z1*X1h;
+  int z2 = FAST_INT_DIVIDE(z1, X2);
+  int x2 = z1 - z2*X2;
+  int x4 = FAST_INT_DIVIDE(z2, X3);
+  int x3 = z2 - x4*X3;
+  int x1odd = (x2 + x3 + x4 + oddBit) & 1;
+  int x1 = 2*x1h + x1odd;
+  int X = 2*sid + x1odd;
 
-    int link_sign;
+  int link_sign;
 
-    float2 AH0, AH1, AH2, AH3, AH4;
-    float4 LINKA0, LINKA1, LINKA2, LINKA3, LINKA4; // 10 complex numbers
-    float2 STORE0, STORE1, STORE2, STORE3, STORE4, STORE5, STORE6, STORE7, STORE8; 
-    float2 LINKD0, LINKD1, LINKD2, LINKD3, LINKD4, LINKD5, LINKD6, LINKD7, LINKD8;
+  float2 AH0, AH1, AH2, AH3, AH4;
+  float4 LINKA0, LINKA1, LINKA2, LINKA3, LINKA4; // 10 complex numbers
+  float2 STORE0, STORE1, STORE2, STORE3, STORE4, STORE5, STORE6, STORE7, STORE8; 
+  float2 LINKD0, LINKD1, LINKD2, LINKD3, LINKD4, LINKD5, LINKD6, LINKD7, LINKD8;
 
-    FF_LOAD_MATRIX(linkEven, sig, sid, LINKA);
-    FF_COMPUTE_RECONSTRUCT_SIGN(link_sign, sig, x1, x2, x3, x4);	
-    RECONSTRUCT_LINK_12(sig, sid, link_sign, linka);
+  FF_LOAD_MATRIX(linkEven, sig, sid, LINKA);
+  FF_COMPUTE_RECONSTRUCT_SIGN(link_sign, sig, x1, x2, x3, x4);	
+  RECONSTRUCT_LINK_12(sig, sid, link_sign, linka);
 
-    LOAD_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, STORE);
-    MAT_MUL_MAT(linka, store, linkd);
-    SIMPLE_MAT_FORCE_TO_MOM(linkd, momEven, sid, sig);
+  LOAD_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, STORE);
+
+  //  printf("momMatrix at %d = %f\n",sid, STORE0.x);
+  //  printf("link = %f\n",LINKA0.x);
+  MAT_MUL_MAT(linka, store, linkd);
+  SIMPLE_MAT_FORCE_TO_MOM(linkd, momEven, sid, sig);
 }
 
 
@@ -882,238 +866,246 @@ do_compute_force_kernel(float4* linkEven, float4* linkOdd,
 template<int sig_positive, int mu_positive, int oddBit> 
 __global__ void
 do_middle_link_kernel(float2* tempxxEven, 
-		      float2* PmuOdd, float2* P3Even,
-		      float2* QprevOdd, 		
-		      float2* QmuEven, float2* Q3Even,
-		      int sig, int mu, int lambda, float coeff,
-		      float4* linkEven, float4* linkOdd,
-		      float2* momEven, bool threeStaple,
-                      float2* momMatrixEven // Just added this in!
-		      ) // are we on a threeStaple?
-{		        // pointer to integer used to reconstruct Qprev
-    int sid = blockIdx.x * blockDim.x + threadIdx.x;
-    
-    int z1 = FAST_INT_DIVIDE(sid, X1h);
-    int x1h = sid - z1*X1h;
-    int z2 = FAST_INT_DIVIDE(z1, X2);
-    int x2 = z1 - z2*X2;
-    int x4 = FAST_INT_DIVIDE(z2, X3);
-    int x3 = z2 - x4*X3;
-    int x1odd = (x2 + x3 + x4 + oddBit) & 1;
-    int x1 = 2*x1h + x1odd;
-    int X = 2*sid + x1odd;
+    float2* PmuOdd, float2* P3Even,
+    float2* QprevOdd, 		
+    float2* QmuEven, float2* Q3Even,
+    int sig, int mu, int lambda, float coeff,
+    float4* linkEven, float4* linkOdd,
+    float2* momEven, bool threeStaple,
+    float2* momMatrixEven // Just added this in!
+    ) // are we on a threeStaple?
+{							 // pointer to integer used to reconstruct Qprev
+  int sid = blockIdx.x * blockDim.x + threadIdx.x;
 
-    int new_x1, new_x2, new_x3, new_x4;
-    int new_mem_idx;
-    int ad_link_sign=1;
-    int ab_link_sign=1;
-    int bc_link_sign=1;
-    
-    float4 LINKA0, LINKA1, LINKA2, LINKA3, LINKA4; // 10 complex numbers
-    float4 LINKB0, LINKB1, LINKB2, LINKB3, LINKB4; // 10 complex numbers
-    float4 LINKC0, LINKC1, LINKC2, LINKC3, LINKC4; // 10 complex numbers
+  int z1 = FAST_INT_DIVIDE(sid, X1h);
+  int x1h = sid - z1*X1h;
+  int z2 = FAST_INT_DIVIDE(z1, X2);
+  int x2 = z1 - z2*X2;
+  int x4 = FAST_INT_DIVIDE(z2, X3);
+  int x3 = z2 - x4*X3;
+  int x1odd = (x2 + x3 + x4 + oddBit) & 1;
+  int x1 = 2*x1h + x1odd;
+  int X = 2*sid + x1odd;
 
-    float4 TEMP0, TEMP1, TEMP2, TEMP3, TEMP4; // need to find a way to get around this
+  int new_x1, new_x2, new_x3, new_x4;
+  int new_mem_idx;
+  int ad_link_sign=1;
+  int ab_link_sign=1;
+  int bc_link_sign=1;
 
-    float2 LINKD0, LINKD1, LINKD2, LINKD3, LINKD4, LINKD5, LINKD6, LINKD7, LINKD8;
-    float2 OPROD0, OPROD1, OPROD2, OPROD3, OPROD4, OPROD5, OPROD6, OPROD7, OPROD8; // 9 complex numbers
-										   // The outer product is not stored in a compact form
+  float4 LINKA0, LINKA1, LINKA2, LINKA3, LINKA4; // 10 complex numbers
+  float4 LINKB0, LINKB1, LINKB2, LINKB3, LINKB4; // 10 complex numbers
+  float4 LINKC0, LINKC1, LINKC2, LINKC3, LINKC4; // 10 complex numbers
 
-    float2 LINKAB0, LINKAB1, LINKAB2, LINKAB3, LINKAB4, LINKAB5, LINKAB6, LINKAB7, LINKAB8;
-    float2 STORE0, STORE1, STORE2, STORE3, STORE4, STORE5, STORE6, STORE7, STORE8; 
+  float4 TEMP0, TEMP1, TEMP2, TEMP3, TEMP4; // need to find a way to get around this
 
+  float2 LINKD0, LINKD1, LINKD2, LINKD3, LINKD4, LINKD5, LINKD6, LINKD7, LINKD8;
+  float2 OPROD0, OPROD1, OPROD2, OPROD3, OPROD4, OPROD5, OPROD6, OPROD7, OPROD8; // 9 complex numbers
+  // The outer product is not stored in a compact form
 
-    float2 AH0, AH1, AH2, AH3, AH4;
-  
-   //        A________B
-   //    mu   |      |
-   // 	    D |      |C
-   //	  
-   //	  A is the current point (sid)
-    int point_b, point_c, point_d;
-    int ad_link_nbr_idx, ab_link_nbr_idx, bc_link_nbr_idx;
-    int mymu;
- 
-    new_x1 = x1;
-    new_x2 = x2;
-    new_x3 = x3;
-    new_x4 = x4;
-    
-    if(mu_positive){
-	mymu =mu;
-	FF_COMPUTE_NEW_FULL_IDX_MINUS_UPDATE(mu, X, new_mem_idx);
-    }else{
-	mymu = OPP_DIR(mu);
-	FF_COMPUTE_NEW_FULL_IDX_PLUS_UPDATE(OPP_DIR(mu), X, new_mem_idx);	
-    }
-    point_d = (new_mem_idx >> 1);
-    if (mu_positive){
-	ad_link_nbr_idx = point_d;
-	FF_COMPUTE_RECONSTRUCT_SIGN(ad_link_sign, mymu, new_x1,new_x2,new_x3,new_x4);
-    }else{
-	ad_link_nbr_idx = sid;
-	FF_COMPUTE_RECONSTRUCT_SIGN(ad_link_sign, mymu, x1, x2, x3, x4);	
-    }
+  float2 LINKAB0, LINKAB1, LINKAB2, LINKAB3, LINKAB4, LINKAB5, LINKAB6, LINKAB7, LINKAB8;
+  float2 STORE0, STORE1, STORE2, STORE3, STORE4, STORE5, STORE6, STORE7, STORE8; 
 
 
-    int mysig; 
+  float2 AH0, AH1, AH2, AH3, AH4;
+
+  //        A________B
+  //    mu   |      |
+  // 	    D|      |C
+  //	  
+  //	  A is the current point (sid)
+  int point_b, point_c, point_d;
+  int ad_link_nbr_idx, ab_link_nbr_idx, bc_link_nbr_idx;
+  int mymu;
+
+  new_x1 = x1;
+  new_x2 = x2;
+  new_x3 = x3;
+  new_x4 = x4;
+
+  if(mu_positive){
+    mymu =mu;
+    FF_COMPUTE_NEW_FULL_IDX_MINUS_UPDATE(mu, X, new_mem_idx);
+  }else{
+    mymu = OPP_DIR(mu);
+    FF_COMPUTE_NEW_FULL_IDX_PLUS_UPDATE(OPP_DIR(mu), X, new_mem_idx);	
+  }
+  point_d = (new_mem_idx >> 1);
+  if (mu_positive){
+    ad_link_nbr_idx = point_d;
+    FF_COMPUTE_RECONSTRUCT_SIGN(ad_link_sign, mymu, new_x1,new_x2,new_x3,new_x4);
+  }else{
+    ad_link_nbr_idx = sid;
+    FF_COMPUTE_RECONSTRUCT_SIGN(ad_link_sign, mymu, x1, x2, x3, x4);	
+  }
+
+
+  int mysig; 
+  if(sig_positive){
+    mysig = sig;
+    FF_COMPUTE_NEW_FULL_IDX_PLUS_UPDATE(sig, new_mem_idx, new_mem_idx);
+  }else{
+    mysig = OPP_DIR(sig);
+    FF_COMPUTE_NEW_FULL_IDX_MINUS_UPDATE(OPP_DIR(sig), new_mem_idx, new_mem_idx);	
+  }
+  point_c = (new_mem_idx >> 1);
+  if (mu_positive){
+    bc_link_nbr_idx = point_c;	
+    FF_COMPUTE_RECONSTRUCT_SIGN(bc_link_sign, mymu, new_x1,new_x2,new_x3,new_x4);
+  }
+  // So far, we have just computed ad_link_nbr_idx and 
+  // bc_link_nbr_idx
+
+  new_x1 = x1;
+  new_x2 = x2;
+  new_x3 = x3;
+  new_x4 = x4;
+  if(sig_positive){
+    FF_COMPUTE_NEW_FULL_IDX_PLUS_UPDATE(sig, X, new_mem_idx);
+  }else{
+    FF_COMPUTE_NEW_FULL_IDX_MINUS_UPDATE(OPP_DIR(sig), X, new_mem_idx);	
+  }
+  point_b = (new_mem_idx >> 1); 
+
+  if (!mu_positive){
+    bc_link_nbr_idx = point_b;
+    FF_COMPUTE_RECONSTRUCT_SIGN(bc_link_sign, mymu, new_x1,new_x2,new_x3,new_x4);
+  }   
+
+  if(sig_positive){
+    ab_link_nbr_idx = sid;
+    FF_COMPUTE_RECONSTRUCT_SIGN(ab_link_sign, mysig, x1, x2, x3, x4);	
+  }else{	
+    ab_link_nbr_idx = point_b;
+    FF_COMPUTE_RECONSTRUCT_SIGN(ab_link_sign, mysig, new_x1,new_x2,new_x3,new_x4);
+  }
+  // now we have ab_link_nbr_idx
+
+
+  // load the link variable connecting a and b 
+  // Store in linka 
+  if(sig_positive){
+    FF_LOAD_MATRIX(linkEven, mysig, ab_link_nbr_idx, LINKA);	
+  }else{
+    FF_LOAD_MATRIX(linkOdd, mysig, ab_link_nbr_idx, LINKA);	
+  }
+  RECONSTRUCT_LINK_12(mysig, ab_link_nbr_idx, ab_link_sign, linka);
+
+  // load the link variable connecting b and c 
+  // Store in linkb
+  if(mu_positive){
+    FF_LOAD_MATRIX(linkEven, mymu, bc_link_nbr_idx, LINKB);
+  }else{ 
+    FF_LOAD_MATRIX(linkOdd, mymu, bc_link_nbr_idx, LINKB);	
+  }
+  RECONSTRUCT_LINK_12(mymu, bc_link_nbr_idx, bc_link_sign, linkb);
+
+
+  LOAD_MATRIX_18_SINGLE(tempxxEven, point_c, OPROD);
+  // I do not think that Q3 is needed!
+  if(mu_positive){
+    ADJ_MAT_MUL_MAT(linkb, oprod, linkd);
+  }else{
+    MAT_MUL_MAT(linkb, oprod, linkd);
+  }
+  // Why write to PmuOdd instead of PmuEven?
+  // Well, PmuEven would require tempxxOdd 
+  // i.e., an extra device-memory access
+  WRITE_MATRIX_18_SINGLE(PmuOdd, point_b, LINKD);
+  if(sig_positive){
+    MAT_MUL_MAT(linka, linkd, oprod);
+  }else{ 
+    ADJ_MAT_MUL_MAT(linka, linkd, oprod);
+  }
+  WRITE_MATRIX_18_SINGLE(P3Even, sid, OPROD);
+
+
+  if(mu_positive){
+    FF_LOAD_MATRIX(linkOdd, mymu, ad_link_nbr_idx, LINKC);
+    RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, linkc);
+  }else{
+    FF_LOAD_MATRIX(linkEven, mymu, ad_link_nbr_idx, LINKB);
+    RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, linkb);
+    ADJ_MAT(linkb, linkc);
+  }
+
+
+
+  float mycoeff; 
+
+  if(threeStaple){
     if(sig_positive){
-	mysig = sig;
-	FF_COMPUTE_NEW_FULL_IDX_PLUS_UPDATE(sig, new_mem_idx, new_mem_idx);
-    }else{
-	mysig = OPP_DIR(sig);
-	FF_COMPUTE_NEW_FULL_IDX_MINUS_UPDATE(OPP_DIR(sig), new_mem_idx, new_mem_idx);	
+      MAT_MUL_MAT(linkd, linkc, oprod);
+
+      if(oddBit==1){mycoeff = -coeff;}
+      else{mycoeff = coeff;}
+
+
+
+      // These lines are important!
+      LOAD_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, STORE);
+      //printf("momMatrixEven = %f\n", STORE0.x);
+
+      SCALAR_MULT_ADD_SU3_MATRIX(store, oprod, mycoeff, store);
+
+      WRITE_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, STORE);
+
+
+
     }
-    point_c = (new_mem_idx >> 1);
-    if (mu_positive){
-	bc_link_nbr_idx = point_c;	
-	FF_COMPUTE_RECONSTRUCT_SIGN(bc_link_sign, mymu, new_x1,new_x2,new_x3,new_x4);
-    }
-    // So far, we have just computed ad_link_nbr_idx and 
-    // bc_link_nbr_idx
-	
-    new_x1 = x1;
-    new_x2 = x2;
-    new_x3 = x3;
-    new_x4 = x4;
+    ASSIGN_MAT(linkc, linkd);
+    WRITE_MATRIX_18_SINGLE(QmuEven, sid, LINKD);
+  }else{ // !threeStaple
+    LOAD_MATRIX_18_SINGLE(QprevOdd, point_d, LINKAB);
+    MAT_MUL_MAT(linkab, linkc, temp);
+    ASSIGN_MAT(temp, linkab);
+    WRITE_MATRIX_18_SINGLE(QmuEven, sid, LINKAB);
+
     if(sig_positive){
-	FF_COMPUTE_NEW_FULL_IDX_PLUS_UPDATE(sig, X, new_mem_idx);
-    }else{
-	FF_COMPUTE_NEW_FULL_IDX_MINUS_UPDATE(OPP_DIR(sig), X, new_mem_idx);	
-    }
-    point_b = (new_mem_idx >> 1); 
-    
-    if (!mu_positive){
-	bc_link_nbr_idx = point_b;
-	FF_COMPUTE_RECONSTRUCT_SIGN(bc_link_sign, mymu, new_x1,new_x2,new_x3,new_x4);
-    }   
-    
-    if(sig_positive){
-	ab_link_nbr_idx = sid;
-	FF_COMPUTE_RECONSTRUCT_SIGN(ab_link_sign, mysig, x1, x2, x3, x4);	
-    }else{	
-	ab_link_nbr_idx = point_b;
-	FF_COMPUTE_RECONSTRUCT_SIGN(ab_link_sign, mysig, new_x1,new_x2,new_x3,new_x4);
-    }
-    // now we have ab_link_nbr_idx
-    
-  
-    // load the link variable connecting a and b 
-    // Store in linka 
-    if(sig_positive){
-      FF_LOAD_MATRIX(linkEven, mysig, ab_link_nbr_idx, LINKA);	
-    }else{
-      FF_LOAD_MATRIX(linkOdd, mysig, ab_link_nbr_idx, LINKA);	
-    }
-    RECONSTRUCT_LINK_12(mysig, ab_link_nbr_idx, ab_link_sign, linka);
- 
-    // load the link variable connecting b and c 
-    // Store in linkb
-    if(mu_positive){
-      FF_LOAD_MATRIX(linkEven, mymu, bc_link_nbr_idx, LINKB);
-    }else{ 
-      FF_LOAD_MATRIX(linkOdd, mymu, bc_link_nbr_idx, LINKB);	
-    }
-    RECONSTRUCT_LINK_12(mymu, bc_link_nbr_idx, bc_link_sign, linkb);
+      MAT_MUL_MAT(linkd, linkab, oprod);
 
+      if(oddBit==1){mycoeff = -coeff;}
+      else{mycoeff = coeff;}
 
-   LOAD_MATRIX_18_SINGLE(tempxxEven, point_c, OPROD);
-    // I do not think that Q3 is needed!
-    if(mu_positive){
-      ADJ_MAT_MUL_MAT(linkb, oprod, linkd);
-    }else{
-      MAT_MUL_MAT(linkb, oprod, linkd);
-    }
-    // Why write to PmuOdd instead of PmuEven?
-    // Well, PmuEven would require tempxxOdd 
-    // i.e., an extra device-memory access
-    WRITE_MATRIX_18_SINGLE(PmuOdd, point_b, LINKD);
-    if(sig_positive){
-	MAT_MUL_MAT(linka, linkd, oprod);
-    }else{ 
-	ADJ_MAT_MUL_MAT(linka, linkd, oprod);
-    }
-    WRITE_MATRIX_18_SINGLE(P3Even, sid, OPROD);
+      LOAD_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, STORE);
+      SCALAR_MULT_ADD_SU3_MATRIX(store, oprod, mycoeff, store);
+      WRITE_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, STORE);
 
-
-    if(mu_positive){
-      FF_LOAD_MATRIX(linkOdd, mymu, ad_link_nbr_idx, LINKC);
-      RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, linkc);
-    }else{
-      FF_LOAD_MATRIX(linkEven, mymu, ad_link_nbr_idx, LINKB);
-      RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, linkb);
-      ADJ_MAT(linkb, linkc);
-    }
-   
-
-
-    float mycoeff; 
-
-    if(threeStaple){
-      if(sig_positive){
-        MAT_MUL_MAT(linkd, linkc, oprod);
-
-	if(oddBit==1){mycoeff = -coeff;}
-	else{mycoeff = coeff;}
-     
-        LOAD_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, STORE);
-	SCALAR_MULT_ADD_SU3_MATRIX(store, oprod, mycoeff, store);
-        WRITE_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, STORE);
-
-      }
-      ASSIGN_MAT(linkc, linkd);
-      WRITE_MATRIX_18_SINGLE(QmuEven, sid, LINKD);
-    }else{ // !threeStaple
-      LOAD_MATRIX_18_SINGLE(QprevOdd, point_d, LINKAB);
-      MAT_MUL_MAT(linkab, linkc, temp);
-      ASSIGN_MAT(temp, linkab);
-      WRITE_MATRIX_18_SINGLE(QmuEven, sid, LINKAB);
-
-      if(sig_positive){
-        MAT_MUL_MAT(linkd, linkab, oprod);
-
-	if(oddBit==1){mycoeff = -coeff;}
-	else{mycoeff = coeff;}
-
-	LOAD_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, STORE);
-	SCALAR_MULT_ADD_SU3_MATRIX(store, oprod, mycoeff, store);
-	WRITE_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, STORE);
-      }	
-    }
+    }	
+  }
 }
 
 
 
-static void 
+  static void 
 compute_force_kernel(float4* linkEven, float4* linkOdd, FullGauge cudaSiteLink,
-		     float2* momMatrixEven, float2* momMatrixOdd,
-		     int sig, dim3 gridDim, dim3 blockDim,
-		     float2* momEven, float2* momOdd)
+    float2* momMatrixEven, float2* momMatrixOdd,
+    int sig, dim3 gridDim, dim3 blockDim,
+    float2* momEven, float2* momOdd)
 {
   dim3 halfGridDim(gridDim.x/2, 1, 1);
-  
+
   // Need to see if this is necessary in the lates version of quda
-  cudaBindTexture(0, siteLink0TexSingle, cudaSiteLink.even, cudaSiteLink.bytes);
-  cudaBindTexture(0, siteLink1TexSingle, cudaSiteLink.odd,  cudaSiteLink.bytes);
+  cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
+  cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.odd,  cudaSiteLink.bytes);
 
   do_compute_force_kernel<0><<<halfGridDim, blockDim>>>(linkEven, linkOdd,
-							momMatrixEven, momMatrixOdd,
-							sig, 
-							momEven, momOdd);
-  cudaUnbindTexture(siteLink0TexSingle);
-  cudaUnbindTexture(siteLink1TexSingle);
+      momMatrixEven, momMatrixOdd,
+      sig, 
+      momEven, momOdd);
+  cudaUnbindTexture(siteLink0TexSingle_recon);
+  cudaUnbindTexture(siteLink1TexSingle_recon);
 
+  cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
+  cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
 
   do_compute_force_kernel<1><<<halfGridDim, blockDim>>>(linkOdd, linkEven,
-						       momMatrixOdd, momMatrixEven,
-						       sig,
-						       momOdd, momEven);
+      momMatrixOdd, momMatrixEven,
+      sig,
+      momOdd, momEven);
 
-  cudaBindTexture(0, siteLink0TexSingle, cudaSiteLink.odd, cudaSiteLink.bytes);
-  cudaBindTexture(0, siteLink1TexSingle, cudaSiteLink.even, cudaSiteLink.bytes);
-
-  cudaUnbindTexture(siteLink0TexSingle);
-  cudaUnbindTexture(siteLink1TexSingle);
+  cudaUnbindTexture(siteLink0TexSingle_recon);
+  cudaUnbindTexture(siteLink1TexSingle_recon);
 
 }
 
@@ -1121,274 +1113,276 @@ compute_force_kernel(float4* linkEven, float4* linkOdd, FullGauge cudaSiteLink,
 
 
 
-static void
+  static void
 middle_link_kernel(float2* tempxxEven, float2* tempxxOdd, 
-		   float2* PmuEven, float2* PmuOdd,
-		   float2* P3Even, float2* P3Odd,
-		   float2* QprevEven, float2* QprevOdd,
-		   float2* QmuEven, float2* QmuOdd,
-		   float2* Q3Even, float2* Q3Odd,
-		   int sig, int mu, int lambda, float coeff,
-		   float4* linkEven, float4* linkOdd, FullGauge cudaSiteLink,
-		   float2* momEven, float2* momOdd,
-		   dim3 gridDim, dim3 BlockDim, bool threeStaple, 
-		   float2* momMatrixEven, float2* momMatrixOdd)
+    float2* PmuEven, float2* PmuOdd,
+    float2* P3Even, float2* P3Odd,
+    float2* QprevEven, float2* QprevOdd,
+    float2* QmuEven, float2* QmuOdd,
+    float2* Q3Even, float2* Q3Odd,
+    int sig, int mu, int lambda, float coeff,
+    float4* linkEven, float4* linkOdd, FullGauge cudaSiteLink,
+    float2* momEven, float2* momOdd,
+    dim3 gridDim, dim3 BlockDim, bool threeStaple, 
+    float2* momMatrixEven, float2* momMatrixOdd)
 {
-    dim3 halfGridDim(gridDim.x/2, 1,1);
+  dim3 halfGridDim(gridDim.x/2, 1,1);
 
-    cudaBindTexture(0, siteLink0TexSingle, cudaSiteLink.even, cudaSiteLink.bytes);
-    cudaBindTexture(0, siteLink1TexSingle, cudaSiteLink.odd, cudaSiteLink.bytes);
-   
-    if (GOES_FORWARDS(sig) && GOES_FORWARDS(mu)){	
-	do_middle_link_kernel<1,1,0><<<halfGridDim, BlockDim>>>( tempxxEven,
-								 PmuOdd,  P3Even,
-								 QprevOdd,
-								 QmuEven,  Q3Even,
-								 sig, mu, lambda, coeff,
-								 linkEven, linkOdd,
-								 momEven, threeStaple,
-								 momMatrixEven);
-	cudaUnbindTexture(siteLink0TexSingle);
-	cudaUnbindTexture(siteLink1TexSingle);
-	//opposive binding
-	cudaBindTexture(0, siteLink0TexSingle, cudaSiteLink.odd, cudaSiteLink.bytes);
-	cudaBindTexture(0, siteLink1TexSingle, cudaSiteLink.even, cudaSiteLink.bytes);
+  cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
+  cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
 
-	do_middle_link_kernel<1,1,1><<<halfGridDim, BlockDim>>>( tempxxOdd, 
-								 PmuEven,  P3Odd,
-								 QprevEven,
-								 QmuOdd,  Q3Odd,
-								 sig, mu, lambda, coeff,
-								 linkOdd, linkEven,
-								 momOdd, threeStaple,
-								 momMatrixOdd);
-    }else if (GOES_FORWARDS(sig) && GOES_BACKWARDS(mu)){
-	do_middle_link_kernel<1,0,0><<<halfGridDim, BlockDim>>>( tempxxEven,
-								 PmuOdd,  P3Even,
-								 QprevOdd,
-								 QmuEven,  Q3Even,
-								 sig, mu, lambda, coeff,
-								 linkEven, linkOdd,
-								 momEven, threeStaple,
-								 momMatrixEven);	
-	cudaUnbindTexture(siteLink0TexSingle);
-	cudaUnbindTexture(siteLink1TexSingle);
+  if (GOES_FORWARDS(sig) && GOES_FORWARDS(mu)){	
+    do_middle_link_kernel<1,1,0><<<halfGridDim, BlockDim>>>( tempxxEven,
+        PmuOdd,  P3Even,
+        QprevOdd,
+        QmuEven,  Q3Even,
+        sig, mu, lambda, coeff,
+        linkEven, linkOdd,
+        momEven, threeStaple,
+        momMatrixEven);
+    cudaUnbindTexture(siteLink0TexSingle_recon);
+    cudaUnbindTexture(siteLink1TexSingle_recon);
+    //opposive binding
+    cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
+    cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
 
-	//opposive binding
-	cudaBindTexture(0, siteLink0TexSingle, cudaSiteLink.odd, cudaSiteLink.bytes);
-	cudaBindTexture(0, siteLink1TexSingle, cudaSiteLink.even, cudaSiteLink.bytes);
+    do_middle_link_kernel<1,1,1><<<halfGridDim, BlockDim>>>( tempxxOdd, 
+        PmuEven,  P3Odd,
+        QprevEven,
+        QmuOdd,  Q3Odd,
+        sig, mu, lambda, coeff,
+        linkOdd, linkEven,
+        momOdd, threeStaple,
+        momMatrixOdd);
+  }else if (GOES_FORWARDS(sig) && GOES_BACKWARDS(mu)){
+    do_middle_link_kernel<1,0,0><<<halfGridDim, BlockDim>>>( tempxxEven,
+        PmuOdd,  P3Even,
+        QprevOdd,
+        QmuEven,  Q3Even,
+        sig, mu, lambda, coeff,
+        linkEven, linkOdd,
+        momEven, threeStaple,
+        momMatrixEven);	
+    cudaUnbindTexture(siteLink0TexSingle_recon);
+    cudaUnbindTexture(siteLink1TexSingle_recon);
 
-	do_middle_link_kernel<1,0,1><<<halfGridDim, BlockDim>>>( tempxxOdd, 
-								 PmuEven,  P3Odd,
-								 QprevEven,
-								 QmuOdd,  Q3Odd,
-								 sig, mu, lambda, coeff,
-								 linkOdd, linkEven,
-								 momOdd, threeStaple,
-								 momMatrixOdd);
-	
-    }else if (GOES_BACKWARDS(sig) && GOES_FORWARDS(mu)){
-	do_middle_link_kernel<0,1,0><<<halfGridDim, BlockDim>>>( tempxxEven, 
-								 PmuOdd,  P3Even,
-								 QprevOdd,
-								 QmuEven,  Q3Even,
-								 sig, mu, lambda, coeff,
-								 linkEven, linkOdd,
-								 momEven, threeStaple,	
-								 momMatrixEven);	
-	cudaUnbindTexture(siteLink0TexSingle);
-	cudaUnbindTexture(siteLink1TexSingle);
+    //opposive binding
+    cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
+    cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
 
-	//opposive binding
-	cudaBindTexture(0, siteLink0TexSingle, cudaSiteLink.odd, cudaSiteLink.bytes);
-	cudaBindTexture(0, siteLink1TexSingle, cudaSiteLink.even, cudaSiteLink.bytes);
+    do_middle_link_kernel<1,0,1><<<halfGridDim, BlockDim>>>( tempxxOdd, 
+        PmuEven,  P3Odd,
+        QprevEven,
+        QmuOdd,  Q3Odd,
+        sig, mu, lambda, coeff,
+        linkOdd, linkEven,
+        momOdd, threeStaple,
+        momMatrixOdd);
 
-	do_middle_link_kernel<0,1,1><<<halfGridDim, BlockDim>>>( tempxxOdd,
-								 PmuEven,  P3Odd,
-								 QprevEven, 
-								 QmuOdd,  Q3Odd,
-								 sig, mu, lambda, coeff,
-								 linkOdd, linkEven,
-								 momOdd, threeStaple,
-								 momMatrixOdd);
-    }else{
-	do_middle_link_kernel<0,0,0><<<halfGridDim, BlockDim>>>( tempxxEven,
-								 PmuOdd, P3Even,
-								 QprevOdd,
-								 QmuEven, Q3Even,
-								 sig, mu, lambda, coeff,
-								 linkEven, linkOdd,
-								 momEven, threeStaple,
-								 momMatrixEven);		
+  }else if (GOES_BACKWARDS(sig) && GOES_FORWARDS(mu)){
+    do_middle_link_kernel<0,1,0><<<halfGridDim, BlockDim>>>( tempxxEven, 
+        PmuOdd,  P3Even,
+        QprevOdd,
+        QmuEven,  Q3Even,
+        sig, mu, lambda, coeff,
+        linkEven, linkOdd,
+        momEven, threeStaple,	
+        momMatrixEven);	
+    cudaUnbindTexture(siteLink0TexSingle_recon);
+    cudaUnbindTexture(siteLink1TexSingle_recon);
 
-	cudaUnbindTexture(siteLink0TexSingle);
-	cudaUnbindTexture(siteLink1TexSingle);
+    //opposive binding
+    cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
+    cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
 
-	//opposive binding
-	cudaBindTexture(0, siteLink0TexSingle, cudaSiteLink.odd, cudaSiteLink.bytes);
-	cudaBindTexture(0, siteLink1TexSingle, cudaSiteLink.even, cudaSiteLink.bytes);
+    do_middle_link_kernel<0,1,1><<<halfGridDim, BlockDim>>>( tempxxOdd,
+        PmuEven,  P3Odd,
+        QprevEven, 
+        QmuOdd,  Q3Odd,
+        sig, mu, lambda, coeff,
+        linkOdd, linkEven,
+        momOdd, threeStaple,
+        momMatrixOdd);
+  }else{
+    do_middle_link_kernel<0,0,0><<<halfGridDim, BlockDim>>>( tempxxEven,
+        PmuOdd, P3Even,
+        QprevOdd,
+        QmuEven, Q3Even,
+        sig, mu, lambda, coeff,
+        linkEven, linkOdd,
+        momEven, threeStaple,
+        momMatrixEven);		
 
-	do_middle_link_kernel<0,0,1><<<halfGridDim, BlockDim>>>( tempxxOdd, 
-								 PmuEven,  P3Odd,
-								 QprevEven,
-								 QmuOdd,  Q3Odd,
-								 sig, mu, lambda, coeff,
-								 linkOdd, linkEven,
-								 momOdd, threeStaple,
-								 momMatrixOdd);		
-    }
-    cudaUnbindTexture(siteLink0TexSingle);
-    cudaUnbindTexture(siteLink1TexSingle);    
+    cudaUnbindTexture(siteLink0TexSingle_recon);
+    cudaUnbindTexture(siteLink1TexSingle_recon);
+
+    //opposive binding
+    cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
+    cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
+
+    do_middle_link_kernel<0,0,1><<<halfGridDim, BlockDim>>>( tempxxOdd, 
+        PmuEven,  P3Odd,
+        QprevEven,
+        QmuOdd,  Q3Odd,
+        sig, mu, lambda, coeff,
+        linkOdd, linkEven,
+        momOdd, threeStaple,
+        momMatrixOdd);		
+  }
+  cudaUnbindTexture(siteLink0TexSingle_recon);
+  cudaUnbindTexture(siteLink1TexSingle_recon);    
 }
 
 
 template<int sig_positive, int mu_positive, int oddBit>
-__global__ void
+  __global__ void
 do_side_link_kernel(float2* P3Even, float2* P3Odd, 
-		 float2* P3muEven, float2* P3muOdd,
-		 float2* TempxEven, float2* TempxOdd,
-		 float2* QmuEven,  float2* QmuOdd,
-		 float2* shortPEven,  float2* shortPOdd,
-		 int sig, int mu, float coeff, float accumu_coeff,
-		 float4* linkEven, float4* linkOdd,
-		 float2* momEven, float2* momOdd,
-		 float2* momMatrixEven, float2* momMatrixOdd)
+    float2* P3muEven, float2* P3muOdd,
+    float2* TempxEven, float2* TempxOdd,
+    float2* QmuEven,  float2* QmuOdd,
+    float2* shortPEven,  float2* shortPOdd,
+    int sig, int mu, float coeff, float accumu_coeff,
+    float4* linkEven, float4* linkOdd,
+    float2* momEven, float2* momOdd,
+    float2* momMatrixEven, float2* momMatrixOdd)
 {
-    float mcoeff;
-    mcoeff = -coeff;
-    
-    int sid = blockIdx.x * blockDim.x + threadIdx.x;
-    
-    int z1 = FAST_INT_DIVIDE(sid, X1h);
-    int x1h = sid - z1*X1h;
-    int z2 = FAST_INT_DIVIDE(z1, X2);
-    int x2 = z1 - z2*X2;
-    int x4 = FAST_INT_DIVIDE(z2, X3);
-    int x3 = z2 - x4*X3;
-    int x1odd = (x2 + x3 + x4 + oddBit) & 1;
-    int x1 = 2*x1h + x1odd;
-    int X = 2*sid + x1odd;
+  float mcoeff;
+  mcoeff = -coeff;
 
-    int ad_link_sign = 1;
-    float4 LINKA0, LINKA1, LINKA2, LINKA3, LINKA4;
-    float4 LINKB0, LINKB1, LINKB2, LINKB3, LINKB4;
-    
-    float2 AH0, AH1, AH2, AH3, AH4;
+  int sid = blockIdx.x * blockDim.x + threadIdx.x;
 
-    float2 STORE0, STORE1, STORE2, STORE3, STORE4, STORE5, STORE6, STORE7, STORE8;
-    float2 LINKAB0, LINKAB1, LINKAB2, LINKAB3, LINKAB4, LINKAB5, LINKAB6, LINKAB7, LINKAB8; 
-    float2 LINKD0, LINKD1, LINKD2, LINKD3, LINKD4, LINKD5, LINKD6, LINKD7, LINKD8;
-    float2 OPROD0, OPROD1, OPROD2, OPROD3, OPROD4, OPROD5, OPROD6, OPROD7, OPROD8;
-    
-    /*    
-     * 	  compute the side link contribution to the momentum
-     *
-     
-	     sig
-           A________B
-	    |      |   mu
-	  D |      |C
-	  
-	  A is the current point (sid)
-    */
-    
-    float mycoeff;
-    int point_d;
-    int ad_link_nbr_idx;
-    int mymu;
-    int new_mem_idx;
+  int z1 = FAST_INT_DIVIDE(sid, X1h);
+  int x1h = sid - z1*X1h;
+  int z2 = FAST_INT_DIVIDE(z1, X2);
+  int x2 = z1 - z2*X2;
+  int x4 = FAST_INT_DIVIDE(z2, X3);
+  int x3 = z2 - x4*X3;
+  int x1odd = (x2 + x3 + x4 + oddBit) & 1;
+  int x1 = 2*x1h + x1odd;
+  int X = 2*sid + x1odd;
 
-    int new_x1 = x1;
-    int new_x2 = x2;
-    int new_x3 = x3;
-    int new_x4 = x4;
+  int ad_link_sign = 1;
+  float4 LINKA0, LINKA1, LINKA2, LINKA3, LINKA4;
+  float4 LINKB0, LINKB1, LINKB2, LINKB3, LINKB4;
 
-    if(mu_positive){
-	mymu =mu;
-	FF_COMPUTE_NEW_FULL_IDX_MINUS_UPDATE(mymu,X, new_mem_idx);
-    }else{
-	mymu = OPP_DIR(mu);
-	FF_COMPUTE_NEW_FULL_IDX_PLUS_UPDATE(mymu, X, new_mem_idx);
-    }
-    point_d = (new_mem_idx >> 1);
+  float2 AH0, AH1, AH2, AH3, AH4;
+
+  float2 STORE0, STORE1, STORE2, STORE3, STORE4, STORE5, STORE6, STORE7, STORE8;
+  float2 LINKAB0, LINKAB1, LINKAB2, LINKAB3, LINKAB4, LINKAB5, LINKAB6, LINKAB7, LINKAB8; 
+  float2 LINKD0, LINKD1, LINKD2, LINKD3, LINKD4, LINKD5, LINKD6, LINKD7, LINKD8;
+  float2 OPROD0, OPROD1, OPROD2, OPROD3, OPROD4, OPROD5, OPROD6, OPROD7, OPROD8;
+
+  /*    
+   * 	  compute the side link contribution to the momentum
+   *
+
+   sig
+   A________B
+   |      |   mu
+   D |      |C
+
+   A is the current point (sid)
+   */
+
+  float mycoeff;
+  int point_d;
+  int ad_link_nbr_idx;
+  int mymu;
+  int new_mem_idx;
+
+  int new_x1 = x1;
+  int new_x2 = x2;
+  int new_x3 = x3;
+  int new_x4 = x4;
+
+  if(mu_positive){
+    mymu =mu;
+    FF_COMPUTE_NEW_FULL_IDX_MINUS_UPDATE(mymu,X, new_mem_idx);
+  }else{
+    mymu = OPP_DIR(mu);
+    FF_COMPUTE_NEW_FULL_IDX_PLUS_UPDATE(mymu, X, new_mem_idx);
+  }
+  point_d = (new_mem_idx >> 1);
 
 
+  if (mu_positive){
+    ad_link_nbr_idx = point_d;
+    FF_COMPUTE_RECONSTRUCT_SIGN(ad_link_sign, mymu, new_x1,new_x2,new_x3,new_x4);
+  }else{
+    ad_link_nbr_idx = sid;
+    FF_COMPUTE_RECONSTRUCT_SIGN(ad_link_sign, mymu, x1, x2, x3, x4);	
+  }
+
+
+  LOAD_MATRIX_18_SINGLE(P3Even, sid, OPROD);
+  if(mu_positive){
+    FF_LOAD_MATRIX(linkOdd, mymu, ad_link_nbr_idx, LINKA);
+  }else{
+    FF_LOAD_MATRIX(linkEven, mymu, ad_link_nbr_idx, LINKA);
+  }
+
+  RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, linka);	
+
+
+  // Should all be inside if (shortPOdd)
+  if (shortPOdd){
     if (mu_positive){
-	ad_link_nbr_idx = point_d;
-	FF_COMPUTE_RECONSTRUCT_SIGN(ad_link_sign, mymu, new_x1,new_x2,new_x3,new_x4);
+      MAT_MUL_MAT(linka, oprod, linkd);
     }else{
-	ad_link_nbr_idx = sid;
-	FF_COMPUTE_RECONSTRUCT_SIGN(ad_link_sign, mymu, x1, x2, x3, x4);	
+      ADJ_MAT_MUL_MAT(linka, oprod, linkd);
     }
+    LOAD_MATRIX_18_SINGLE(shortPOdd, point_d, LINKAB);
+    SCALAR_MULT_ADD_MATRIX(linkab, linkd, accumu_coeff, linkab);
+    WRITE_MATRIX_18_SINGLE(shortPOdd, point_d, LINKAB);
+  }
 
-    
-    LOAD_MATRIX_18_SINGLE(P3Even, sid, OPROD);
-    if(mu_positive){
-	FF_LOAD_MATRIX(linkOdd, mymu, ad_link_nbr_idx, LINKA);
+
+  //start to add side link force
+  if (mu_positive){
+    if(TempxOdd){
+      LOAD_MATRIX_18_SINGLE(TempxOdd, point_d, LINKAB);
+      MAT_MUL_MAT(oprod, linkab, linkd);
     }else{
-	FF_LOAD_MATRIX(linkEven, mymu, ad_link_nbr_idx, LINKA);
+      ASSIGN_MAT(oprod, linkd);
     }
-
-    RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, linka);	
-
-
-    // Should all be inside if (shortPOdd)
-    if (shortPOdd){
-        if (mu_positive){
-	  MAT_MUL_MAT(linka, oprod, linkd);
-        }else{
-	  ADJ_MAT_MUL_MAT(linka, oprod, linkd);
-        }
-        LOAD_MATRIX_18_SINGLE(shortPOdd, point_d, LINKAB);
-        SCALAR_MULT_ADD_MATRIX(linkab, linkd, accumu_coeff, linkab);
-        WRITE_MATRIX_18_SINGLE(shortPOdd, point_d, LINKAB);
-    }
-
-    
-    //start to add side link force
-    if (mu_positive){
-	if(TempxOdd){
-	  LOAD_MATRIX_18_SINGLE(TempxOdd, point_d, LINKAB);
-          MAT_MUL_MAT(oprod, linkab, linkd);
-	}else{
-	  ASSIGN_MAT(oprod, linkd);
-	}
-	if(sig_positive){
-	  if(oddBit==1){mycoeff = coeff;}
-	  else{mycoeff = -coeff;}
-	}else{
-	  if(oddBit==1){mycoeff = -coeff;}
-	  else{mycoeff = coeff;}
-	}
-
-        LOAD_MOM_MATRIX_SINGLE(momMatrixOdd, mu, point_d, STORE);
-        SCALAR_MULT_ADD_SU3_MATRIX(store, linkd, mycoeff, store);
-        WRITE_MOM_MATRIX_SINGLE(momMatrixOdd, mu, point_d, STORE);
-
+    if(sig_positive){
+      if(oddBit==1){mycoeff = coeff;}
+      else{mycoeff = -coeff;}
     }else{
-
-	if(TempxOdd){
-          LOAD_MATRIX_18_SINGLE(TempxOdd, point_d, LINKAB);
-        }else{
-	  SET_IDENTITY(linkab);
-	}
-        ADJ_MAT(linkab,linkd);
-	MAT_MUL_ADJ_MAT(linkd, oprod, linkab);
-        
-        if(sig_positive){ 
-	  if(oddBit==1){mycoeff = coeff;}
-	  else{mycoeff = -coeff;}
-        }else{
-	  if(oddBit==1){mycoeff = -coeff;}
-	  else{mycoeff = coeff;}
-        }
-
-
-        LOAD_MOM_MATRIX_SINGLE(momMatrixEven, OPP_DIR(mu), sid, STORE);
-        SCALAR_MULT_ADD_SU3_MATRIX(store, linkab, mycoeff, store);
-        WRITE_MOM_MATRIX_SINGLE(momMatrixEven, OPP_DIR(mu), sid, STORE);
-
+      if(oddBit==1){mycoeff = -coeff;}
+      else{mycoeff = coeff;}
     }
+
+    LOAD_MOM_MATRIX_SINGLE(momMatrixOdd, mu, point_d, STORE);
+    SCALAR_MULT_ADD_SU3_MATRIX(store, linkd, mycoeff, store);
+    WRITE_MOM_MATRIX_SINGLE(momMatrixOdd, mu, point_d, STORE);
+
+
+  }else{
+
+    if(TempxOdd){
+      LOAD_MATRIX_18_SINGLE(TempxOdd, point_d, LINKAB);
+    }else{
+      SET_IDENTITY(linkab);
+    }
+    ADJ_MAT(linkab,linkd);
+    MAT_MUL_ADJ_MAT(linkd, oprod, linkab);
+
+    if(sig_positive){ 
+      if(oddBit==1){mycoeff = coeff;}
+      else{mycoeff = -coeff;}
+    }else{
+      if(oddBit==1){mycoeff = -coeff;}
+      else{mycoeff = coeff;}
+    }
+
+
+    LOAD_MOM_MATRIX_SINGLE(momMatrixEven, OPP_DIR(mu), sid, STORE);
+    SCALAR_MULT_ADD_SU3_MATRIX(store, linkab, mycoeff, store);
+    WRITE_MOM_MATRIX_SINGLE(momMatrixEven, OPP_DIR(mu), sid, STORE);
+
+  }
+
 }
 
 
@@ -1409,8 +1403,8 @@ side_link_kernel(float2* P3Even, float2* P3Odd,
 {
     dim3 halfGridDim(gridDim.x/2,1,1);
     
-    cudaBindTexture(0, siteLink0TexSingle, cudaSiteLink.even, cudaSiteLink.bytes);
-    cudaBindTexture(0, siteLink1TexSingle, cudaSiteLink.odd, cudaSiteLink.bytes);   
+    cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
+    cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);   
 
     if (GOES_FORWARDS(sig) && GOES_FORWARDS(mu)){
 	do_side_link_kernel<1,1,0><<<halfGridDim, blockDim>>>( P3Even,  P3Odd, 
@@ -1422,12 +1416,12 @@ side_link_kernel(float2* P3Even, float2* P3Odd,
 							       linkEven, linkOdd,
 							       momEven, momOdd,
 							       momMatrixEven, momMatrixOdd);
-	cudaUnbindTexture(siteLink0TexSingle);
-	cudaUnbindTexture(siteLink1TexSingle);
+	cudaUnbindTexture(siteLink0TexSingle_recon);
+	cudaUnbindTexture(siteLink1TexSingle_recon);
 
 	//opposive binding
-	cudaBindTexture(0, siteLink0TexSingle, cudaSiteLink.odd, cudaSiteLink.bytes);
-	cudaBindTexture(0, siteLink1TexSingle, cudaSiteLink.even, cudaSiteLink.bytes);
+	cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
+	cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
 
 	do_side_link_kernel<1,1,1><<<halfGridDim, blockDim>>>( P3Odd,  P3Even, 
 							       P3muOdd,  P3muEven,
@@ -1449,12 +1443,12 @@ side_link_kernel(float2* P3Even, float2* P3Odd,
 							       linkEven,  linkOdd,
 							       momEven, momOdd,
 							       momMatrixEven, momMatrixOdd);		
-	cudaUnbindTexture(siteLink0TexSingle);
-	cudaUnbindTexture(siteLink1TexSingle);
+	cudaUnbindTexture(siteLink0TexSingle_recon);
+	cudaUnbindTexture(siteLink1TexSingle_recon);
 
 	//opposive binding
-	cudaBindTexture(0, siteLink0TexSingle, cudaSiteLink.odd, cudaSiteLink.bytes);
-	cudaBindTexture(0, siteLink1TexSingle, cudaSiteLink.even, cudaSiteLink.bytes);
+	cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
+	cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
 
 	do_side_link_kernel<1,0,1><<<halfGridDim, blockDim>>>( P3Odd,  P3Even, 
 							       P3muOdd,  P3muEven,
@@ -1476,12 +1470,12 @@ side_link_kernel(float2* P3Even, float2* P3Odd,
 							       linkEven,  linkOdd,
 							       momEven, momOdd,
 							       momMatrixEven, momMatrixOdd);
-	cudaUnbindTexture(siteLink0TexSingle);
-	cudaUnbindTexture(siteLink1TexSingle);
+	cudaUnbindTexture(siteLink0TexSingle_recon);
+	cudaUnbindTexture(siteLink1TexSingle_recon);
 
 	//opposive binding
-	cudaBindTexture(0, siteLink0TexSingle, cudaSiteLink.odd, cudaSiteLink.bytes);
-	cudaBindTexture(0, siteLink1TexSingle, cudaSiteLink.even, cudaSiteLink.bytes);
+	cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
+	cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
 
 	do_side_link_kernel<0,1,1><<<halfGridDim, blockDim>>>( P3Odd,  P3Even, 
 							       P3muOdd,  P3muEven,
@@ -1503,12 +1497,12 @@ side_link_kernel(float2* P3Even, float2* P3Odd,
 							       linkEven, linkOdd,
 							       momEven, momOdd,
 							       momMatrixEven, momMatrixOdd);
-	cudaUnbindTexture(siteLink0TexSingle);
-	cudaUnbindTexture(siteLink1TexSingle);
+	cudaUnbindTexture(siteLink0TexSingle_recon);
+	cudaUnbindTexture(siteLink1TexSingle_recon);
 
 	//opposive binding
-	cudaBindTexture(0, siteLink0TexSingle, cudaSiteLink.odd, cudaSiteLink.bytes);
-	cudaBindTexture(0, siteLink1TexSingle, cudaSiteLink.even, cudaSiteLink.bytes);
+	cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
+	cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
 	
 	do_side_link_kernel<0,0,1><<<halfGridDim, blockDim>>>( P3Odd,  P3Even, 
 							       P3muOdd,  P3muEven,
@@ -1521,8 +1515,8 @@ side_link_kernel(float2* P3Even, float2* P3Odd,
 							       momMatrixOdd, momMatrixEven);
     }
     
-    cudaUnbindTexture(siteLink0TexSingle);
-    cudaUnbindTexture(siteLink1TexSingle);    
+    cudaUnbindTexture(siteLink0TexSingle_recon);
+    cudaUnbindTexture(siteLink1TexSingle_recon);    
 
 }
 
@@ -1768,8 +1762,8 @@ all_link_kernel(float2* tempxEven, float2* tempxOdd,
 {
     dim3 halfGridDim(gridDim.x/2, 1,1);
 
-    cudaBindTexture(0, siteLink0TexSingle, cudaSiteLink.even, cudaSiteLink.bytes);
-    cudaBindTexture(0, siteLink1TexSingle, cudaSiteLink.odd, cudaSiteLink.bytes);
+    cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
+    cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
     
     if (GOES_FORWARDS(sig) && GOES_FORWARDS(mu)){		
 	do_all_link_kernel<1,1,0><<<halfGridDim, blockDim>>>( tempxEven,  
@@ -1783,12 +1777,12 @@ all_link_kernel(float2* tempxEven, float2* tempxOdd,
 							      linkEven, linkOdd,
 							      momEven, momOdd,
 							      momMatrixEven, momMatrixOdd);
-	cudaUnbindTexture(siteLink0TexSingle);
-	cudaUnbindTexture(siteLink1TexSingle);
+	cudaUnbindTexture(siteLink0TexSingle_recon);
+	cudaUnbindTexture(siteLink1TexSingle_recon);
 
 	//opposive binding
-	cudaBindTexture(0, siteLink0TexSingle, cudaSiteLink.odd, cudaSiteLink.bytes);
-	cudaBindTexture(0, siteLink1TexSingle, cudaSiteLink.even, cudaSiteLink.bytes);
+	cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
+	cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
 	do_all_link_kernel<1,1,1><<<halfGridDim, blockDim>>>( tempxOdd,  
 							      QprevEven,
 							      PmuOdd,  PmuEven,
@@ -1815,12 +1809,12 @@ all_link_kernel(float2* tempxEven, float2* tempxOdd,
 							      linkEven, linkOdd,
 							      momEven, momOdd,
 							      momMatrixEven, momMatrixOdd);	
-	cudaUnbindTexture(siteLink0TexSingle);
-	cudaUnbindTexture(siteLink1TexSingle);
+	cudaUnbindTexture(siteLink0TexSingle_recon);
+	cudaUnbindTexture(siteLink1TexSingle_recon);
 
 	//opposive binding
-	cudaBindTexture(0, siteLink0TexSingle, cudaSiteLink.odd, cudaSiteLink.bytes);
-	cudaBindTexture(0, siteLink1TexSingle, cudaSiteLink.even, cudaSiteLink.bytes);
+	cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
+	cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
 
 	do_all_link_kernel<1,0,1><<<halfGridDim, blockDim>>>( tempxOdd,  
 							      QprevEven, 
@@ -1846,12 +1840,12 @@ all_link_kernel(float2* tempxEven, float2* tempxOdd,
 							      linkEven, linkOdd,
 							      momEven, momOdd, 
 							      momMatrixEven, momMatrixOdd);	
-	cudaUnbindTexture(siteLink0TexSingle);
-	cudaUnbindTexture(siteLink1TexSingle);
+	cudaUnbindTexture(siteLink0TexSingle_recon);
+	cudaUnbindTexture(siteLink1TexSingle_recon);
 
 	//opposive binding
-	cudaBindTexture(0, siteLink0TexSingle, cudaSiteLink.odd, cudaSiteLink.bytes);
-	cudaBindTexture(0, siteLink1TexSingle, cudaSiteLink.even, cudaSiteLink.bytes);
+	cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
+	cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
 
 	
 	do_all_link_kernel<0,1,1><<<halfGridDim, blockDim>>>( tempxOdd,  
@@ -1878,12 +1872,12 @@ all_link_kernel(float2* tempxEven, float2* tempxOdd,
 							      momEven, momOdd,
 							      momMatrixEven, momMatrixOdd);	
 
-	cudaUnbindTexture(siteLink0TexSingle);
-	cudaUnbindTexture(siteLink1TexSingle);
+	cudaUnbindTexture(siteLink0TexSingle_recon);
+	cudaUnbindTexture(siteLink1TexSingle_recon);
 
 	//opposive binding
-	cudaBindTexture(0, siteLink0TexSingle, cudaSiteLink.odd, cudaSiteLink.bytes);
-	cudaBindTexture(0, siteLink1TexSingle, cudaSiteLink.even, cudaSiteLink.bytes);
+	cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
+	cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
 
 	do_all_link_kernel<0,0,1><<<halfGridDim, blockDim>>>( tempxOdd,  
 							      QprevEven, 
@@ -1898,8 +1892,8 @@ all_link_kernel(float2* tempxEven, float2* tempxOdd,
 							      momMatrixOdd, momMatrixEven);	
     }
 
-    cudaUnbindTexture(siteLink0TexSingle);
-    cudaUnbindTexture(siteLink1TexSingle);
+    cudaUnbindTexture(siteLink0TexSingle_recon);
+    cudaUnbindTexture(siteLink1TexSingle_recon);
 }
 
 
@@ -2120,8 +2114,7 @@ do_hisq_force_cuda(Real eps, Real weight1, Real weight2,  Real* act_path_coeff, 
     dim3 gridDim(volume/blockDim.x, 1, 1);
    
     int null = -1;
-    
-
+   
     for(sig=0; sig < 8; sig++){
         for(mu = 0; mu < 8; mu++){
             if ( (mu == sig) || (mu == OPP_DIR(sig))){
@@ -2267,7 +2260,6 @@ do_hisq_force_cuda(Real eps, Real weight1, Real weight2,  Real* act_path_coeff, 
 
 
 
-/*
 //	    //1-link and naik term	    
 //	    if (!DirectLinks[mu]){
 //		DirectLinks[mu]=1;
@@ -2280,10 +2272,9 @@ do_hisq_force_cuda(Real eps, Real weight1, Real weight2,  Real* act_path_coeff, 
 //								 (float2*)cudaMom.even, (float2*)cudaMom.odd);
 //		checkCudaError();		
 //	    }
-*/    
 	}//mu
-    }//sig
 
+    }//sig
 
     for(sig=0; sig<8; sig++){
       if(GOES_FORWARDS(sig)){
@@ -2314,7 +2305,10 @@ do_hisq_force_cuda(Real eps, Real weight1, Real weight2,  Real* act_path_coeff, 
 #undef Qnumu
 #undef Qrhonumu
 #undef Q3
-
+/*
+void hisq_force_cuda(double eps, double weight1, double weight2, void* act_path_coeff,
+		   float2* cudaOprodEven, float2* cudaOprodOdd, FullGauge cudaSiteLink, FullMom cudaMom, QudaGaugeParam* param)
+*/
 void
 hisq_force_cuda(double eps, double weight1, double weight2, void* act_path_coeff,
 		   FullOprod cudaOprod, FullGauge cudaSiteLink, FullMom cudaMom, FullGauge cudaMomMatrix, QudaGaugeParam* param)
@@ -2347,3 +2341,6 @@ hisq_force_cuda(double eps, double weight1, double weight2, void* act_path_coeff
     }
     return; 
 }
+
+} // namespace fermion_force
+} // namespace hisq

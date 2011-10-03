@@ -45,6 +45,7 @@ extern "C" {
   
   void createMomCPU(void* mom,  QudaPrecision precision);
   void createHwCPU(void* hw,  QudaPrecision precision);
+  void createHwCPU2(void* hw,  QudaPrecision precision);
   
   //used by link fattening code
   int x4_from_full_index(int i);

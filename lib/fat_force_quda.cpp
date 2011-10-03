@@ -34,7 +34,7 @@ static int faceVolumeCB[4]; // checkboarded face volume
 
 /********************** Staple code, used by link fattening **************/
 
-#if defined(GPU_FATLINK)||defined(GPU_GAUGE_FORCE)|| defined(GPU_FERMION_FORCE)
+#if defined(GPU_FATLINK)||defined(GPU_GAUGE_FORCE)|| defined(GPU_FERMION_FORCE) || defined (GPU_HISQ_FORCE)
 
 template <typename Float>
 void packGhostAllLinks(Float **cpuLink, Float **cpuGhostBack,Float**cpuGhostFwd, int dir, int nFace) {
@@ -687,7 +687,7 @@ unpackGhostStaple(FullStaple* cudaStaple, int dir, int whichway, void** fwd_nbr_
 
 
 /******************************** Mom code, used by Fermi force code ****************************/
-#if defined(GPU_FATLINK)||defined(GPU_GAUGE_FORCE)|| defined(GPU_FERMION_FORCE)
+#if defined(GPU_FATLINK)||defined(GPU_GAUGE_FORCE)|| defined(GPU_FERMION_FORCE) || defined(GPU_HISQ_FORCE)
 
 static void 
 allocateMomQuda(FullMom *cudaMom, QudaPrecision precision) 
@@ -880,7 +880,7 @@ storeMomToCPU(void* mom, FullMom cudaMom, QudaGaugeParam* param)
 
 /********** link code, used by link fattening  **********************/
 
-#if defined(GPU_FATLINK)||defined(GPU_GAUGE_FORCE)|| defined(GPU_FERMION_FORCE)
+#if defined(GPU_FATLINK)||defined(GPU_GAUGE_FORCE)|| defined(GPU_FERMION_FORCE) || defined(GPU_HISQ_FORCE)
 
 static void allocateGaugeField(FullGauge *cudaGauge, ReconstructType reconstruct, QudaPrecision precision) {
 
@@ -910,6 +910,10 @@ static void allocateGaugeField(FullGauge *cudaGauge, ReconstructType reconstruct
       errorQuda("Error allocating even odd gauge field");
     }
   }
+
+  // Added by J.F.
+  cudaMemset(cudaGauge->even, 0, cudaGauge->bytes); 
+  cudaMemset(cudaGauge->odd, 0, cudaGauge->bytes); 
 
 }
 

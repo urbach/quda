@@ -41,7 +41,8 @@ allocateParityHw(int *X, QudaPrecision precision)
       //exit(0);
       //}
     }
-    
+   
+    checkCudaError(); 
     return ret;
 }
 
