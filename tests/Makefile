@@ -5,7 +5,7 @@ QUDA = ../lib/libquda.a
 INC += -I../include -I.
 
 HDRS = blas_reference.h wilson_dslash_reference.h staggered_dslash_reference.h    \
-	domain_wall_dslash_reference.h test_util.h dslash_util.h
+	domain_wall_dslash_reference.h test_util.h dslash_util.h hisq_force_reference.h unitarize_reference.h
 
 TESTS = su3_test blas_test pack_test $(WILSON_DIRAC_TEST) 		\
 	$(STAGGERED_DIRAC_TEST) $(DOMAIN_WALL_DIRAC_TEST)		\
@@ -54,7 +54,7 @@ fermion_force_test: fermion_force_test.o fermion_force_reference.o test_util.o m
 	$(CXX) $(LDFLAGS) $^  -o $@  $(LDFLAGS)
 
 hisq_force_test: hisq_force_test.o hisq_force_reference.o test_util.o misc.o $(QUDA)
-        $(CXX) $(LDFLAGS) $^  -o $@
+	$(CXX) $(LDFLAGS) $^  -o $@
 
 
 
