@@ -174,6 +174,105 @@
 
 
 
+
+#define FF_COMPUTE_NEW_FULL_IDX_PLUS_UPDATE(mydir, idx, new_idx) do {	\
+  switch(mydir){                                                        \
+    case 0:                                                             \
+      new_idx = ( (new_x[0]==X1m1)?idx-X1m1:idx+1);			\
+      new_x[0] = (new_x[0]==X1m1)?0:new_x[0]+1;                         \
+    break;                                                              \
+    case 1:                                                             \
+      new_idx = ( (new_x[1]==X2m1)?idx-X2X1mX1:idx+X1);		        \
+      new_x[1] = (new_x[1]==X2m1)?0:new_x[1]+1;                         \
+    break;                                                              \
+    case 2:                                                             \
+      new_idx = ( (new_x[2]==X3m1)?idx-X3X2X1mX2X1:idx+X2X1);	        \
+      new_x[2] = (new_x[2]==X3m1)?0:new_x[2]+1;                         \
+    break;                                                              \
+    case 3:                                                             \
+      new_idx = ( (new_x[3]==X4m1)?idx-X4X3X2X1mX3X2X1:idx+X3X2X1);     \
+      new_x[3] = (new_x[3]==X4m1)?0:new_x[3]+1;                         \
+    break;                                                              \
+  }                                                                     \
+}while(0)
+
+
+#define FF_COMPUTE_NEW_FULL_IDX_MINUS_UPDATE(mydir, idx, new_idx) do {	\
+  switch(mydir){                                                        \
+    case 0:                                                             \
+      new_idx = ( (new_x[0]==0)?idx+X1m1:idx-1);			\
+      new_x[0] = (new_x[0]==0)?X1m1:new_x[0] - 1;                       \
+    break;                                                              \
+    case 1:                                                             \
+      new_idx = ( (new_x[1]==0)?idx+X2X1mX1:idx-X1);		        \
+      new_x[1] = (new_x[1]==0)?X2m1:new_x[1] - 1;                       \
+    break;                                                              \
+    case 2:                                                             \
+      new_idx = ( (new_x[2]==0)?idx+X3X2X1mX2X1:idx-X2X1);		\
+      new_x[2] = (new_x[2]==0)?X3m1:new_x[2] - 1;                       \
+    break;                                                              \
+    case 3:                                                             \
+      new_idx = ( (new_x[3]==0)?idx+X4X3X2X1mX3X2X1:idx-X3X2X1);	\
+      new_x[3] = (new_x[3]==0)?X4m1:new_x[3] - 1;                       \
+    break;                                                              \
+  }                                                                     \
+}while(0)
+
+
+
+#define FF_COMPUTE_NEW_FULL_IDX_PLUS(old_x1, old_x2, old_x3, old_x4, idx, mydir, new_idx) do { \
+  switch(mydir){                                                                               \
+    case 0:                                                                                    \
+      new_idx = ( (old_x1==X1m1)?idx-X1m1:idx+1);			                       \
+    break;                                                                                     \
+    case 1:                                                                                    \
+      new_idx = ( (old_x2==X2m1)?idx-X2X1mX1:idx+X1);		                               \
+    break;                                                                                     \
+    case 2:                                                                                    \
+      new_idx = ( (old_x3==X3m1)?idx-X3X2X1mX2X1:idx+X2X1);	                               \
+    break;                                                                                     \
+    case 3:                                                                                    \
+      new_idx = ( (old_x4==X4m1)?idx-X4X3X2X1mX3X2X1:idx+X3X2X1);                              \
+    break;                                                                                     \
+  }                                                                                            \
+}while(0)
+
+
+
+#define FF_COMPUTE_NEW_FULL_IDX_MINUS(old_x1, old_x2, old_x3, old_x4, idx, mydir, new_idx) do { \
+  switch(mydir){                                                                                \
+    case 0:                                                                                     \
+      new_idx = ( (old_x1==0)?idx+X1m1:idx-1);			                                \
+    break;                                                                                      \
+    case 1:                                                                                     \
+      new_idx = ( (old_x2==0)?idx+X2X1mX1:idx-X1);		                                \
+    break;                                                                                      \
+    case 2:                                                                                     \
+      new_idx = ( (old_x3==0)?idx+X3X2X1mX2X1:idx-X2X1);		                        \
+    break;                                                                                      \
+    case 3:                                                                                     \
+      new_idx = ( (old_x4==0)?idx+X4X3X2X1mX3X2X1:idx-X3X2X1);	                                \
+    break;                                                                                      \
+  }                                                                                             \
+}while(0)
+
+
+
+
+
+
+// GUAGE_FIELD_LOAD_12_SINGLE_TEX
+#define LOAD_ARRAY_12_SINGLE_TEX(gauge, dir, idx, var)                    \
+        var[0] = tex1Dfetch(gauge, idx + dir*Vhx3);                       \
+        var[1] = tex1Dfetch(gauge, idx + dir*Vhx3 + Vh);                  \
+        var[2] = tex1Dfetch(gauge, idx + dir*Vhx3 + Vhx2);                \
+
+// GAUGE_FIELD_LOAD_12_SINGLE
+#define LOAD_ARRAY_12_SINGLE(gauge, dir, idx, var)    \
+          var[0] = gauge[idx + dir*Vhx3];             \
+          var[1] = gauge[idx + dir*Vhx3 + Vh];        \
+          var[2] = gauge[idx + dir*Vhx3 + Vhx2];      \
+
 // Maybe I should rename it to 
 // be COLOR_FIELD_LOAD_18_SINGLE
 #define LOAD_MATRIX_18_SINGLE(gauge, idx, var)                  \
@@ -187,6 +286,7 @@
   var[7] = gauge[idx + Vhx7];                                   \
   var[8] = gauge[idx + Vhx8];
 
+
 // COLOR_FIELD_WRITE_18_SINGLE
 #define WRITE_MATRIX_18_SINGLE(mat, idx, var) do{ \
     mat[idx + 0*Vh] = var[0];  \
@@ -199,7 +299,6 @@
     mat[idx + 7*Vh] = var[7];  \
     mat[idx + 8*Vh] = var[8];  \
 }while(0)
-
 
 
 // GAUGE_FIELD_LOAD_18_SINGLE

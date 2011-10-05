@@ -7,14 +7,7 @@
 #include "hisq_force_macros.h"
 
 
-namespace hisq {
-  namespace fermion_force {
-
-
 #define LOAD_ANTI_HERMITIAN LOAD_ANTI_HERMITIAN_SINGLE
-
-
-
 #define LOAD_MATRIX(src, dir, idx, var) LOAD_MATRIX_12_SINGLE(src, dir, idx, var)
 
 #define FF_SITE_MATRIX_LOAD_TEX 1
@@ -23,146 +16,13 @@ namespace hisq {
 #define linkEvenTex siteLink0TexSingle_recon
 #define linkOddTex siteLink1TexSingle_recon
 #define FF_LOAD_MATRIX(src, dir, idx, var) LOAD_MATRIX_12_SINGLE_TEX(src##Tex, dir, idx, var)
+#define FF_LOAD_ARRAY(src, dir, idx, var) LOAD_ARRAY_12_SINGLE_TEX(src##Tex, dir, idx, var)    
 #else
 #define FF_LOAD_MATRIX(src, dir, idx, var) LOAD_MATRIX_12_SINGLE(src, dir, idx, var)
+#define FF_LOAD_ARRAY(src, dir, idx, var) LOAD_ARRAY_12_SINGLE(src##Tex, dir, idx, var)    
 #endif
 
 
-#define LOAD_ARRAY_12_SINGLE_TEX(gauge, dir, idx, var)do{                     \
-      var[0] = tex1Dfetch(gauge, idx + dir*Vhx3);                         \
-      var[1] = tex1Dfetch(gauge, idx + dir*Vhx3 + Vh);                    \
-      var[2] = tex1Dfetch(gauge, idx + dir*Vhx3 + Vhx2);                  \
-    }while(0)
-
-#define FF_LOAD_ARRAY(src, dir, idx, var) LOAD_ARRAY_12_SINGLE_TEX(src##Tex, dir, idx, var)    
-
-
-//void load_array_12_from_texture(float4 array[4], int dir, int idx) 
-
-// Need to compute the neighbouring index
-// Can really clean the code up
-// I need to force the compiler to inline these functions
-
-__forceinline__ __device__ 
-void computeNewFullIndexPlusUpdate(int dir, int idx, int new_x[4], int & new_index){
-  switch(dir){
-    case 0:
-      new_index = ((new_x[0]==X1m1)?idx-X1m1:idx+1);		
-      new_x[0] = (new_x[0]==X1m1)?0:new_x[0]+1;                       
-    break;
-
-    case 1:                                                        
-      new_index = ( (new_x[1]==X2m1)?idx-X2X1mX1:idx+X1);		
-      new_x[1] = (new_x[1]==X2m1)?0:new_x[1]+1;    
-    break;     
-
-    case 2:                                                         
-      new_index = ( (new_x[2]==X3m1)?idx-X3X2X1mX2X1:idx+X2X1);	
-      new_x[2] = (new_x[2]==X3m1)?0:new_x[2]+1;                         
-    break;                              
-
-    case 3:                                                         
-      new_index = ( (new_x[3]==X4m1)?idx-X4X3X2X1mX3X2X1:idx+X3X2X1); 
-      new_x[3] = (new_x[3]==X4m1)?0:new_x[3]+1;                        
-    break;      
-
-    case 4:    
-      new_index = ( (new_x[0]==0)?idx+X1m1:idx-1);                 
-      new_x[0] = (new_x[0]==0)?X1m1:new_x[0] - 1;                       
-    break;                                                      
-
-    case 5:                                                         
-      new_index = ( (new_x[1]==0)?idx+X2X1mX1:idx-X1);              
-      new_x[1] = (new_x[1]==0)?X2m1:new_x[1] - 1;                       
-    break;                                                      
-  }
-  return;
-}
-
-
-#define FF_COMPUTE_NEW_FULL_IDX_PLUS_UPDATE(mydir, idx, new_idx) do {	\
-  switch(mydir){                                                  \
-    case 0:                                                         \
-                                                                    new_idx = ( (new_x[0]==X1m1)?idx-X1m1:idx+1);			\
-    new_x[0] = (new_x[0]==X1m1)?0:new_x[0]+1;                         \
-    break;                                                      \
-    case 1:                                                         \
-                                                                    new_idx = ( (new_x[1]==X2m1)?idx-X2X1mX1:idx+X1);		\
-    new_x[1] = (new_x[1]==X2m1)?0:new_x[1]+1;                         \
-    break;                                                      \
-    case 2:                                                         \
-                                                                    new_idx = ( (new_x[2]==X3m1)?idx-X3X2X1mX2X1:idx+X2X1);	\
-    new_x[2] = (new_x[2]==X3m1)?0:new_x[2]+1;                         \
-    break;                                                      \
-    case 3:                                                         \
-                                                                    new_idx = ( (new_x[3]==X4m1)?idx-X4X3X2X1mX3X2X1:idx+X3X2X1); \
-    new_x[3] = (new_x[3]==X4m1)?0:new_x[3]+1;                         \
-    break;                                                      \
-  }                                                               \
-}while(0)
-
-#define FF_COMPUTE_NEW_FULL_IDX_MINUS_UPDATE(mydir, idx, new_idx) do {	\
-  switch(mydir){                                                  \
-    case 0:                                                         \
-                                                                    new_idx = ( (new_x[0]==0)?idx+X1m1:idx-1);			\
-    new_x[0] = (new_x[0]==0)?X1m1:new_x[0] - 1;                       \
-    break;                                                      \
-    case 1:                                                         \
-                                                                    new_idx = ( (new_x[1]==0)?idx+X2X1mX1:idx-X1);		\
-    new_x[1] = (new_x[1]==0)?X2m1:new_x[1] - 1;                       \
-    break;                                                      \
-    case 2:                                                         \
-                                                                    new_idx = ( (new_x[2]==0)?idx+X3X2X1mX2X1:idx-X2X1);		\
-    new_x[2] = (new_x[2]==0)?X3m1:new_x[2] - 1;                       \
-    break;                                                      \
-    case 3:                                                         \
-                                                                    new_idx = ( (new_x[3]==0)?idx+X4X3X2X1mX3X2X1:idx-X3X2X1);	\
-    new_x[3] = (new_x[3]==0)?X4m1:new_x[3] - 1;                       \
-    break;                                                      \
-  }                                                               \
-}while(0)
-
-
-
-#define FF_COMPUTE_NEW_FULL_IDX_PLUS(old_x1, old_x2, old_x3, old_x4, idx, mydir, new_idx) do { \
-  switch(mydir){                                                  \
-    case 0:                                                         \
-                                                                    new_idx = ( (old_x1==X1m1)?idx-X1m1:idx+1);			\
-    break;                                                      \
-    case 1:                                                         \
-                                                                    new_idx = ( (old_x2==X2m1)?idx-X2X1mX1:idx+X1);		\
-    break;                                                      \
-    case 2:                                                         \
-                                                                    new_idx = ( (old_x3==X3m1)?idx-X3X2X1mX2X1:idx+X2X1);	\
-    break;                                                      \
-    case 3:                                                         \
-                                                                    new_idx = ( (old_x4==X4m1)?idx-X4X3X2X1mX3X2X1:idx+X3X2X1); \
-    break;                                                      \
-  }                                                               \
-}while(0)
-
-#define FF_COMPUTE_NEW_FULL_IDX_MINUS(old_x1, old_x2, old_x3, old_x4, idx, mydir, new_idx) do { \
-  switch(mydir){                                                  \
-    case 0:                                                         \
-                                                                    new_idx = ( (old_x1==0)?idx+X1m1:idx-1);			\
-    break;                                                      \
-    case 1:                                                         \
-                                                                    new_idx = ( (old_x2==0)?idx+X2X1mX1:idx-X1);		\
-    break;                                                      \
-    case 2:                                                         \
-                                                                    new_idx = ( (old_x3==0)?idx+X3X2X1mX2X1:idx-X2X1);		\
-    break;                                                      \
-    case 3:                                                         \
-                                                                    new_idx = ( (old_x4==0)?idx+X4X3X2X1mX3X2X1:idx-X3X2X1);	\
-    break;                                                      \
-  }                                                               \
-}while(0)
-
-
-
-
-
-//this macro require link_W, link_X and ah variables defined
 #define SIMPLE_MAT_FORCE_TO_MOM(mat, mom, idx, dir, temp_mat) do { \
   {                                                             \
   float2 AH0, AH1, AH2, AH3, AH4;                               \
@@ -176,6 +36,8 @@ void computeNewFullIndexPlusUpdate(int dir, int idx, int new_x[4], int & new_ind
 
 
 
+namespace hisq {
+  namespace fermion_force {
 
 
 
@@ -197,7 +59,6 @@ struct CoeffSign<1,1>
 {
     static const int result = 1;
 };
-
 
 
 
@@ -273,21 +134,95 @@ do_compute_force_kernel(float4* linkEven, float4* linkOdd,
   MAT_MUL_MAT(link_W, color_mat_X, color_mat_W);
 
   SIMPLE_MAT_FORCE_TO_MOM(color_mat_W, momEven, sid, sig, link_W);
+
+  return;
+}
+
+template<int oddBit>
+__global__ void 
+do_one_and_naik_terms_kernel(const float2 * const oprodEven, 
+                             int sig, float coeff, float naik_coeff,
+                             float2 * const momMatrixEven)
+{
+  int sid = blockIdx.x * blockDim.x + threadIdx.x;
+
+  int x[4];
+  int z1 = sid/X1h;
+  int x1h = sid - z1*X1h;
+  int z2 = z1/X2;
+  x[1] = z1 - z2*X2;
+  x[3] = z2/X3;
+  x[2] = z2 - x[3]*X3;
+  int x1odd = (x[1] + x[2] + x[3] + oddBit) & 1;
+  x[0] = 2*x1h + x1odd;
+  int X = 2*sid + x1odd;
+
+  int new_x[4];
+  new_x[0] = x[0];
+  new_x[1] = x[1];
+  new_x[2] = x[2];
+  new_x[3] = x[3];
+
+  int new_mem_idx;
+  int point_b;
+
+  if(GOES_FORWARDS(sig)){
+    FF_COMPUTE_NEW_FULL_IDX_PLUS_UPDATE(sig, X, new_mem_idx);
+  }else{
+    FF_COMPUTE_NEW_FULL_IDX_MINUS_UPDATE(OPP_DIR(sig), X, new_mem_idx);	
+  }
+  point_b = (new_mem_idx >> 1); 
+  const int & point_a = sid;
+
+  const float &  mycoeff = CoeffSign<1,oddBit>::result*(coeff + naik_coeff);
+
+  float2 COLOR_MAT_W[9], COLOR_MAT_Y[9];
+
+  if(GOES_FORWARDS(sig)){
+    LOAD_MATRIX_18_SINGLE(oprodEven, point_a, COLOR_MAT_W);
+    ADJ_MAT(color_mat_W, color_mat_Y);
+    LOAD_MOM_MATRIX_SINGLE(momMatrixEven, sig, point_a, COLOR_MAT_W);
+    SCALAR_MULT_ADD_SU3_MATRIX(color_mat_W, color_mat_Y, mycoeff, color_mat_W);
+    WRITE_MOM_MATRIX_SINGLE(momMatrixEven, sig, point_a, COLOR_MAT_W);
+  }
+  return;
 }
 
 
+static void
+one_and_naik_terms(const float2* const oprodEven, const float2* const oprodOdd,
+                         int sig, float coeff, float naik_coeff,
+                         dim3 gridDim, dim3 blockDim,
+                         float2* const MomMatrixEven,   float2* const MomMatrixOdd)
+{
+
+  dim3 halfGridDim(gridDim.x/2,1,1);
+
+
+  if(GOES_FORWARDS(sig)){
+    do_one_and_naik_terms_kernel<0><<<halfGridDim,blockDim>>>(oprodEven,
+                                    sig, coeff, naik_coeff,
+                                    MomMatrixEven);
+
+    do_one_and_naik_terms_kernel<1><<<halfGridDim,blockDim>>>(oprodOdd,
+                                    sig, coeff, naik_coeff,
+                                    MomMatrixOdd);
+
+  }
+  return;
+}
 
 
 
 template<int sig_positive, int mu_positive, int oddBit> 
 __global__ void
-do_middle_link_kernel(const float2 * const tempEven, 
+do_middle_link_kernel(
+    const float2 * const tempEven, const float2 * const tempOdd,
     float2 * const PmuOdd, float2 * const P3Even,
     const float2 * const QprevOdd, 		
     float2 * const QmuEven, 
     int sig, int mu, float coeff,
     float4 * const linkEven, float4 * const linkOdd,
-    float2 * const momEven,
     float2 * const momMatrixEven 
     ) 
 {		
@@ -338,11 +273,10 @@ do_middle_link_kernel(const float2 * const tempEven,
   new_x[3] = x[3];
 
   if(mu_positive){
-    mymu =mu;
+    mymu = mu;
     FF_COMPUTE_NEW_FULL_IDX_MINUS_UPDATE(mu, X, new_mem_idx);
   }else{
     mymu = OPP_DIR(mu);
-   // computeNewFullIndexPlusUpdate(OPP_DIR(mu),X,new_x,new_mem_idx);
     FF_COMPUTE_NEW_FULL_IDX_PLUS_UPDATE(OPP_DIR(mu), X, new_mem_idx);	
   }
   point_d = (new_mem_idx >> 1);
@@ -353,7 +287,6 @@ do_middle_link_kernel(const float2 * const tempEven,
     ad_link_nbr_idx = sid;
     reconstructSign(&ad_link_sign, mymu, x);	
   }
-
 
   int mysig; 
   if(sig_positive){
@@ -368,13 +301,12 @@ do_middle_link_kernel(const float2 * const tempEven,
     bc_link_nbr_idx = point_c;	
     reconstructSign(&bc_link_sign, mymu, new_x);
   }
-  // So far, we have just computed ad_link_nbr_idx and 
-  // bc_link_nbr_idx
 
   new_x[0] = x[0];
   new_x[1] = x[1];
   new_x[2] = x[2];
   new_x[3] = x[3];
+
   if(sig_positive){
     FF_COMPUTE_NEW_FULL_IDX_PLUS_UPDATE(sig, X, new_mem_idx);
   }else{
@@ -416,19 +348,20 @@ do_middle_link_kernel(const float2 * const tempEven,
   RECONSTRUCT_LINK_12(mymu, bc_link_nbr_idx, bc_link_sign, link_X);
 
 
+  if(QprevOdd == NULL && sig_positive){
+    LOAD_MATRIX_18_SINGLE(tempOdd, point_d, COLOR_MAT_Z); 
+    ADJ_MAT(color_mat_Z, color_mat_Y);
+  }else{
+    LOAD_MATRIX_18_SINGLE(tempEven, point_c, COLOR_MAT_Y);
+  }
 
-  LOAD_MATRIX_18_SINGLE(tempEven, point_c, COLOR_MAT_Y);
-  // I do not think that Q3 is needed!
+
   if(mu_positive){
     ADJ_MAT_MUL_MAT(link_X, color_mat_Y, color_mat_W);
   }else{
     MAT_MUL_MAT(link_X, color_mat_Y, color_mat_W);
   }
 
-
-  // Why write to PmuOdd instead of PmuEven?
-  // Well, PmuEven would require tempOdd 
-  // i.e., an extra device-memory access
   WRITE_MATRIX_18_SINGLE(PmuOdd, point_b, COLOR_MAT_W);
   if(sig_positive){
     MAT_MUL_MAT(link_W, color_mat_W, color_mat_Y);
@@ -448,7 +381,6 @@ do_middle_link_kernel(const float2 * const tempEven,
   }
 
 
-  // if threeStaple - additional factorisation here!
   if(QprevOdd == NULL){
     if(sig_positive){
       MAT_MUL_MAT(color_mat_W, link_Y, color_mat_Y);
@@ -478,7 +410,7 @@ do_middle_link_kernel(const float2 * const tempEven,
 
 
 
-  static void 
+static void 
 compute_force_kernel(float4* linkEven, float4* linkOdd, FullGauge cudaSiteLink,
     float2* momMatrixEven, float2* momMatrixOdd,
     int sig, dim3 gridDim, dim3 blockDim,
@@ -486,7 +418,6 @@ compute_force_kernel(float4* linkEven, float4* linkOdd, FullGauge cudaSiteLink,
 {
   dim3 halfGridDim(gridDim.x/2, 1, 1);
 
-  // Need to see if this is necessary in the lates version of quda
   cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
   cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.odd,  cudaSiteLink.bytes);
 
@@ -514,7 +445,7 @@ compute_force_kernel(float4* linkEven, float4* linkOdd, FullGauge cudaSiteLink,
 
 
 
-  static void
+static void
 middle_link_kernel(const float2 * const tempEven, const float2 * const tempOdd, 
     float2 * const PmuEven,   float2 * const PmuOdd,
     float2 * const P3Even,    float2 * const P3Odd,
@@ -522,7 +453,6 @@ middle_link_kernel(const float2 * const tempEven, const float2 * const tempOdd,
     float2 * const QmuEven,   float2 * const QmuOdd,
     int sig, int mu, float coeff,
     float4 * const linkEven, float4 * const linkOdd, FullGauge cudaSiteLink,
-    float2 * const  momEven, float2 * const momOdd,
     dim3 gridDim, dim3 BlockDim,
     float2 * const momMatrixEven, float2 * const momMatrixOdd)
 {
@@ -532,13 +462,12 @@ middle_link_kernel(const float2 * const tempEven, const float2 * const tempOdd,
   cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
 
   if (GOES_FORWARDS(sig) && GOES_FORWARDS(mu)){	
-    do_middle_link_kernel<1,1,0><<<halfGridDim, BlockDim>>>( tempEven,
+    do_middle_link_kernel<1,1,0><<<halfGridDim, BlockDim>>>( tempEven, tempOdd,
         PmuOdd,  P3Even,
         QprevOdd,
         QmuEven, 
         sig, mu, coeff,
         linkEven, linkOdd,
-        momEven, 
         momMatrixEven);
     cudaUnbindTexture(siteLink0TexSingle_recon);
     cudaUnbindTexture(siteLink1TexSingle_recon);
@@ -546,22 +475,20 @@ middle_link_kernel(const float2 * const tempEven, const float2 * const tempOdd,
     cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
     cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
 
-    do_middle_link_kernel<1,1,1><<<halfGridDim, BlockDim>>>( tempOdd, 
+    do_middle_link_kernel<1,1,1><<<halfGridDim, BlockDim>>>( tempOdd, tempEven,
         PmuEven,  P3Odd,
         QprevEven,
         QmuOdd, 
         sig, mu, coeff,
         linkOdd, linkEven,
-        momOdd, 
         momMatrixOdd);
   }else if (GOES_FORWARDS(sig) && GOES_BACKWARDS(mu)){
-    do_middle_link_kernel<1,0,0><<<halfGridDim, BlockDim>>>( tempEven,
+    do_middle_link_kernel<1,0,0><<<halfGridDim, BlockDim>>>( tempEven, tempOdd,
         PmuOdd,  P3Even,
         QprevOdd,
         QmuEven,
         sig, mu, coeff,
         linkEven, linkOdd,
-        momEven, 
         momMatrixEven);	
     cudaUnbindTexture(siteLink0TexSingle_recon);
     cudaUnbindTexture(siteLink1TexSingle_recon);
@@ -570,23 +497,21 @@ middle_link_kernel(const float2 * const tempEven, const float2 * const tempOdd,
     cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
     cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
 
-    do_middle_link_kernel<1,0,1><<<halfGridDim, BlockDim>>>( tempOdd, 
+    do_middle_link_kernel<1,0,1><<<halfGridDim, BlockDim>>>( tempOdd, tempEven,
         PmuEven,  P3Odd,
         QprevEven,
         QmuOdd,  
         sig, mu, coeff,
         linkOdd, linkEven,
-        momOdd, 
         momMatrixOdd);
 
   }else if (GOES_BACKWARDS(sig) && GOES_FORWARDS(mu)){
-    do_middle_link_kernel<0,1,0><<<halfGridDim, BlockDim>>>( tempEven, 
+    do_middle_link_kernel<0,1,0><<<halfGridDim, BlockDim>>>( tempEven, tempOdd,
         PmuOdd,  P3Even,
         QprevOdd,
         QmuEven, 
         sig, mu, coeff,
         linkEven, linkOdd,
-        momEven, 
         momMatrixEven);	
     cudaUnbindTexture(siteLink0TexSingle_recon);
     cudaUnbindTexture(siteLink1TexSingle_recon);
@@ -595,22 +520,20 @@ middle_link_kernel(const float2 * const tempEven, const float2 * const tempOdd,
     cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
     cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
 
-    do_middle_link_kernel<0,1,1><<<halfGridDim, BlockDim>>>( tempOdd,
+    do_middle_link_kernel<0,1,1><<<halfGridDim, BlockDim>>>( tempOdd, tempEven,
         PmuEven,  P3Odd,
         QprevEven, 
         QmuOdd, 
         sig, mu, coeff,
         linkOdd, linkEven,
-        momOdd, 
         momMatrixOdd);
   }else{
-    do_middle_link_kernel<0,0,0><<<halfGridDim, BlockDim>>>( tempEven,
+    do_middle_link_kernel<0,0,0><<<halfGridDim, BlockDim>>>( tempEven, tempOdd,
         PmuOdd, P3Even,
         QprevOdd,
         QmuEven, 
         sig, mu, coeff,
         linkEven, linkOdd,
-        momEven, 
         momMatrixEven);		
 
     cudaUnbindTexture(siteLink0TexSingle_recon);
@@ -620,13 +543,12 @@ middle_link_kernel(const float2 * const tempEven, const float2 * const tempOdd,
     cudaBindTexture(0, siteLink0TexSingle_recon, cudaSiteLink.odd, cudaSiteLink.bytes);
     cudaBindTexture(0, siteLink1TexSingle_recon, cudaSiteLink.even, cudaSiteLink.bytes);
 
-    do_middle_link_kernel<0,0,1><<<halfGridDim, BlockDim>>>( tempOdd, 
+    do_middle_link_kernel<0,0,1><<<halfGridDim, BlockDim>>>( tempOdd, tempEven,
         PmuEven,  P3Odd,
         QprevEven,
         QmuOdd,  
         sig, mu, coeff,
         linkOdd, linkEven,
-        momOdd, 
         momMatrixOdd);		
   }
   cudaUnbindTexture(siteLink0TexSingle_recon);
@@ -966,6 +888,7 @@ do_all_link_kernel(const float2* tempEven,
     new_x[1] = x[1];
     new_x[2] = x[2];
     new_x[3] = x[3];
+
     if(sig_positive){
 	FF_COMPUTE_NEW_FULL_IDX_PLUS_UPDATE(sig, X, new_mem_idx);
     }else{
@@ -1016,8 +939,6 @@ do_all_link_kernel(const float2* tempEven,
     }else{
 	MAT_MUL_MAT(link_W, color_mat_Y, link_X);
     }
-    // link_X now connects site b to the outer product! 
-    // Done with LINK_W for the time being.	
 
     if (sig_positive){
 	FF_LOAD_ARRAY(linkEven, mysig, ab_link_nbr_idx, LINK_W);
@@ -1032,9 +953,6 @@ do_all_link_kernel(const float2* tempEven,
    }else{
      ADJ_MAT_MUL_MAT(link_W, link_X, color_mat_Y);
    }
-    // color_mat_Y now connects site a to the outer product 
-    // Force from the forward link in the staple
-
 
    const float & mycoeff = CoeffSign<sig_positive,oddBit>::result*coeff;
    if (sig_positive)
@@ -1046,9 +964,6 @@ do_all_link_kernel(const float2* tempEven,
      WRITE_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, COLOR_MAT_Z);
    }
 
-   // Note that mu is known at compile time 
-   // Surely this code can be made more generic
-   // QprevOdd = color_mat_X
    if (mu_positive)
    {
      MAT_MUL_MAT(color_mat_Y, color_mat_X, link_Z);
@@ -1225,6 +1140,9 @@ all_link_kernel(const float2* link_ZxEven, const float2* link_ZxOdd,
     cudaUnbindTexture(siteLink1TexSingle_recon);
 }
 
+
+
+
 /*
 __global__ void
 one_and_naik_terms_kernel(float2* TempxEven, float2* TempxOdd,
@@ -1351,21 +1269,6 @@ one_and_naik_terms_kernel(float2* TempxEven, float2* TempxOdd,
 #define P7rho     tempmat[3]
 
 
-// Here, we have a problem. 
-// If we use float2 to store the Ps and float2 
-// for the Qs. We can't use the same link_Zoraries 
-// here. 
-// I wonder which is better? 
-// To use float2 for both Ps and Qs and 
-// and use the same link_Zorary matrices 
-// or use float2 for the Ps and float4 for the 
-// Qs and use separate sets of matrices?
-// Ultimately, I will use float4 for the Q matrices 
-// for the first level of smearing and float2 
-// for the Q matrices for the second level of smearing. 
-// To begin with, use float4 for everything.
-// Note, I will have to go back and undo the float4s above.
-
 
 // if first level of smearing
  #define Qmu      tempCmat[0]
@@ -1374,17 +1277,6 @@ one_and_naik_terms_kernel(float2* TempxEven, float2* TempxOdd,
  #define Q5       tempCmat[2]
 
 
-// tempCmat should be a full compressed matrix
-// FullCompMat
-
-// if !first level of smearing
-//#define Qmu	  tempmat[7]
-//#define Qnumu	  tempmat[8]
-//#define Qrhonumu  tempmat[2] // same as Prhonumu
-
-// Need to define new types 
-// FullMat 
-// FullCompMat
 
 template<typename Real>
 static void
@@ -1426,23 +1318,23 @@ do_hisq_force_cuda(Real eps, Real weight1, Real weight2,  Real* act_path_coeff, 
             }
 	    //3-link
 	    //Kernel A: middle link
-	   
-	    middle_link_kernel( (float2*)cudaOprod.even.data[OPP_DIR(sig)], (float2*)cudaOprod.odd.data[OPP_DIR(sig)],
+	  
+            // Need to change this so I only read in the outer product in four directions
+            // Should be fairly straightforward, I think!
+            // Changed by J.F.
+            int new_sig;
+            if(GOES_BACKWARDS(sig)){ new_sig = OPP_DIR(sig); }else{ new_sig = sig; }
+
+	    //middle_link_kernel( (float2*)cudaOprod.even.data[OPP_DIR(sig)], (float2*)cudaOprod.odd.data[OPP_DIR(sig)],
+	    middle_link_kernel( (float2*)cudaOprod.even.data[new_sig], (float2*)cudaOprod.odd.data[new_sig],
 				(float2*)Pmu.even.data, (float2*)Pmu.odd.data,
 				(float2*)P3.even.data, (float2*)P3.odd.data,
 				(float2*)NULL,         (float2*)NULL,
 				(float2*)Qmu.even.data, (float2*)Qmu.odd.data,
 				sig, mu, mThreeSt,
 				(float4*)cudaSiteLink.even, (float4*)cudaSiteLink.odd, cudaSiteLink, 
-				(float2*)cudaMom.even, (float2*)cudaMom.odd, 
 				gridDim, blockDim,
-			        (float2*)cudaMomMatrix.even, (float2*)cudaMomMatrix.odd); // I have added true and false to indicate 
-							                                  // whether I am on a three staple
-                                                                                          // Actually, I just have to check if the pointer   
-                                                                                          // to the previous path is a NULL pointer!     
-
-
-
+			        (float2*)cudaMomMatrix.even, (float2*)cudaMomMatrix.odd); 
 	
 	    checkCudaError();
 
@@ -1457,24 +1349,22 @@ do_hisq_force_cuda(Real eps, Real weight1, Real weight2,  Real* act_path_coeff, 
 		middle_link_kernel( (float2*)Pmu.even.data, (float2*)Pmu.odd.data,
 				    (float2*)Pnumu.even.data, (float2*)Pnumu.odd.data,
 				    (float2*)P5.even.data, (float2*)P5.odd.data,
-				    (float2*)Qmu.even.data, (float2*)Qmu.odd.data, // input Q matrix
+				    (float2*)Qmu.even.data, (float2*)Qmu.odd.data,
 				    (float2*)Qnumu.even.data, (float2*)Qnumu.odd.data,
 				    sig, nu, FiveSt,
 				    (float4*)cudaSiteLink.even, (float4*)cudaSiteLink.odd, cudaSiteLink, 
-				    (float2*)cudaMom.even, (float2*)cudaMom.odd,
 				    gridDim, blockDim,
-				    (float2*)cudaMomMatrix.even, (float2*)cudaMomMatrix.odd); // no longer on a threeStaple => have to read in Qprev
+				    (float2*)cudaMomMatrix.even, (float2*)cudaMomMatrix.odd); 
 
 		checkCudaError();
 
-                for(rho =0; rho < 8; rho++){
+                for(rho = 0; rho < 8; rho++){
                     if (rho == sig || rho == OPP_DIR(sig)
                         || rho == mu || rho == OPP_DIR(mu)
                         || rho == nu || rho == OPP_DIR(nu)){
                         continue;
                     }
 		    //7-link: middle link and side link
-		    //kernel C
 		    if(FiveSt != 0)coeff = SevenSt/FiveSt ; else coeff = 0;
 		    all_link_kernel((float2*)Pnumu.even.data, (float2*)Pnumu.odd.data,
 				    (float2*)Qnumu.even.data, (float2*)Qnumu.odd.data,
@@ -1490,16 +1380,12 @@ do_hisq_force_cuda(Real eps, Real weight1, Real weight2,  Real* act_path_coeff, 
 		    checkCudaError();
 
 		}//rho  		
-                // P7, P7rho, P7rhonumu are free to be used again
 
 
 		//5-link: side link
-		//kernel B2
 		if(ThreeSt != 0)coeff = FiveSt/ThreeSt; else coeff = 0;
 		side_link_kernel((float2*)P5.even.data, (float2*)P5.odd.data,
-		//		 (float2*)P5nu.even.data, (float2*)P5nu.odd.data, // output
 				 (float2*)Qmu.even.data, (float2*)Qmu.odd.data,
-	         //	        (float2*)Qnumu.even.data, (float2*)Qnumu.odd.data,
 				 (float2*)P3.even.data, (float2*)P3.odd.data,
 				 sig, nu, mFiveSt, coeff,
 				 (float4*)cudaSiteLink.even, (float4*)cudaSiteLink.odd, cudaSiteLink,
@@ -1511,28 +1397,23 @@ do_hisq_force_cuda(Real eps, Real weight1, Real weight2,  Real* act_path_coeff, 
 
 
 	    } //nu 
-            // P5nu, Pnumu are free to be used again
 
 	    //lepage
-	    //Kernel A2
 	    middle_link_kernel( (float2*)Pmu.even.data, (float2*)Pmu.odd.data,
 				(float2*)Pnumu.even.data, (float2*)Pnumu.odd.data,
 				(float2*)P5.even.data, (float2*)P5.odd.data,
-				(float2*)Qmu.even.data, (float2*)Qmu.odd.data, // input Q matrix
+				(float2*)Qmu.even.data, (float2*)Qmu.odd.data, 
 				(float2*)Qnumu.even.data, (float2*)Qnumu.odd.data,
 				sig, mu, Lepage,
 				(float4*)cudaSiteLink.even, (float4*)cudaSiteLink.odd, cudaSiteLink, 
-				(float2*)cudaMom.even, (float2*)cudaMom.odd,
 				gridDim, blockDim, 
-				(float2*)cudaMomMatrix.even, (float2*)cudaMomMatrix.odd); // not on a threeStaple => have to read in Qprev   
+				(float2*)cudaMomMatrix.even, (float2*)cudaMomMatrix.odd); 
 	    checkCudaError();		
 	    
 	    if(ThreeSt != 0)coeff = Lepage/ThreeSt ; else coeff = 0;
 	    
 	    side_link_kernel((float2*)P5.even.data, (float2*)P5.odd.data,
-	//		     (float2*)P5nu.even.data, (float2*)P5nu.odd.data,
 			     (float2*)Qmu.even.data, (float2*)Qmu.odd.data,
-	//		     (float2*)Qnumu.even.data, (float2*)Qnumu.odd.data,
 			     (float2*)P3.even.data, (float2*)P3.odd.data,
 			     sig, mu, mLepage ,coeff,
 			     (float4*)cudaSiteLink.even, (float4*)cudaSiteLink.odd, cudaSiteLink,
@@ -1544,11 +1425,8 @@ do_hisq_force_cuda(Real eps, Real weight1, Real weight2,  Real* act_path_coeff, 
 
 	    //3-link side link
 	    coeff=0.;
-
 	    side_link_kernel((float2*)P3.even.data, (float2*)P3.odd.data,
-	//		     (float2*)P3mu.even.data, (float2*)P3mu.odd.data,
 			     (float2*)NULL, (float2*)NULL,
-	//		     (float2*)Qmu.even.data, (float2*)Qmu.odd.data,
 			     (float2*)NULL, (float2*)NULL,
 			     sig, mu, ThreeSt, coeff,
 			     (float4*)cudaSiteLink.even, (float4*)cudaSiteLink.odd, cudaSiteLink,
