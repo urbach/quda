@@ -72,6 +72,16 @@ cudaColorSpinorField *inSpinor;
 #define SCALE_FLOAT ((SHORT_LENGTH-1) * 0.5) // 32767.5
 #define SHIFT_FLOAT (-1.f / (SHORT_LENGTH-1)) // 1.5259021897e-5
 
+__device__  inline void store_streaming_float4(float4* addr, float x, float y, float z, float w)
+{
+  asm("st.cs.global.v4.f32 [%0+0], {%1, %2, %3, %4};" :: "l"(addr), "f"(x), "f"(y), "f"(z), "f"(w));
+}
+
+__device__  inline void store_streaming_double2(double2* addr, double x, double y)
+{
+  asm("st.cs.global.v2.f64 [%0+0], {%1, %2};" :: "l"(addr), "d"(x), "d"(y));
+}
+
 #if defined(DIRECT_ACCESS_LINK) || defined(DIRECT_ACCESS_WILSON_SPINOR) || \
   defined(DIRECT_ACCESS_WILSON_ACCUM) || defined(DIRECT_ACCESS_WILSON_PACK_SPINOR)
 static inline __device__ short float2short(float c, float a) {
