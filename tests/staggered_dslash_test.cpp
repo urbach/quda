@@ -46,7 +46,7 @@ void *fatlink[4], *longlink[4];
 const void **ghost_fatlink, **ghost_longlink;
 #endif
 
-const int loops = 1000;
+const int loops = 100;
 
 QudaParity parity;
 extern QudaDagType dagger;
@@ -60,7 +60,7 @@ extern QudaReconstructType link_recon;
 extern QudaPrecision prec;
 
 int X[4];
-const int Nsrc = 1;   // number of spinors to apply to simultaneously
+const int Nsrc = 3;   // number of spinors to apply to simultaneously
 
 Dirac* dirac;
 extern int Z[4];
