@@ -174,7 +174,8 @@ do_one_and_naik_terms_kernel(const float2 * const oprodEven,
   point_b = (new_mem_idx >> 1); 
   const int & point_a = sid;
 
-  const float &  mycoeff = CoeffSign<1,oddBit>::result*(coeff + naik_coeff);
+  // May need to change this to properly take account of the Naik term!
+  const float &  mycoeff = -CoeffSign<1,oddBit>::result*(coeff + naik_coeff);
 
   float2 COLOR_MAT_W[9], COLOR_MAT_Y[9];
 
@@ -198,8 +199,8 @@ one_and_naik_terms(const float2* const oprodEven, const float2* const oprodOdd,
 
   dim3 halfGridDim(gridDim.x/2,1,1);
 
-
   if(GOES_FORWARDS(sig)){
+
     do_one_and_naik_terms_kernel<0><<<halfGridDim,blockDim>>>(oprodEven,
                                     sig, coeff, naik_coeff,
                                     MomMatrixEven);
@@ -208,7 +209,8 @@ one_and_naik_terms(const float2* const oprodEven, const float2* const oprodOdd,
                                     sig, coeff, naik_coeff,
                                     MomMatrixOdd);
 
-  }
+  } // GOES_FORWARDS(sig)
+
   return;
 }
 
@@ -1453,6 +1455,20 @@ do_hisq_force_cuda(Real eps, Real weight1, Real weight2,  Real* act_path_coeff, 
 	}//mu
 
     }//sig
+
+
+
+    for(sig=0; sig<8; ++sig){
+      if(GOES_FORWARDS(sig)){
+        one_and_naik_terms((float2*)cudaOprod.even.data[sig], (float2*)cudaOprod.odd.data[sig],
+                           sig, OneLink, 0.0,
+                           gridDim, blockDim,
+                           (float2*)cudaMomMatrix.even, (float2*)cudaMomMatrix.odd);
+      } // GOES_FORWARDS(sig)
+      checkCudaError();
+    }
+
+
 
     for(sig=0; sig<8; sig++){
       if(GOES_FORWARDS(sig)){
