@@ -18,8 +18,9 @@ void TuneBase::Benchmark(dim3 &block, dim3 &grid)  {
     block = dim3(threads,1,1);
       
     unsigned int gridDimMax = (size + block.x-1) / block.x;
+    unsigned int gridDimMin = 1;//gridDimMax;
 
-    for (int gridDim=gridDimMax; gridDim >= 1; gridDim--) {
+    for (int gridDim=gridDimMax; gridDim >= gridDimMin; gridDim--) {
       // adjust grid
       
       grid = dim3(gridDim, 1, 1);
