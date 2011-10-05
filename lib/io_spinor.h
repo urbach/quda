@@ -258,7 +258,7 @@
 
 
 #define WRITE_SPINOR_DOUBLE2(stride)			   \
-  out[0*(stride)+sid] = make_double2(o00_re, o00_im);	   \
+  out[0*(stride)+sid] = make_double2(o01_re, o01_im);	   \
   out[1*(stride)+sid] = make_double2(o01_re, o01_im);	   \
   out[2*(stride)+sid] = make_double2(o02_re, o02_im);	   \
   out[3*(stride)+sid] = make_double2(o10_re, o10_im);	   \
@@ -271,13 +271,35 @@
   out[10*(stride)+sid] = make_double2(o31_re, o31_im);	   \
   out[11*(stride)+sid] = make_double2(o32_re, o32_im);		 
 
-#define WRITE_SPINOR_FLOAT4(stride)				     \
-  out[0*(stride)+sid] = make_float4(o00_re, o00_im, o01_re, o01_im); \
+#define WRITE_SPINOR_STREAMING_DOUBLE2(stride)			\
+  store_streaming_double2(out+0*(stride)+sid, o00_re, o00_im);	\
+  store_streaming_double2(out+1*(stride)+sid, o01_re, o01_im);	\
+  store_streaming_double2(out+2*(stride)+sid, o02_re, o02_im);	\
+  store_streaming_double2(out+3*(stride)+sid, o10_re, o10_im);	\
+  store_streaming_double2(out+4*(stride)+sid, o11_re, o11_im);	\
+  store_streaming_double2(out+5*(stride)+sid, o12_re, o12_im);	\
+  store_streaming_double2(out+6*(stride)+sid, o20_re, o20_im);	\
+  store_streaming_double2(out+7*(stride)+sid, o21_re, o21_im);	\
+  store_streaming_double2(out+8*(stride)+sid, o22_re, o22_im);	\
+  store_streaming_double2(out+9*(stride)+sid, o30_re, o30_im);	\
+  store_streaming_double2(out+10*(stride)+sid, o31_re, o31_im); \
+  store_streaming_double2(out+11*(stride)+sid, o32_re, o32_im); 
+
+#define WRITE_SPINOR_FLOAT4(stride)					\
+  store_streaming_float4(out+0*(stride)+sid, o00_re, o00_im, o01_re, o01_im); \
+  store_streaming_float4(out+1*(stride)+sid, o02_re, o02_im, o10_re, o10_im); \
+  store_streaming_float4(out+2*(stride)+sid, o11_re, o11_im, o12_re, o12_im); \
+  store_streaming_float4(out+3*(stride)+sid, o20_re, o20_im, o21_re, o21_im); \
+  store_streaming_float4(out+4*(stride)+sid, o22_re, o22_im, o30_re, o30_im); \
+  store_streaming_float4(out+5*(stride)+sid, o31_re, o31_im, o32_re, o32_im); 
+
+/*  out[0*(stride)+sid] = make_float4(o00_re, o00_im, o01_re, o01_im);	\
   out[1*(stride)+sid] = make_float4(o02_re, o02_im, o10_re, o10_im); \
   out[2*(stride)+sid] = make_float4(o11_re, o11_im, o12_re, o12_im); \
   out[3*(stride)+sid] = make_float4(o20_re, o20_im, o21_re, o21_im); \
   out[4*(stride)+sid] = make_float4(o22_re, o22_im, o30_re, o30_im); \
   out[5*(stride)+sid] = make_float4(o31_re, o31_im, o32_re, o32_im);
+*/
 
 #define WRITE_SPINOR_SHORT4(stride)					\
   float c0 = fmaxf(fabsf(o00_re), fabsf(o00_im));			\
