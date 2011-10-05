@@ -18,6 +18,8 @@
 #include "misc.h"
 
 
+#include "fat_force_quda.h"
+
 #ifdef MULTI_GPU
 #include "face_quda.h"
 #include "mpicomm.h"
