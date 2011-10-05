@@ -81,8 +81,8 @@ void DiracStaggered::checkParitySpinor(const cudaColorSpinorField &in, const cud
 	      in.SiteSubset(), out.SiteSubset());
   }
 
-  if ((out.Volume() != 2*fatGauge->VolumeCB() && out.SiteSubset() == QUDA_FULL_SITE_SUBSET) ||
-      (out.Volume() != fatGauge->VolumeCB() && out.SiteSubset() == QUDA_PARITY_SITE_SUBSET) ) {
+  if ((out.Volume()/out.X(4) != 2*fatGauge->VolumeCB() && out.SiteSubset() == QUDA_FULL_SITE_SUBSET) ||
+      (out.Volume()/out.X(4) != fatGauge->VolumeCB() && out.SiteSubset() == QUDA_PARITY_SITE_SUBSET) ) {
     errorQuda("Spinor volume %d doesn't match gauge volume %d", out.Volume(), fatGauge->VolumeCB());
   }
 }
@@ -98,7 +98,8 @@ void DiracStaggered::Dslash(cudaColorSpinorField &out, const cudaColorSpinorFiel
   checkParitySpinor(in, out);
 
   setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda
-  staggeredDslashCuda(&out, *fatGauge, *longGauge, &in, parity, dagger, 0, 0, blockDslash, commDim);
+  staggeredDslashCuda(&out, *fatGauge, *longGauge, &in, parity, dagger, 0, 0, 
+		      blockDslash, commDim, out.X(4));
   
   flops += 1146*in.volume;
 }
@@ -114,7 +115,8 @@ void DiracStaggered::DslashXpay(cudaColorSpinorField &out, const cudaColorSpinor
   checkParitySpinor(in, out);
 
   setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda
-  staggeredDslashCuda(&out, *fatGauge, *longGauge, &in, parity, dagger, &x, k, blockDslashXpay, commDim);
+  staggeredDslashCuda(&out, *fatGauge, *longGauge, &in, parity, dagger, &x, k, 
+		      blockDslashXpay, commDim, out.X(4));
   
   flops += (1146+12)*in.volume;
 }

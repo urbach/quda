@@ -54,7 +54,8 @@ void domainWallDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &gauge
 // staggered Dslash    
 void staggeredDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &fatGauge, const cudaGaugeField &longGauge,
 			 const cudaColorSpinorField *in, const int parity, const int dagger, 
-			 const cudaColorSpinorField *x, const double &k, const dim3 *block, const int *commDim);
+			 const cudaColorSpinorField *x, const double &k, const dim3 *block, const int *commDim,
+			 const int Nsource = 1);
 
 // twisted mass Dslash  
 void twistedMassDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &gauge, const cudaColorSpinorField *in,

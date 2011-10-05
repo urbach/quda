@@ -26,7 +26,7 @@
 int test_type = 0;
 int device = 0;
 
-bool tune = false;
+bool tune = true;
 
 QudaGaugeParam gaugeParam;
 QudaInvertParam inv_param;
@@ -46,7 +46,7 @@ void *fatlink[4], *longlink[4];
 const void **ghost_fatlink, **ghost_longlink;
 #endif
 
-const int loops = 100;
+const int loops = 1000;
 
 QudaParity parity;
 extern QudaDagType dagger;
@@ -60,7 +60,7 @@ extern QudaReconstructType link_recon;
 extern QudaPrecision prec;
 
 int X[4];
-
+const int Nsrc = 1;   // number of spinors to apply to simultaneously
 
 Dirac* dirac;
 extern int Z[4];
@@ -141,16 +141,19 @@ void init()
   
   
   gaugeParam.ga_pad = tmpint;
-  inv_param.sp_pad = tmpint;
+  inv_param.sp_pad = 0;
 
   ColorSpinorParam csParam;
   csParam.fieldLocation = QUDA_CPU_FIELD_LOCATION;
   csParam.nColor=3;
   csParam.nSpin=1;
-  csParam.nDim=4;
+  csParam.nDim=5;
   for(int d = 0; d < 4; d++) {
     csParam.x[d] = gaugeParam.X[d];
   }
+
+  csParam.x[4] = Nsrc;  // This is the number of sources to apply the dslash to
+
   csParam.precision = inv_param.cpu_prec;
   csParam.pad = 0;
   if (test_type < 2) {
@@ -240,6 +243,7 @@ void init()
     csParam.fieldLocation = QUDA_CUDA_FIELD_LOCATION;
     csParam.fieldOrder = QUDA_FLOAT2_FIELD_ORDER;
     csParam.pad = inv_param.sp_pad;
+
     csParam.precision = inv_param.cuda_prec;
     if (test_type < 2){
       csParam.siteSubset = QUDA_PARITY_SITE_SUBSET;
@@ -254,17 +258,16 @@ void init()
 	
     printfQuda("Sending spinor field to GPU\n");
     *cudaSpinor = *spinor;
-	
+
     cudaThreadSynchronize();
     checkCudaError();
 	
     double spinor_norm2 = norm2(*spinor);
     double cuda_spinor_norm2=  norm2(*cudaSpinor);
     printfQuda("Source CPU = %f, CUDA=%f\n", spinor_norm2, cuda_spinor_norm2);
-	
-    if(test_type == 2){
-      csParam.x[0] /=2;
-    }
+
+    if(test_type == 2) csParam.x[0] /=2;
+
     csParam.siteSubset = QUDA_PARITY_SITE_SUBSET;
     tmp = new cudaColorSpinorField(csParam);
 
@@ -272,7 +275,7 @@ void init()
     DiracParam diracParam;
     setDiracParam(diracParam, &inv_param, pc);
 
-    //diracParam.verbose = QUDA_DEBUG_VERBOSE;
+    diracParam.verbose = QUDA_DEBUG_VERBOSE;
     diracParam.tmp1=tmp;
 
     dirac = Dirac::create(diracParam);
@@ -367,6 +370,7 @@ double dslashCUDA() {
 
 void staggeredDslashRef()
 {
+
 #ifndef MULTI_GPU
   int cpu_parity = 0;
 #endif
@@ -382,8 +386,16 @@ void staggeredDslashRef()
 			    spinor, parity, dagger, inv_param.cpu_prec, gaugeParam.cpu_prec);
 #else
     cpu_parity = 0; //EVEN
-    staggered_dslash(spinorRef->v, fatlink, longlink, spinor->v, cpu_parity, dagger, 
-		     inv_param.cpu_prec, gaugeParam.cpu_prec);
+    
+    for (int i=0; i<Nsrc; i++) {
+
+      void *in = (char*)spinor->V() + i * 6 * inv_param.cpu_prec * (spinor->Volume() / Nsrc);
+      void *out = (char*)spinorRef->V() + i * 6 * inv_param.cpu_prec * (spinorRef->Volume() / Nsrc);
+
+      staggered_dslash(out, fatlink, longlink, in, cpu_parity, dagger, 
+		       inv_param.cpu_prec, gaugeParam.cpu_prec);
+
+    }
     
 #endif    
 
@@ -396,7 +408,7 @@ void staggeredDslashRef()
     
 #else
     cpu_parity=1; //ODD
-    staggered_dslash(spinorRef->v, fatlink, longlink, spinor->v, cpu_parity, dagger, 
+    staggered_dslash(spinorRef->V(), fatlink, longlink, spinor->V(), cpu_parity, dagger, 
 		     inv_param.cpu_prec, gaugeParam.cpu_prec);
 #endif
     break;
@@ -442,7 +454,8 @@ static int dslashTest()
     if (prec == QUDA_HALF_PRECISION) bytes_for_one_site += (8*2 + 1)*4;	
 
     printfQuda("GFLOPS = %f\n", 1.0e-9*flops/secs);
-    printfQuda("GiB/s = %f\n\n", 1.0*Vh*bytes_for_one_site/((secs/loops)*(1<<30)));
+    printfQuda("GiB/s = %f\n", 1.0*Vh*Nsrc*bytes_for_one_site/((secs/loops)*(1<<30)));
+    printfQuda("GB/s = %f\n\n", 1.0*Vh*Nsrc*bytes_for_one_site/((secs/loops)*(1e9)));
 	
     if (!transfer) {
       double spinor_ref_norm2 = norm2(*spinorRef);
