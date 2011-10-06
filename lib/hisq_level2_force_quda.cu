@@ -10,7 +10,7 @@
 #define LOAD_ANTI_HERMITIAN LOAD_ANTI_HERMITIAN_SINGLE
 #define LOAD_MATRIX(src, dir, idx, var) LOAD_MATRIX_12_SINGLE(src, dir, idx, var)
 
-#define FF_SITE_MATRIX_LOAD_TEX 1
+//#define FF_SITE_MATRIX_LOAD_TEX 1
 
 #if (FF_SITE_MATRIX_LOAD_TEX == 1)
 #define linkEvenTex siteLink0TexSingle_recon
@@ -19,8 +19,56 @@
 #define FF_LOAD_ARRAY(src, dir, idx, var) LOAD_ARRAY_12_SINGLE_TEX(src##Tex, dir, idx, var)    
 #else
 #define FF_LOAD_MATRIX(src, dir, idx, var) LOAD_MATRIX_12_SINGLE(src, dir, idx, var)
-#define FF_LOAD_ARRAY(src, dir, idx, var) LOAD_ARRAY_12_SINGLE(src##Tex, dir, idx, var)    
+#define FF_LOAD_ARRAY(src, dir, idx, var) LOAD_ARRAY_12_SINGLE(src, dir, idx, var)    
 #endif
+
+
+template<class T>
+inline __device__
+void loadMatrixFromField(T* const mat, int dir, int idx, const T* const field)
+{
+  mat[0] = field[idx + dir*Vhx3];
+  mat[1] = field[idx + dir*Vhx3 + Vh];
+  mat[2] = field[idx + dir*Vhx3 + Vhx2];
+  mat[3] = field[idx + dir*Vhx3 + Vhx3];
+  mat[4] = field[idx + dir*Vhx3 + Vhx4];
+  mat[5] = field[idx + dir*Vhx3 + Vhx5];
+  mat[6] = field[idx + dir*Vhx3 + Vhx6];
+  mat[7] = field[idx + dir*Vhx3 + Vhx7];
+  mat[8] = field[idx + dir*Vhx3 + Vhx8];
+
+  return;
+}
+
+
+inline __device__
+void loadMatrixFromField(float4* const mat, int dir, int idx, const float4* const field)
+{
+  mat[0] = field[idx + dir*Vhx3];
+  mat[1] = field[idx + dir*Vhx3 + Vh];
+  mat[2] = field[idx + dir*Vhx3 + Vhx2];
+  return;
+}
+
+
+
+template<class T>
+inline __device__
+void loadMatrixFromField(T* const mat, int idx, const T* const field)
+{
+  mat[0] = field[idx];
+  mat[1] = field[idx + Vh];
+  mat[2] = field[idx + Vhx2];
+  mat[3] = field[idx + Vhx3];
+  mat[4] = field[idx + Vhx4];
+  mat[5] = field[idx + Vhx5];
+  mat[6] = field[idx + Vhx6];
+  mat[7] = field[idx + Vhx7];
+  mat[8] = field[idx + Vhx8];
+ 
+  return;
+}
+
 
 
 #define SIMPLE_MAT_FORCE_TO_MOM(mat, mom, idx, dir, temp_mat) do { \
@@ -60,7 +108,20 @@ namespace hisq {
         static const int result = 1;
       };
 
+    template<class RealX>
+      struct ArrayLength
+      {
+        static const int result=9;
+        static const bool compressed=false;
+      };
 
+    template<>
+      struct ArrayLength<float4>
+      {
+        static const int result=5;
+        static const bool compressed=true;
+      };
+   
 
     __device__ void reconstructSign(int* const sign, int dir, int i[4]){
       *sign=1;
@@ -125,13 +186,16 @@ namespace hisq {
 
         int link_sign;
 
-        RealB LINK_W[5];
-        RealA COLOR_MAT_W[9];
-        RealA COLOR_MAT_X[9];
+        RealB LINK_W[ArrayLength<RealB>::result];
+        RealA COLOR_MAT_W[ArrayLength<RealA>::result];
+        RealA COLOR_MAT_X[ArrayLength<RealA>::result];
 
-        FF_LOAD_ARRAY(linkEven, sig, sid, LINK_W);
+
+        loadMatrixFromField(LINK_W, sig, sid, linkEven);
         reconstructSign(&link_sign, sig, x);	
-        RECONSTRUCT_LINK_12(sig, sid, link_sign, link_W);
+        if(ArrayLength<RealB>::compressed){
+          RECONSTRUCT_LINK_12(sig, sid, link_sign, link_W);
+        }
 
         LOAD_MOM_MATRIX_SINGLE(momMatrixEven, sig, sid, COLOR_MAT_X);
         MAT_MUL_MAT(link_W, color_mat_X, color_mat_W);
@@ -256,21 +320,20 @@ namespace hisq {
         int ab_link_sign=1;
         int bc_link_sign=1;
 
-        RealB LINK_W[5];
-        RealB LINK_X[5];
-        RealB LINK_Y[5];
-        //RealB LINK_Z[5];
+        RealB LINK_W[ArrayLength<RealB>::result];
+        RealB LINK_X[ArrayLength<RealB>::result];
+        RealB LINK_Y[ArrayLength<RealB>::result];
 
 
-        RealA COLOR_MAT_W[9];
-        RealA COLOR_MAT_Y[9];
-        RealA COLOR_MAT_X[9];
-        RealA COLOR_MAT_Z[9];
+        RealA COLOR_MAT_W[ArrayLength<RealA>::result];
+        RealA COLOR_MAT_Y[ArrayLength<RealA>::result];
+        RealA COLOR_MAT_X[ArrayLength<RealA>::result];
+        RealA COLOR_MAT_Z[ArrayLength<RealA>::result];
 
 
         //        A________B
         //    mu   |      |
-        // 	    D|      |C
+        // 	  D|      |C
         //	  
         //	  A is the current point (sid)
         int point_b, point_c, point_d;
@@ -342,20 +405,24 @@ namespace hisq {
         // load the link variable connecting a and b 
         // Store in link_W 
         if(sig_positive){
-          FF_LOAD_ARRAY(linkEven, mysig, ab_link_nbr_idx, LINK_W);	
+          loadMatrixFromField(LINK_W, mysig, ab_link_nbr_idx, linkEven);
         }else{
-          FF_LOAD_ARRAY(linkOdd, mysig, ab_link_nbr_idx, LINK_W);	
+          loadMatrixFromField(LINK_W, mysig, ab_link_nbr_idx, linkOdd);
         }
-        RECONSTRUCT_LINK_12(mysig, ab_link_nbr_idx, ab_link_sign, link_W);
+        if(ArrayLength<RealB>::compressed){
+          RECONSTRUCT_LINK_12(mysig, ab_link_nbr_idx, ab_link_sign, link_W);
+        }
 
         // load the link variable connecting b and c 
         // Store in link_X
         if(mu_positive){
-          FF_LOAD_ARRAY(linkEven, mymu, bc_link_nbr_idx, LINK_X);
+          loadMatrixFromField(LINK_X, mymu, bc_link_nbr_idx, linkEven);
         }else{ 
-          FF_LOAD_ARRAY(linkOdd, mymu, bc_link_nbr_idx, LINK_X);	
+          loadMatrixFromField(LINK_X, mymu, bc_link_nbr_idx, linkOdd);
         }
-        RECONSTRUCT_LINK_12(mymu, bc_link_nbr_idx, bc_link_sign, link_X);
+        if(ArrayLength<RealB>::compressed){
+          RECONSTRUCT_LINK_12(mymu, bc_link_nbr_idx, bc_link_sign, link_X);
+        }
 
 
         if(QprevOdd == NULL && sig_positive){
@@ -371,8 +438,8 @@ namespace hisq {
         }else{
           MAT_MUL_MAT(link_X, color_mat_Y, color_mat_W);
         }
-
         WRITE_MATRIX_18_SINGLE(PmuOdd, point_b, COLOR_MAT_W);
+
         if(sig_positive){
           MAT_MUL_MAT(link_W, color_mat_W, color_mat_Y);
         }else{ 
@@ -382,11 +449,15 @@ namespace hisq {
 
 
         if(mu_positive){
-          FF_LOAD_ARRAY(linkOdd, mymu, ad_link_nbr_idx, LINK_Y);
-          RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, link_Y);
+          loadMatrixFromField(LINK_Y, mymu, ad_link_nbr_idx, linkOdd);
+          if(ArrayLength<RealB>::compressed){
+            RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, link_Y);
+          }
         }else{
-          FF_LOAD_ARRAY(linkEven, mymu, ad_link_nbr_idx, LINK_X);
-          RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, link_X);
+          loadMatrixFromField(LINK_X, mymu, ad_link_nbr_idx, linkEven);
+          if(ArrayLength<RealB>::compressed){
+            RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, link_X);
+          }
           ADJ_MAT(link_X, link_Y);
         }
 
@@ -611,21 +682,21 @@ namespace hisq {
 
         int ad_link_sign = 1;
 
-        RealB LINK_W[5];
-        RealA COLOR_MAT_W[9], COLOR_MAT_X[9], COLOR_MAT_Y[9], COLOR_MAT_Z[9];
+        RealB LINK_W[ArrayLength<RealB>::result];
 
+        RealA COLOR_MAT_W[ArrayLength<RealA>::result];
+        RealA COLOR_MAT_X[ArrayLength<RealA>::result]; 
+        RealA COLOR_MAT_Y[ArrayLength<RealA>::result]; 
+        RealA COLOR_MAT_Z[ArrayLength<RealA>::result];
 
-        /*    
-         * 	  compute the side link contribution to the momentum
-         *
-
-         sig
-         A________B
-         |      |   mu
-         D |      |C
-
-         A is the current point (sid)
-         */
+//      compute the side link contribution to the momentum
+//
+//             sig
+//          A________B
+//           |      |   mu
+//         D |      |C
+//
+//      A is the current point (sid)
 
         float mycoeff;
         int point_d;
@@ -660,12 +731,13 @@ namespace hisq {
 
         LOAD_MATRIX_18_SINGLE(P3Even, sid, COLOR_MAT_Y);
         if(mu_positive){
-          FF_LOAD_ARRAY(linkOdd, mymu, ad_link_nbr_idx, LINK_W);
+          loadMatrixFromField(LINK_W, mymu, ad_link_nbr_idx, linkOdd);
         }else{
-          FF_LOAD_ARRAY(linkEven, mymu, ad_link_nbr_idx, LINK_W);
+          loadMatrixFromField(LINK_W, mymu, ad_link_nbr_idx, linkEven);
         }
-
-        RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, link_W);	
+        if(ArrayLength<RealB>::compressed){
+          RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, link_W);	
+        }
 
 
         // Should all be inside if (shortPOdd)
@@ -878,17 +950,25 @@ namespace hisq {
         int ab_link_sign=1;
         int bc_link_sign=1;   
 
-        RealB LINK_W[5], LINK_X[5], LINK_Y[5], LINK_Z[5];
-        RealA COLOR_MAT_W[9], COLOR_MAT_Y[9], COLOR_MAT_X[9], COLOR_MAT_Z[9];
+        RealB LINK_W[ArrayLength<RealB>::result];
+        RealB LINK_X[ArrayLength<RealB>::result];
+        RealB LINK_Y[ArrayLength<RealB>::result];
+        RealB LINK_Z[ArrayLength<RealB>::result];
+
+        RealA COLOR_MAT_W[ArrayLength<RealA>::result]; 
+        RealA COLOR_MAT_Y[ArrayLength<RealA>::result]; 
+        RealA COLOR_MAT_X[ArrayLength<RealA>::result]; 
+        RealA COLOR_MAT_Z[ArrayLength<RealA>::result];
 
 
-        /*       sig
-                 A________B
-              mu  |      |
-                D |      |C
+        //            sig
+        //         A________B
+        //      mu  |      |
+        //        D |      |C
+        //
+        //   A is the current point (sid)
+        //
 
-                 A is the current point (sid)
-         */
         int point_b, point_c, point_d;
         int ad_link_nbr_idx, ab_link_nbr_idx, bc_link_nbr_idx;
         int mymu;
@@ -958,11 +1038,13 @@ namespace hisq {
         ASSIGN_MAT(color_mat_X, link_W);
 
         if (mu_positive){
-          FF_LOAD_ARRAY(linkOdd, mymu, ad_link_nbr_idx, LINK_Y);
+          loadMatrixFromField(LINK_Y, mymu, ad_link_nbr_idx, linkOdd);
         }else{
-          FF_LOAD_ARRAY(linkEven, mymu, ad_link_nbr_idx, LINK_Y);
+          loadMatrixFromField(LINK_Y, mymu, ad_link_nbr_idx, linkEven);
         }
-        RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, link_Y);
+        if(ArrayLength<RealB>::compressed){
+          RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, link_Y);
+        }
 
         if (mu_positive){
           MAT_MUL_MAT(link_W, link_Y, color_mat_W);
@@ -973,12 +1055,13 @@ namespace hisq {
 
 
         if (mu_positive){
-          FF_LOAD_ARRAY(linkEven, mymu, bc_link_nbr_idx, LINK_W);
+          loadMatrixFromField(LINK_W, mymu, bc_link_nbr_idx, linkEven);
         }else{
-          FF_LOAD_ARRAY(linkOdd, mymu, bc_link_nbr_idx, LINK_W);	
+          loadMatrixFromField(LINK_W, mymu, bc_link_nbr_idx, linkOdd);
         }
-        RECONSTRUCT_LINK_12(mymu, bc_link_nbr_idx, bc_link_sign, link_W);
-
+        if(ArrayLength<RealB>::compressed){
+          RECONSTRUCT_LINK_12(mymu, bc_link_nbr_idx, bc_link_sign, link_W);
+        }
 
         if (mu_positive){    
           ADJ_MAT_MUL_MAT(link_W, color_mat_Y, link_X);
@@ -987,12 +1070,13 @@ namespace hisq {
         }
 
         if (sig_positive){
-          FF_LOAD_ARRAY(linkEven, mysig, ab_link_nbr_idx, LINK_W);
+          loadMatrixFromField(LINK_W, mysig, ab_link_nbr_idx, linkEven);
         }else{
-          FF_LOAD_ARRAY(linkOdd, mysig, ab_link_nbr_idx, LINK_W);
+          loadMatrixFromField(LINK_W, mysig, ab_link_nbr_idx, linkOdd);
         }
-        RECONSTRUCT_LINK_12(mysig, ab_link_nbr_idx, ab_link_sign, link_W);
-
+        if(ArrayLength<RealB>::compressed){
+          RECONSTRUCT_LINK_12(mysig, ab_link_nbr_idx, ab_link_sign, link_W);
+        }
 
         if (sig_positive){        
           MAT_MUL_MAT(link_W, link_X, color_mat_Y);
