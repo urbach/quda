@@ -251,12 +251,16 @@ fermion_force_test(void)
 /*
 */
 
+  struct timeval t0, t1;
+
+  gettimeofday(&t0, NULL);
   if (verify_results){	
     halfwilson_hisq_force_reference(eps, weight1, act_path_coeff, hw, siteLink, refMom);	
     //color_matrix_hisq_force_reference(eps,weight1,act_path_coeff,return_oprod, siteLink,refMom);
   }
+  gettimeofday(&t1, NULL);
+  double cpu_secs = t1.tv_sec - t0.tv_sec + 0.000001*(t1.tv_usec - t0.tv_usec);
 
- // free(linear_sitelink);
    
 
  
@@ -268,7 +272,7 @@ fermion_force_test(void)
    */
   int flops = 433968;
 
-  struct timeval t0, t1;
+  //struct timeval t0, t1;
   gettimeofday(&t0, NULL);
    
   hisq_force_cuda(eps, weight1, weight2, act_path_coeff, cudaOprod, cudaSiteLink, cudaMom, cudaMomMatrix, &gaugeParam);
@@ -289,6 +293,7 @@ fermion_force_test(void)
   int volume = gaugeParam.X[0]*gaugeParam.X[1]*gaugeParam.X[2]*gaugeParam.X[3];
   double perf = 1.0* flops*volume/(secs*1024*1024*1024);
   printf("gpu time =%.2f ms, flops= %.2f Gflops\n", secs*1000, perf);
+  printf("cpu time =%.2f ms, flops= %.2f Gflops\n", cpu_secs*1000, perf);
     
   fermion_force_end();
 

@@ -679,7 +679,7 @@ void do_color_matrix_hisq_force_reference(Real eps, Real weight,
     // half-wilson vectors
     if(GOES_FORWARDS(sig)){
       u_shift_mat(&temp_xx[OPP_DIR(sig)*V], Pmu, sig, sitelink);
-      //      add_force_to_momentum(Pmu, id, sig, OneLink, mom); // I could optimise functions which 
+      add_force_to_momentum(Pmu, id, sig, OneLink, mom); // I could optimise functions which 
       // involve id
     }
 
@@ -854,7 +854,7 @@ void do_halfwilson_hisq_force_reference(Real eps, Real weight,
     // half-wilson vectors
     if(GOES_FORWARDS(sig)){
       u_shift_mat(temp_mat, Pmu, sig, sitelink);
-        // add_force_to_momentum(Pmu, id, sig, OneLink, mom); 
+       add_force_to_momentum(Pmu, id, sig, OneLink, mom); 
     }
 
 
