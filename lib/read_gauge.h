@@ -179,25 +179,25 @@
   double2 G##4 = gauge[idx + ((dir/2)*6+4)*stride];			\
   double2 G##5 = gauge[idx + ((dir/2)*6+5)*stride];			\
   double2 G##6, G##7, G##8;
-/*  double2 G##6 = make_double2(0,0);					\
-  double2 G##7 = make_double2(0,0);					\
-  double2 G##8 = make_double2(0,0);					\*/
 
 #define READ_GAUGE_MATRIX_12_FLOAT4(G, gauge, dir, idx, stride)	\
   float4 G##0 = gauge[idx + ((dir/2)*3+0)*stride];		\
   float4 G##1 = gauge[idx + ((dir/2)*3+1)*stride];		\
   float4 G##2 = gauge[idx + ((dir/2)*3+2)*stride];		\
   float4 G##3, G##4; 
-		       /*float4 G##3 = make_float4(0,0,0,0);	\
-  float4 G##4 = make_float4(0,0,0,0);				
-		       */
+  
+#define READ_GAUGE_MATRIX_12_FLOAT4_STR(G, gauge, dir, idx, stride)	\
+  float4 G##0, G##1, G##2;                                              \
+  load_streaming_float4(G##0, &gauge[idx + ((dir/2)*3+0)*stride]); \
+  load_streaming_float4(G##1, &gauge[idx + ((dir/2)*3+1)*stride]); \
+  load_streaming_float4(G##2, &gauge[idx + ((dir/2)*3+2)*stride]); \
+  float4 G##3, G##4;
+
 #define READ_GAUGE_MATRIX_12_SHORT4(G, gauge, dir, idx, stride)		\
   float4 G##0 = short42float4(gauge[idx + ((dir/2)*3+0)*stride]);	\
   float4 G##1 = short42float4(gauge[idx + ((dir/2)*3+1)*stride]);	\
   float4 G##2 = short42float4(gauge[idx + ((dir/2)*3+2)*stride]);	\
   float4 G##3, G##4; 
-		       /*  float4 G##3 = make_float4(0,0,0,0);	\
-			   float4 G##4 = make_float4(0,0,0,0);*/
 
 // set A to be last components of G4 (otherwise unused)
 #define READ_GAUGE_MATRIX_8_DOUBLE2(G, gauge, dir, idx, stride)		\
