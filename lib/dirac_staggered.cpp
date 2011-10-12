@@ -99,9 +99,9 @@ void DiracStaggered::Dslash(cudaColorSpinorField &out, const cudaColorSpinorFiel
 
   setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda
   staggeredDslashCuda(&out, *fatGauge, *longGauge, &in, parity, dagger, 0, 0, 
-		      blockDslash, commDim, out.X(4));
+		      blockDslash, commDim);
   
-  flops += 1146*in.volume;
+  flops += 1146ll*in.volume;
 }
 
 void DiracStaggered::DslashXpay(cudaColorSpinorField &out, const cudaColorSpinorField &in, 
@@ -116,9 +116,9 @@ void DiracStaggered::DslashXpay(cudaColorSpinorField &out, const cudaColorSpinor
 
   setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda
   staggeredDslashCuda(&out, *fatGauge, *longGauge, &in, parity, dagger, &x, k, 
-		      blockDslashXpay, commDim, out.X(4));
+		      blockDslashXpay, commDim);
   
-  flops += (1146+12)*in.volume;
+  flops += (1146ll+12ll)*in.volume;
 }
 
 // Full staggered operator

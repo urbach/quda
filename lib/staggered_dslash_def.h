@@ -134,7 +134,7 @@
 
 #else //18 reconstruct
 #define DD_RECON_F 18
-#define RECONSTRUCT_GAUGE_MATRIX(dir, gauge, idx, sign)
+#define RECONSTRUCT_GAUGE_MATRIX(dir, gauge, idx)
 
 #if (DD_PREC==0) // DOUBLE PRECISION
 #define DD_PARAM_GAUGE const double2 *fatGauge0, const double2 *fatGauge1,  const double2* longGauge0, const double2* longGauge1

@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,7 +27,7 @@
 int test_type = 0;
 int device = 0;
 
-bool tune = true;
+bool tune = false;
 
 QudaGaugeParam gaugeParam;
 QudaInvertParam inv_param;
@@ -60,7 +61,7 @@ extern QudaReconstructType link_recon;
 extern QudaPrecision prec;
 
 int X[4];
-const int Nsrc = 3;   // number of spinors to apply to simultaneously
+extern int Nsrc;   // number of spinors to apply to simultaneously
 
 Dirac* dirac;
 extern int Z[4];
@@ -320,6 +321,7 @@ double dslashCUDA() {
 
   cudaEvent_t start, end;
   cudaEventCreate(&start);
+  cudaEventCreate(&end);
   cudaEventRecord(start, 0);
   cudaEventSynchronize(start);
 
@@ -348,9 +350,8 @@ double dslashCUDA() {
 	dirac->M(*cudaSpinorOut, *cudaSpinor);
       }
     }
-  }
+}  
     
-  cudaEventCreate(&end);
   cudaEventRecord(end, 0);
   cudaEventSynchronize(end);
   float runTime;

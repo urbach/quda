@@ -74,7 +74,7 @@ extern char hostname[];
   cudaError_t error = cudaGetLastError();               \
   if (error != cudaSuccess)                             \
     errorQuda("(CUDA) %s", cudaGetErrorString(error));  \
-} while (0)
+    } while (0)
 
 #endif
 

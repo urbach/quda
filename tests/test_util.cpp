@@ -1299,6 +1299,7 @@ extern bool kernelPackT;
 int gridsize_from_cmdline[4]={1,1,1,1};
 QudaDslashType dslash_type = QUDA_WILSON_DSLASH;
 char latfile[256] = "";
+int Nsrc = 1;
 
 void usage(char** argv )
 {
@@ -1323,6 +1324,9 @@ void usage(char** argv )
   printf("    --dslash_type <type>                      # Set the dslash type, the following vlaues are valid\n"
 	 "                                                  wilson/clover/twisted_mass/asqtad/domain_wall\n");
   printf("    --load-gauge file                         # Load gauge field \"file\" for the test (requires QIO)\n");
+
+  printf("    --nsrc <n>                                # How many spinors to apply the dslash to simultaneusly (experimental for staggered only, no multi-GPU)\n");
+
   printf("    --help                                    # Print out this message\n"); 
   
   exit(1);
@@ -1563,6 +1567,20 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
   
+  if( strcmp(argv[i], "--nsrc") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+    Nsrc= atoi(argv[i+1]);
+    if (Nsrc < 1 || Nsrc > 10){
+      printf("ERROR: invalid number of sources (%d)\n", Nsrc);
+      usage(argv);
+    }
+    i++;
+    ret = 0;
+    goto out;
+  }
+
  out:
   *idx = i;
   return ret ;

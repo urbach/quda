@@ -1,3 +1,4 @@
+
 //#include <half_quda.h>
 
 // Performs complex addition
@@ -82,23 +83,26 @@
   double2 G##3 = fetch_double2((gauge), idx + ((dir/2)*6+3)*stride);	\
   double2 G##4 = fetch_double2((gauge), idx + ((dir/2)*6+4)*stride);	\
   double2 G##5 = fetch_double2((gauge), idx + ((dir/2)*6+5)*stride);	\
-  double2 G##6 = make_double2(0,0);					\
+  double2 G##6, G##7, G##8;
+/*double2 G##6 = make_double2(0,0);					\
   double2 G##7 = make_double2(0,0);					\
-  double2 G##8 = make_double2(0,0);					\
+  double2 G##8 = make_double2(0,0);					\*/
 
 #define READ_GAUGE_MATRIX_12_FLOAT4_TEX(G, gauge, dir, idx, stride)	\
   float4 G##0 = tex1Dfetch((gauge), idx + ((dir/2)*3+0)*stride);	\
   float4 G##1 = tex1Dfetch((gauge), idx + ((dir/2)*3+1)*stride);	\
   float4 G##2 = tex1Dfetch((gauge), idx + ((dir/2)*3+2)*stride);	\
-  float4 G##3 = make_float4(0,0,0,0);					\
-  float4 G##4 = make_float4(0,0,0,0);				
+  float4 G##3, G##4;
+		       /*float4 G##3 = make_float4(0,0,0,0);	\
+			 float4 G##4 = make_float4(0,0,0,0);				*/
 
 #define READ_GAUGE_MATRIX_12_SHORT4_TEX(G, gauge, dir, idx, stride)	\
   float4 G##0 = tex1Dfetch((gauge), idx + ((dir/2)*3+0)*stride);	\
   float4 G##1 = tex1Dfetch((gauge), idx + ((dir/2)*3+1)*stride);	\
   float4 G##2 = tex1Dfetch((gauge), idx + ((dir/2)*3+2)*stride);	\
-  float4 G##3 = make_float4(0,0,0,0);					\
-  float4 G##4 = make_float4(0,0,0,0);
+  float4 G##3, G##4;
+		       /*  float4 G##3 = make_float4(0,0,0,0);	\
+			   float4 G##4 = make_float4(0,0,0,0);*/
 
 // set A to be last components of G4 (otherwise unused)
 #define READ_GAUGE_MATRIX_8_DOUBLE2_TEX(G, gauge, dir, idx, stride)	\
@@ -174,23 +178,26 @@
   double2 G##3 = gauge[idx + ((dir/2)*6+3)*stride];			\
   double2 G##4 = gauge[idx + ((dir/2)*6+4)*stride];			\
   double2 G##5 = gauge[idx + ((dir/2)*6+5)*stride];			\
-  double2 G##6 = make_double2(0,0);					\
+  double2 G##6, G##7, G##8;
+/*  double2 G##6 = make_double2(0,0);					\
   double2 G##7 = make_double2(0,0);					\
-  double2 G##8 = make_double2(0,0);					\
+  double2 G##8 = make_double2(0,0);					\*/
 
 #define READ_GAUGE_MATRIX_12_FLOAT4(G, gauge, dir, idx, stride)	\
   float4 G##0 = gauge[idx + ((dir/2)*3+0)*stride];		\
   float4 G##1 = gauge[idx + ((dir/2)*3+1)*stride];		\
   float4 G##2 = gauge[idx + ((dir/2)*3+2)*stride];		\
-  float4 G##3 = make_float4(0,0,0,0);				\
+  float4 G##3, G##4; 
+		       /*float4 G##3 = make_float4(0,0,0,0);	\
   float4 G##4 = make_float4(0,0,0,0);				
-
+		       */
 #define READ_GAUGE_MATRIX_12_SHORT4(G, gauge, dir, idx, stride)		\
   float4 G##0 = short42float4(gauge[idx + ((dir/2)*3+0)*stride]);	\
   float4 G##1 = short42float4(gauge[idx + ((dir/2)*3+1)*stride]);	\
   float4 G##2 = short42float4(gauge[idx + ((dir/2)*3+2)*stride]);	\
-  float4 G##3 = make_float4(0,0,0,0);					\
-  float4 G##4 = make_float4(0,0,0,0);
+  float4 G##3, G##4; 
+		       /*  float4 G##3 = make_float4(0,0,0,0);	\
+			   float4 G##4 = make_float4(0,0,0,0);*/
 
 // set A to be last components of G4 (otherwise unused)
 #define READ_GAUGE_MATRIX_8_DOUBLE2(G, gauge, dir, idx, stride)		\
@@ -246,21 +253,21 @@
 #endif
 
 #define RECONSTRUCT_MATRIX_12_DOUBLE(dir)				\
-  ACC_CONJ_PROD(g20, +g01, +g12);					\
+  COMPLEX_CONJUGATE_PRODUCT(g20, +g01, +g12);				\
   ACC_CONJ_PROD(g20, -g02, +g11);					\
-  ACC_CONJ_PROD(g21, +g02, +g10);					\
+  COMPLEX_CONJUGATE_PRODUCT(g21, +g02, +g10);				\
   ACC_CONJ_PROD(g21, -g00, +g12);					\
-  ACC_CONJ_PROD(g22, +g00, +g11);					\
+  COMPLEX_CONJUGATE_PRODUCT(g22, +g00, +g11);				\
   ACC_CONJ_PROD(g22, -g01, +g10);					\
   double u0 = (dir < 6 ? anisotropy : (do_boundary ? t_boundary : 1)); \
   G6.x*=u0; G6.y*=u0; G7.x*=u0; G7.y*=u0; G8.x*=u0; G8.y*=u0;
 
 #define RECONSTRUCT_MATRIX_12_SINGLE(dir)			\
-  ACC_CONJ_PROD(g20, +g01, +g12);				\
+  COMPLEX_CONJUGATE_PRODUCT(g20, +g01, +g12);				\
   ACC_CONJ_PROD(g20, -g02, +g11);				\
-  ACC_CONJ_PROD(g21, +g02, +g10);				\
+  COMPLEX_CONJUGATE_PRODUCT(g21, +g02, +g10);				\
   ACC_CONJ_PROD(g21, -g00, +g12);				\
-  ACC_CONJ_PROD(g22, +g00, +g11);				\
+  COMPLEX_CONJUGATE_PRODUCT(g22, +g00, +g11);				\
   ACC_CONJ_PROD(g22, -g01, +g10);				\
   float u0 = (dir < 6 ? anisotropy_f : (do_boundary ? t_boundary_f : 1)); \
   G3.x*=u0; G3.y*=u0; G3.z*=u0; G3.w*=u0; G4.x*=u0; G4.y*=u0;
@@ -349,29 +356,61 @@
 
 /************* the following is added for staggered *********/
 
-#define RECONSTRUCT_GAUGE_MATRIX_12_SINGLE(dir, gauge, idx, sign)       \
-  ACC_CONJ_PROD(gauge##20, +gauge##01, +gauge##12);			\
+// compute the sign factor for reconstruction 
+#define SIGN(dir)				\
+  int sign;					\
+switch(dir) {					\
+ case 0:					\
+ case 1:					\
+   sign = (x4 & 1) ? -1 : 1;			\
+   break;					\
+ case 2:					\
+ case 3:					\
+   sign = ((x4+x1) & 1) ? -1 : 1;		\
+   break;					\
+ case 4:					\
+ case 5:					\
+   sign = ((x4+x1+x2) & 1) ? -1 : 1;		\
+   break;					\
+ case 6:					\
+   sign = (x4 >= X4m3) ? -1 : 1;		\
+   break;					\
+ case 7:					\
+   sign = (x4 < 3) ? -1 : 1;			\
+   break;					\
+ }
+
+/* 12 reconstruction
+   cross multiply: 42 flops = 24 instructions 
+   normalize third row: 7 flops = 7 fma instructions (not including sign computation)
+   total: 49 flops = 31 fma instructions = 62 "flops"
+ */
+#define RECONSTRUCT_GAUGE_MATRIX_12_SINGLE(dir, gauge, idx)		\
+  SIGN(dir);								\
+  COMPLEX_CONJUGATE_PRODUCT(gauge##20, +gauge##01, +gauge##12);		\
   ACC_CONJ_PROD(gauge##20, -gauge##02, +gauge##11);			\
-  ACC_CONJ_PROD(gauge##21, +gauge##02, +gauge##10);			\
+  COMPLEX_CONJUGATE_PRODUCT(gauge##21, +gauge##02, +gauge##10);		\
   ACC_CONJ_PROD(gauge##21, -gauge##00, +gauge##12);			\
-  ACC_CONJ_PROD(gauge##22, +gauge##00, +gauge##11);			\
+  COMPLEX_CONJUGATE_PRODUCT(gauge##22, +gauge##00, +gauge##11);		\
   ACC_CONJ_PROD(gauge##22, -gauge##01, +gauge##10);			\
   {float u0 = coeff_f*sign;						\
     gauge##20_re *=u0;gauge##20_im *=u0; gauge##21_re *=u0; gauge##21_im *=u0; \
     gauge##22_re *=u0;gauge##22_im *=u0;}
 
-#define RECONSTRUCT_GAUGE_MATRIX_12_DOUBLE(dir, gauge, idx, sign)	\
-  ACC_CONJ_PROD(gauge##20, +gauge##01, +gauge##12);			\
+#define RECONSTRUCT_GAUGE_MATRIX_12_DOUBLE(dir, gauge, idx)		\
+  SIGN(dir);								\
+  COMPLEX_CONJUGATE_PRODUCT(gauge##20, +gauge##01, +gauge##12);		\
   ACC_CONJ_PROD(gauge##20, -gauge##02, +gauge##11);			\
-  ACC_CONJ_PROD(gauge##21, +gauge##02, +gauge##10);			\
+  COMPLEX_CONJUGATE_PRODUCT(gauge##21, +gauge##02, +gauge##10);		\
   ACC_CONJ_PROD(gauge##21, -gauge##00, +gauge##12);			\
-  ACC_CONJ_PROD(gauge##22, +gauge##00, +gauge##11);			\
+  COMPLEX_CONJUGATE_PRODUCT(gauge##22, +gauge##00, +gauge##11);		\
   ACC_CONJ_PROD(gauge##22, -gauge##01, +gauge##10);			\
-  {double u0 = coeff* sign;						\
+  {double u0 = coeff*sign;						\
     gauge##20_re *=u0;gauge##20_im *=u0; gauge##21_re *=u0; gauge##21_im *=u0; \
     gauge##22_re *=u0;gauge##22_im *=u0;}
 
-#define RECONSTRUCT_GAUGE_MATRIX_8_DOUBLE(dir, gauge, idx, sign)	\
+#define RECONSTRUCT_GAUGE_MATRIX_8_DOUBLE(dir, gauge, idx)		\
+  SIGN(dir);								\
   double row_sum = gauge##01_re*gauge##01_re + gauge##01_im*gauge##01_im; \
   row_sum += gauge##02_re*gauge##02_re + gauge##02_im*gauge##02_im;	\
   double u0 = coeff*sign;						\
@@ -409,7 +448,8 @@
   gauge##22_re *= -r_inv2;						\
   gauge##22_im *= -r_inv2;
 
-#define RECONSTRUCT_GAUGE_MATRIX_8_SINGLE(dir, gauge, idx, sign)        { \
+#define RECONSTRUCT_GAUGE_MATRIX_8_SINGLE(dir, gauge, idx)        { \
+    SIGN(dir);								\
     float row_sum = gauge##01_re*gauge##01_re + gauge##01_im*gauge##01_im; \
     row_sum += gauge##02_re*gauge##02_re + gauge##02_im*gauge##02_im;	\
     float u0 = coeff_f*sign;						\

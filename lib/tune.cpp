@@ -4,7 +4,7 @@ void TuneBase::Benchmark(dim3 &block)  {
 
   int count = 10;
   int threadBlockMin = 32;
-  int threadBlockMax = 256;
+  int threadBlockMax = 512;
   double time;
   double timeMin = 1e10;
   double gflopsMax = 0.0;
@@ -13,6 +13,8 @@ void TuneBase::Benchmark(dim3 &block)  {
   cudaError_t error;
 
   for (int threads=threadBlockMin; threads<=threadBlockMax; threads+=32) {
+    //printf("trying %d\n", threads);
+
     cudaEvent_t start, end;
     cudaEventCreate(&start);
     cudaEventCreate(&end);
@@ -20,6 +22,7 @@ void TuneBase::Benchmark(dim3 &block)  {
     block = dim3(threads,1,1);
 
     Flops(); // resets the flops counter
+    cudaThreadSynchronize();
     cudaGetLastError(); // clear error counter
 
     cudaEventRecord(start, 0);
@@ -35,12 +38,14 @@ void TuneBase::Benchmark(dim3 &block)  {
     cudaEventDestroy(start);
     cudaEventDestroy(end);
 
+    cudaThreadSynchronize();
     error = cudaGetLastError();
 
     time = runTime / 1000;
     double flops = (double)Flops();
     double gflops = (flops*1e-9)/(time);
 
+    // if an improvment and no error then update the optimal parameters
     if (time < timeMin && error == cudaSuccess) {
       timeMin = time;
       blockOpt = block;
