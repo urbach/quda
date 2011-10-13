@@ -397,7 +397,6 @@ void staggeredDslashRef()
 		       inv_param.cpu_prec, gaugeParam.cpu_prec);
 
     }
-    
 #endif    
 
 
@@ -414,7 +413,7 @@ void staggeredDslashRef()
 #endif
     break;
   case 2:
-    //mat(spinorRef->v, fatlink, longlink, spinor->v, kappa, dagger, 
+    //mat(spinorRef->V(), fatlink, longlink, spinor->V(), kappa, dagger, 
     //inv_param.cpu_prec, gaugeParam.cpu_prec);
     break;
   default:
