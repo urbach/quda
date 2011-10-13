@@ -10,6 +10,85 @@
 #endif
 */
 
+// Need to worry about this!
+#define link_W00_re LINK_W[0].x
+#define link_W00_im LINK_W[0].y
+#define link_W01_re LINK_W[1].x
+#define link_W01_im LINK_W[1].y
+#define link_W02_re LINK_W[2].x
+#define link_W02_im LINK_W[2].y
+#define link_W10_re LINK_W[3].x
+#define link_W10_im LINK_W[3].y
+#define link_W11_re LINK_W[4].x
+#define link_W11_im LINK_W[4].y
+#define link_W12_re LINK_W[5].x
+#define link_W12_im LINK_W[5].y
+#define link_W20_re LINK_W[6].x
+#define link_W20_im LINK_W[6].y
+#define link_W21_re LINK_W[7].x
+#define link_W21_im LINK_W[7].y
+#define link_W22_re LINK_W[8].x
+#define link_W22_im LINK_W[8].y
+
+#define link_X00_re LINK_X[0].x
+#define link_X00_im LINK_X[0].y
+#define link_X01_re LINK_X[1].x
+#define link_X01_im LINK_X[1].y
+#define link_X02_re LINK_X[2].x
+#define link_X02_im LINK_X[2].y
+#define link_X10_re LINK_X[3].x
+#define link_X10_im LINK_X[3].y
+#define link_X11_re LINK_X[4].x
+#define link_X11_im LINK_X[4].y
+#define link_X12_re LINK_X[5].x
+#define link_X12_im LINK_X[5].y
+#define link_X20_re LINK_X[6].x
+#define link_X20_im LINK_X[6].y
+#define link_X21_re LINK_X[7].x
+#define link_X21_im LINK_X[7].y
+#define link_X22_re LINK_X[8].x
+#define link_X22_im LINK_X[8].y
+
+#define link_Y00_re LINK_Y[0].x
+#define link_Y00_im LINK_Y[0].y
+#define link_Y01_re LINK_Y[1].x
+#define link_Y01_im LINK_Y[1].y
+#define link_Y02_re LINK_Y[2].x
+#define link_Y02_im LINK_Y[2].y
+#define link_Y10_re LINK_Y[3].x
+#define link_Y10_im LINK_Y[3].y
+#define link_Y11_re LINK_Y[4].x
+#define link_Y11_im LINK_Y[4].y
+#define link_Y12_re LINK_Y[5].x
+#define link_Y12_im LINK_Y[5].y
+#define link_Y20_re LINK_Y[6].x
+#define link_Y20_im LINK_Y[6].y
+#define link_Y21_re LINK_Y[7].x
+#define link_Y21_im LINK_Y[7].y
+#define link_Y22_re LINK_Y[8].x
+#define link_Y22_im LINK_Y[8].y
+
+#define link_Z00_re LINK_Z[0].x
+#define link_Z00_im LINK_Z[0].y
+#define link_Z01_re LINK_Z[1].x
+#define link_Z01_im LINK_Z[1].y
+#define link_Z02_re LINK_Z[2].x
+#define link_Z02_im LINK_Z[2].y
+#define link_Z10_re LINK_Z[3].x
+#define link_Z10_im LINK_Z[3].y
+#define link_Z11_re LINK_Z[4].x
+#define link_Z11_im LINK_Z[4].y
+#define link_Z12_re LINK_Z[5].x
+#define link_Z12_im LINK_Z[5].y
+#define link_Z20_re LINK_Z[6].x
+#define link_Z20_im LINK_Z[6].y
+#define link_Z21_re LINK_Z[7].x
+#define link_Z21_im LINK_Z[7].y
+#define link_Z22_re LINK_Z[8].x
+#define link_Z22_im LINK_Z[8].y
+
+
+/*
 #define link_W00_re LINK_W[0].x
 #define link_W00_im LINK_W[0].y
 #define link_W01_re LINK_W[0].z
@@ -89,7 +168,7 @@
 #define link_Z22_re LINK_Z[4].x
 #define link_Z22_im LINK_Z[4].y
 
-
+*/
 
 // Color matrices stored as an array of float2 or 
 // double 2

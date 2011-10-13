@@ -252,26 +252,38 @@ namespace hisq{
 
 
 
-
-/*
       // "v" denotes a "fattened" link variable
       template<class Cmplx>
         __device__ __host__
         void getConjugateUnitForceTerm(LinkVariable<Cmplx>* result, const LinkVariable<Cmplx> & v, const LinkVariable<Cmplx> & outer_prod)
         {
-          RealTypeId<Cmplx>::Type f[3];
-          RealTypeId<Cmplx>::Type b[6];
 
           LinkVariable<Cmplx> & local_result = *result;
 
           LinkVariable<Cmplx> v_dagger   = conj(v);
           LinkVariable<Cmplx> q = v_dagger*v;
-          LinkVariable<Cmplx> q_vdagger  = q*v_dagger;
+          
+          
+          typename RealTypeId<Cmplx>::Type f[3];
+          DerivativeCoefficients<typename RealTypeId<Cmplx>::Type> deriv_coeffs;
 
+          reciprocalRoot<Cmplx>(&rsqrt_q, &deriv_coeffs, f, q);
+
+          LinkVariable<Cmplx> q_vdagger  = q*v_dagger;
           LinkVariable<Cmplx> temp = f[1]*v_dagger + f[2]*qv_dagger;
 
-          local_result = v_dagger*outer_prod*temp; // result(l,k) =  V^{\dagger}(l,j)*outer_prod(j,i)*temp(i,k)
-          local_result += f[2]*qv_dagger*outer_prod*v_dagger;  // result(l,k) += (QV^{\dagger}(l,j)*outer_prod(j,i)*v_dagger(i,k)
+          local_result = v_dagger*outer_prod*temp;              // result(l,k) =  V^{\dagger}(l,j)*outer_prod(j,i)*temp(i,k)
+          local_result += f[2]*qv_dagger*outer_prod*v_dagger;   // result(l,k) += (QV^{\dagger}(l,j)*outer_prod(j,i)*v_dagger(i,k)
+
+          RealTypeId<Cmplx>::Type b[6];
+          // Pure hack here
+          b[0] = deriv_coeffs.getB00();
+          b[1] = deriv_coeffs.getB01();
+          b[2] = deriv_coeffs.getB02();
+          b[3] = deriv_coeffs.getB11();
+          b[4] = deriv_coeffs.getB12();
+          b[5] = deriv_coeffs.getB22();
+
 
           LinkVariable<Cmplx> qsqv_dagger = q*qv_dagger;
           LinkVariable<Cmplx> pv_dagger   = b[0]*v_dagger + b[1]*qv_dagger + b[2]*qsqv_dagger;
@@ -287,18 +299,19 @@ namespace hisq{
 
           return;
         }
-*/
+
 
       // "v" denotes a "fattened" link variable
       template<class Cmplx>
         __device__ __host__
         void getUnitForceTerm(LinkVariable<Cmplx>* result, const LinkVariable<Cmplx> & v, const LinkVariable<Cmplx> & outer_prod)
         {
-          typename RealTypeId<Cmplx>::Type f[3]; // I guess that I need to actually
+          typename RealTypeId<Cmplx>::Type f[3]; 
           typename RealTypeId<Cmplx>::Type b[6];
 
           LinkVariable<Cmplx> v_dagger = conj(v);  // okay!
           LinkVariable<Cmplx> q   = v_dagger*v;    // okay!
+
           LinkVariable<Cmplx> rsqrt_q;
 
           DerivativeCoefficients<typename RealTypeId<Cmplx>::Type> deriv_coeffs;

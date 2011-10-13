@@ -1318,7 +1318,8 @@ void strong_check_mom(void * momA, void *momB, int len, QudaPrecision prec)
  */
 
 
-QudaReconstructType link_recon = QUDA_RECONSTRUCT_12;
+//QudaReconstructType link_recon = QUDA_RECONSTRUCT_12;
+QudaReconstructType link_recon = QUDA_RECONSTRUCT_NO;
 QudaReconstructType link_recon_sloppy = QUDA_RECONSTRUCT_INVALID;
 QudaPrecision prec = QUDA_SINGLE_PRECISION;
 QudaPrecision  prec_sloppy = QUDA_INVALID_PRECISION;

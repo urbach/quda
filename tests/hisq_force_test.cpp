@@ -50,6 +50,7 @@ static int tdim = 4;
 
 //QudaReconstructType link_recon = QUDA_RECONSTRUCT_12;
 extern QudaReconstructType link_recon;
+//link_recon = QUDA_RECONSTRUCT_NO;
 QudaReconstructType mom_recon  = QUDA_RECONSTRUCT_NO;
 QudaPrecision link_prec = QUDA_SINGLE_PRECISION;
 QudaPrecision hw_prec = QUDA_SINGLE_PRECISION;
@@ -121,7 +122,8 @@ fermion_force_init()
     siteLink_2d[i] = ((char*)siteLink) + i*V*gaugeSiteSize* gSize;
   }
 
-  createSiteLinkCPU(siteLink_2d, gaugeParam.cpu_prec,0);
+  createSiteLinkCPU(siteLink_2d, gaugeParam.cpu_prec,1);
+  //createSiteLinkCPU(siteLink_2d, gaugeParam.cpu_prec,0);
 
 
 
