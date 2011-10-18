@@ -19,7 +19,7 @@ void TuneBase::Benchmark(dim3 &block, dim3 &grid)  {
     unsigned int gridDimMax = (size + block.x-1) / block.x;
     unsigned int gridDimMin = 1;//gridDimMax;
 
-    for (int gridDim=gridDimMax; gridDim >= gridDimMin; gridDim--) {
+    for (unsigned int gridDim=gridDimMax; gridDim >= gridDimMin; gridDim--) {
       // adjust grid
       
       grid = dim3(gridDim, 1, 1);
@@ -62,6 +62,7 @@ void TuneBase::Benchmark(dim3 &block, dim3 &grid)  {
       if (verbose >= QUDA_DEBUG_VERBOSE && error == cudaSuccess) 
 	printfQuda("%-15s %d %d %f s, flops = %e, Gflop/s = %f\n", name, threads, gridDim, time, (double)flops, gflops);
 
+    }
   }
 
   block = blockOpt;
@@ -76,4 +77,4 @@ void TuneBase::Benchmark(dim3 &block, dim3 &grid)  {
     printfQuda("Tuned %-15s with (%d,%d,%d) threads per block, (%d, %d, %d) blocks per grid, Gflop/s = %f\n", 
 	       name, block.x, block.y, block.z, grid.x, grid.y, grid.z, gflopsMax);    
 
-}
+  }

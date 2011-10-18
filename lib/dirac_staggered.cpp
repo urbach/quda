@@ -10,8 +10,8 @@ DiracStaggered::DiracStaggered(const DiracParam &param) :
   for (int i=0; i<5; i++) {
     blockDslash[i] = dim3(64, 1, 1);
     blockDslashXpay[i] = dim3(64, 1, 1);
-    gridDslash[i] = dim3((param.fatGauge->volumeCB+blockDslash[i].x-1)/blockDslash[i].x, 1, 1);
-    gridDslashXpay[i] = dim3((param.fatGauge->volumeCB+blockDslashXpay[i].x-1)/blockDslashXpay[i].x, 1, 1);
+    gridDslash[i] = dim3((param.fatGauge->VolumeCB()+blockDslash[i].x-1)/blockDslash[i].x, 1, 1);
+    gridDslashXpay[i] = dim3((param.fatGauge->VolumeCB()+blockDslashXpay[i].x-1)/blockDslashXpay[i].x, 1, 1);
   }
 }
 

@@ -10,8 +10,8 @@ DiracWilson::DiracWilson(const DiracParam &param) :
   for (int i=0; i<5; i++) {
     blockDslash[i] = dim3(64, 1, 1);
     blockDslashXpay[i] = dim3(64, 1, 1);
-    gridDslash[i] = dim3((param.gauge->volumeCB+blockDslash[i].x-1)/blockDslash[i].x, 1, 1);
-    gridDslashXpay[i] = dim3((param.gauge->volumeCB+blockDslashXpay[i].x-1)/blockDslashXpay[i].x, 1, 1);
+    gridDslash[i] = dim3((param.gauge->VolumeCB()+blockDslash[i].x-1)/blockDslash[i].x, 1, 1);
+    gridDslashXpay[i] = dim3((param.gauge->VolumeCB()+blockDslashXpay[i].x-1)/blockDslashXpay[i].x, 1, 1);
   }
 }
 

@@ -5,7 +5,7 @@
 
 DiracClover::DiracClover(const DiracParam &param)
   : DiracWilson(param), clover(*(param.clover)), blockClover(64, 1, 1), 
-    gridClover((param.gauge->volumeCB + blockClover.x-1)/blockClover.x, 1, 1)
+    gridClover((param.gauge->VolumeCB() + blockClover.x-1)/blockClover.x, 1, 1)
 {
 
 }
@@ -134,8 +134,8 @@ DiracCloverPC::DiracCloverPC(const DiracParam &param) :
   for (int i=0; i<5; i++) {
     blockDslash[i] = dim3(64, 1, 1);
     blockDslashXpay[i] = dim3(64, 1, 1);
-    gridDslash[i] = dim3((param.gauge->volumeCB+blockDslash[i].x-1)/blockDslash[i].x, 1, 1);
-    gridDslashXpay[i] = dim3((param.gauge->volumeCB+blockDslashXpay[i].x-1)/blockDslashXpay[i].x, 1, 1);
+    gridDslash[i] = dim3((param.gauge->VolumeCB()+blockDslash[i].x-1)/blockDslash[i].x, 1, 1);
+    gridDslashXpay[i] = dim3((param.gauge->VolumeCB()+blockDslashXpay[i].x-1)/blockDslashXpay[i].x, 1, 1);
   }
 
   // For the preconditioned operator, we need to check that the inverse of the clover term is present
@@ -209,7 +209,7 @@ void DiracCloverPC::CloverInv(cudaColorSpinorField &out, const cudaColorSpinorFi
   FullClover cs;
   cs.even = clover.evenInv; cs.odd = clover.oddInv; cs.evenNorm = clover.evenInvNorm; cs.oddNorm = clover.oddInvNorm;
   cs.precision = clover.precision; cs.bytes = clover.bytes, cs.norm_bytes = clover.norm_bytes;
-  cloverCuda(&out, gauge, cs, &in, parity, blockClover);
+  cloverCuda(&out, gauge, cs, &in, parity, blockClover, gridClover);
 
   flops += 504*in.Volume();
 }
