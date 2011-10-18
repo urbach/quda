@@ -343,21 +343,24 @@ volatile spinorFloat o32_im;
 #endif
 #endif
 
-int x1, x2, x3, x4;
 #define SHARED_COORDS 0 
 
 #include "read_gauge.h"
 #include "read_clover.h"
 #include "io_spinor.h"
 
+int sid = blockIdx.x*blockDim.x + threadIdx.x;
+
+while (sid < param.threads) {
+
+//if (sid >= param.threads) return;
+
+int x1, x2, x3, x4;
 int X;
 
 #if (defined MULTI_GPU) && (DD_PREC==2) // half precision
 int sp_norm_idx;
 #endif // MULTI_GPU half precision
-
-int sid = blockIdx.x*blockDim.x + threadIdx.x;
-if (sid >= param.threads) return;
 
 #ifdef MULTI_GPU
 int face_idx;
@@ -2596,6 +2599,11 @@ if (!incomplete)
 
 // write spinor field back to device memory
 WRITE_SPINOR(sp_stride);
+
+int gridSize = gridDim.x*blockDim.x;
+sid += gridSize;
+
+}
 
 // undefine to prevent warning when precision is changed
 #undef spinorFloat

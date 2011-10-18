@@ -120,6 +120,8 @@ class DiracWilson : public Dirac {
  private:
   dim3 blockDslash[5]; // thread block size for Dslash (full volume or just body for overlapping comms)
   dim3 blockDslashXpay[5]; // thread block size for DslashXpay (full volume or just body for overlapping comms)
+  dim3 gridDslash[5]; // thread grid size for Dslash
+  dim3 gridDslashXpay[5]; // thread grid size for DslashXpay
 
  protected:
   FaceBuffer face; // multi-gpu communication buffers
@@ -173,6 +175,7 @@ class DiracClover : public DiracWilson {
  protected:
   cudaCloverField &clover;
   dim3 blockClover; // thread block size for applying clover (or inverse) term
+  dim3 gridClover; // thread grid size for applying clover (or inverse) term
   void checkParitySpinor(const cudaColorSpinorField &, const cudaColorSpinorField &, 
 			 const cudaCloverField &) const;
 
@@ -201,6 +204,8 @@ class DiracCloverPC : public DiracClover {
  private:
   dim3 blockDslash[5]; // thread block size for Dslash (full volume or just body for overlapping comms)
   dim3 blockDslashXpay[5]; // thread block size for DslashXpay (full volume or just body for overlapping comms)
+  dim3 gridDslash[5]; // grid size for Dslash
+  dim3 gridDslashXpay[5]; // grid size for DslashXpay
 
  public:
   DiracCloverPC(const DiracParam &param);
@@ -234,6 +239,8 @@ class DiracDomainWall : public DiracWilson {
  private:
   dim3 blockDslash[5]; // thread block size for Dslash (full volume or just body for overlapping comms)
   dim3 blockDslashXpay[5]; // thread block size for DslashXpay (full volume or just body for overlapping comms)
+  dim3 gridDslash[5]; // thread grid size for Dslash
+  dim3 gridDslashXpay[5]; // thread grid size for DslashXpay
 
  protected:
   double m5;
@@ -288,6 +295,7 @@ class DiracTwistedMass : public DiracWilson {
 
  private:
   dim3 blockTwist; // thread block size for applying the twist kernel
+  dim3 gridTwist; // thread grid size for applying the twist kernel
 
  protected:
   double mu;
@@ -320,6 +328,8 @@ class DiracTwistedMassPC : public DiracTwistedMass {
  private:
   dim3 blockDslash[5]; // thread block size for Dslash (full volume or just body for overlapping comms)
   dim3 blockDslashXpay[5]; // thread block size for DslashXpay (full volume or just body for overlapping comms)
+  dim3 gridDslash[5]; // thread grid size for Dslash
+  dim3 gridDslashXpay[5]; // thread grid size for DslashXpay
 
  public:
   DiracTwistedMassPC(const DiracParam &param);
@@ -351,6 +361,8 @@ class DiracStaggered : public Dirac {
  private:
   dim3 blockDslash[5]; // thread block size for Dslash (body + face kernels)
   dim3 blockDslashXpay[5]; // thread block size for DslashXpay (body + face kernels)
+  dim3 gridDslash[5]; // thread grid size for Dslash
+  dim3 gridDslashXpay[5]; // thread grid size for DslashXpay
 
  protected:
   cudaGaugeField *fatGauge;

@@ -4,13 +4,14 @@
 #include <tune_quda.h>
 
 DiracClover::DiracClover(const DiracParam &param)
-  : DiracWilson(param), clover(*(param.clover)), blockClover(64, 1, 1)
+  : DiracWilson(param), clover(*(param.clover)), blockClover(64, 1, 1), 
+    gridClover((param.gauge->volumeCB + blockClover.x-1)/blockClover.x, 1, 1)
 {
 
 }
 
 DiracClover::DiracClover(const DiracClover &dirac) 
-  : DiracWilson(dirac), clover(dirac.clover), blockClover(64, 1, 1)
+: DiracWilson(dirac), clover(dirac.clover), blockClover(64, 1, 1), gridClover(dirac.gridClover)
 {
 
 }
@@ -26,6 +27,7 @@ DiracClover& DiracClover::operator=(const DiracClover &dirac)
   if (&dirac != this) {
     DiracWilson::operator=(dirac);
     blockClover = dirac.blockClover;
+    gridClover = dirac.gridClover;
     clover = dirac.clover;
   }
 
@@ -42,7 +44,7 @@ void DiracClover::Tune(cudaColorSpinorField &out, const cudaColorSpinorField &in
 
   { // Tune clover application
     TuneDiracClover cloverTune(*this, out, in);
-    cloverTune.Benchmark(blockClover);
+    cloverTune.Benchmark(blockClover, gridClover);
   }
 
   setDslashTuning(QUDA_TUNE_NO);
@@ -71,7 +73,7 @@ void DiracClover::Clover(cudaColorSpinorField &out, const cudaColorSpinorField &
   FullClover cs;
   cs.even = clover.even; cs.odd = clover.odd; cs.evenNorm = clover.evenNorm; cs.oddNorm = clover.oddNorm;
   cs.precision = clover.precision; cs.bytes = clover.bytes, cs.norm_bytes = clover.norm_bytes;
-  cloverCuda(&out, gauge, cs, &in, parity, blockClover);
+  cloverCuda(&out, gauge, cs, &in, parity, blockClover, gridClover);
 
   flops += 504*in.Volume();
 }
@@ -132,6 +134,8 @@ DiracCloverPC::DiracCloverPC(const DiracParam &param) :
   for (int i=0; i<5; i++) {
     blockDslash[i] = dim3(64, 1, 1);
     blockDslashXpay[i] = dim3(64, 1, 1);
+    gridDslash[i] = dim3((param.gauge->volumeCB+blockDslash[i].x-1)/blockDslash[i].x, 1, 1);
+    gridDslashXpay[i] = dim3((param.gauge->volumeCB+blockDslashXpay[i].x-1)/blockDslashXpay[i].x, 1, 1);
   }
 
   // For the preconditioned operator, we need to check that the inverse of the clover term is present
@@ -144,6 +148,8 @@ DiracCloverPC::DiracCloverPC(const DiracCloverPC &dirac) :
   for (int i=0; i<5; i++) {
     blockDslash[i] = dirac.blockDslash[i];
     blockDslashXpay[i] = dirac.blockDslashXpay[i];
+    gridDslash[i] = dirac.gridDslash[i];
+    gridDslashXpay[i] = dirac.gridDslashXpay[i];
   }
 }
 
@@ -159,6 +165,8 @@ DiracCloverPC& DiracCloverPC::operator=(const DiracCloverPC &dirac)
     for (int i=0; i<5; i++) {
       blockDslash[i] = dirac.blockDslash[i];
       blockDslashXpay[i] = dirac.blockDslashXpay[i];
+      gridDslash[i] = dirac.gridDslash[i];
+      gridDslashXpay[i] = dirac.gridDslashXpay[i];
     }
   }
 
@@ -174,16 +182,16 @@ void DiracCloverPC::Tune(cudaColorSpinorField &out, const cudaColorSpinorField &
 
   { // Tune Dslash
     TuneDiracCloverDslash dslashTune(*this, out, in);
-    dslashTune.Benchmark(blockDslash[0]);
+    dslashTune.Benchmark(blockDslash[0], gridDslash[0]);
     for (int i=0; i<4; i++) 
-      if (commDimPartitioned(i)) dslashTune.Benchmark(blockDslash[i+1]);
+      if (commDimPartitioned(i)) dslashTune.Benchmark(blockDslash[i+1], gridDslash[i+1]);
   }
 
   { // Tune DslashXpay
     TuneDiracCloverDslashXpay dslashXpayTune(*this, out, in, x);
-    dslashXpayTune.Benchmark(blockDslashXpay[0]);
+    dslashXpayTune.Benchmark(blockDslashXpay[0], gridDslashXpay[0]);
     for (int i=0; i<4; i++) 
-      if (commDimPartitioned(i)) dslashXpayTune.Benchmark(blockDslashXpay[i+1]);
+      if (commDimPartitioned(i)) dslashXpayTune.Benchmark(blockDslashXpay[i+1], gridDslashXpay[i+1]);
   }
 
   setDslashTuning(QUDA_TUNE_NO);
@@ -222,7 +230,7 @@ void DiracCloverPC::Dslash(cudaColorSpinorField &out, const cudaColorSpinorField
   FullClover cs;
   cs.even = clover.evenInv; cs.odd = clover.oddInv; cs.evenNorm = clover.evenInvNorm; cs.oddNorm = clover.oddInvNorm;
   cs.precision = clover.precision; cs.bytes = clover.bytes, cs.norm_bytes = clover.norm_bytes;
-  cloverDslashCuda(&out, gauge, cs, &in, parity, dagger, 0, 0.0,  blockDslash, commDim);
+  cloverDslashCuda(&out, gauge, cs, &in, parity, dagger, 0, 0.0,  blockDslash, gridDslash, commDim);
 
   flops += (1320+504)*in.Volume();
 }
@@ -242,7 +250,7 @@ void DiracCloverPC::DslashXpay(cudaColorSpinorField &out, const cudaColorSpinorF
   FullClover cs;
   cs.even = clover.evenInv; cs.odd = clover.oddInv; cs.evenNorm = clover.evenInvNorm; cs.oddNorm = clover.oddInvNorm;
   cs.precision = clover.precision; cs.bytes = clover.bytes, cs.norm_bytes = clover.norm_bytes;
-  cloverDslashCuda(&out, gauge, cs, &in, parity, dagger, &x, k, blockDslashXpay, commDim);
+  cloverDslashCuda(&out, gauge, cs, &in, parity, dagger, &x, k, blockDslashXpay, gridDslashXpay, commDim);
 
   flops += (1320+504+48)*in.Volume();
 }

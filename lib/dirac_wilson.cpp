@@ -10,6 +10,8 @@ DiracWilson::DiracWilson(const DiracParam &param) :
   for (int i=0; i<5; i++) {
     blockDslash[i] = dim3(64, 1, 1);
     blockDslashXpay[i] = dim3(64, 1, 1);
+    gridDslash[i] = dim3((param.gauge->volumeCB+blockDslash[i].x-1)/blockDslash[i].x, 1, 1);
+    gridDslashXpay[i] = dim3((param.gauge->volumeCB+blockDslashXpay[i].x-1)/blockDslashXpay[i].x, 1, 1);
   }
 }
 
@@ -19,6 +21,8 @@ DiracWilson::DiracWilson(const DiracWilson &dirac) :
   for (int i=0; i<5; i++) {
     blockDslash[i] = dirac.blockDslash[i];
     blockDslashXpay[i] = dirac.blockDslashXpay[i];
+    gridDslash[i] = dirac.gridDslash[i];
+    gridDslashXpay[i] = dirac.gridDslashXpay[i];
   }
 }
 
@@ -34,6 +38,8 @@ DiracWilson& DiracWilson::operator=(const DiracWilson &dirac)
     for (int i=0; i<5; i++) {
       blockDslash[i] = dirac.blockDslash[i];
       blockDslashXpay[i] = dirac.blockDslashXpay[i];
+      gridDslash[i] = dirac.gridDslash[i];
+      gridDslashXpay[i] = dirac.gridDslashXpay[i];
     }
     face = dirac.face;
   }
@@ -49,7 +55,7 @@ void DiracWilson::Dslash(cudaColorSpinorField &out, const cudaColorSpinorField &
 
   setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda
 
-  wilsonDslashCuda(&out, gauge, &in, parity, dagger, 0, 0.0, blockDslash, commDim);
+  wilsonDslashCuda(&out, gauge, &in, parity, dagger, 0, 0.0, blockDslash, gridDslash, commDim);
 
   flops += 1320ll*in.Volume();
 }
@@ -64,7 +70,7 @@ void DiracWilson::DslashXpay(cudaColorSpinorField &out, const cudaColorSpinorFie
 
   setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda
 
-  wilsonDslashCuda(&out, gauge, &in, parity, dagger, &x, k, blockDslashXpay, commDim);
+  wilsonDslashCuda(&out, gauge, &in, parity, dagger, &x, k, blockDslashXpay, gridDslashXpay, commDim);
 
   flops += 1368ll*in.Volume();
 }
@@ -114,16 +120,16 @@ void DiracWilson::Tune(cudaColorSpinorField &out, const cudaColorSpinorField &in
 
   { // Tune Dslash
     TuneDiracWilsonDslash dslashTune(*this, out, in);
-    dslashTune.Benchmark(blockDslash[0]);
+    dslashTune.Benchmark(blockDslash[0], gridDslash[0]);
     for (int i=0; i<4; i++) 
-      if (commDimPartitioned(i)) dslashTune.Benchmark(blockDslash[i+1]);
+      if (commDimPartitioned(i)) dslashTune.Benchmark(blockDslash[i+1], gridDslash[i+1]);
   }
 
   { // Tune DslashXpay
     TuneDiracWilsonDslashXpay dslashXpayTune(*this, out, in, x);
-    dslashXpayTune.Benchmark(blockDslashXpay[0]);
+    dslashXpayTune.Benchmark(blockDslashXpay[0], gridDslashXpay[0]);
     for (int i=0; i<4; i++) 
-      if (commDimPartitioned(i)) dslashXpayTune.Benchmark(blockDslashXpay[i+1]);
+      if (commDimPartitioned(i)) dslashXpayTune.Benchmark(blockDslashXpay[i+1], gridDslashXpay[i+1]);
   }
 
   setDslashTuning(QUDA_TUNE_NO);
