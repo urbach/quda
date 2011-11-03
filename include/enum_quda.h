@@ -25,6 +25,7 @@ extern "C" {
     QUDA_FLOAT4_GAUGE_ORDER = 4, // 8 and 12 reconstruct half and single
     QUDA_QDP_GAUGE_ORDER, // expect *gauge[4], even-odd, row-column color
     QUDA_CPS_WILSON_GAUGE_ORDER, // expect *gauge, even-odd, mu inside, column-row color
+    QUDA_MILC_GAUGE_ORDER, // expect *gauge, even-odd, mu inside, row-column order
     QUDA_INVALID_GAUGE_ORDER = QUDA_INVALID_ENUM
   } QudaGaugeFieldOrder;
 
@@ -45,6 +46,7 @@ extern "C" {
     QUDA_RECONSTRUCT_NO = 18, // store all 18 real numbers explicitly
     QUDA_RECONSTRUCT_12 = 12, // reconstruct from 12 real numbers
     QUDA_RECONSTRUCT_8 = 8,  // reconstruct from 8 real numbers
+    QUDA_RECONSTRUCT_10 = 10, // 10-number parameterization used for storing the momentum field
     QUDA_RECONSTRUCT_INVALID = QUDA_INVALID_ENUM
   } QudaReconstructType;
 
