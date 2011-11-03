@@ -11,10 +11,15 @@ class TuneBase {
   const unsigned int size; // degree of parallelization, e.g., volume or length depending on parallelization strategy
   const char *name;
   QudaVerbosity verbose;
+  unsigned int x[QUDA_MAX_DIM]; // linear dimensions, used for multi-dimensional tuning
 
  public:
- TuneBase(const unsigned int size, const char *name, QudaVerbosity verbose) : 
-  size(size), name(name), verbose(verbose) { ; }
+  TuneBase(const int* x, const unsigned int size, const char *name, QudaVerbosity verbose) : 
+    size(size), name(name), verbose(verbose) {
+    this->x[0] = x[0]*x[3];
+    this->x[1] = x[1];
+    this->x[2] = x[2];
+  }
    
   virtual ~TuneBase() { ; }
   virtual void Apply() const = 0;
@@ -24,6 +29,7 @@ class TuneBase {
 
   // Varies the block size of the given function and finds the performance maxiumum
   void Benchmark(dim3 &block, dim3 &grid); 
+  void Benchmark3d(dim3 &block, dim3 &grid);
 };
 
 class TuneDiracWilsonDslash : public TuneBase {
@@ -36,7 +42,7 @@ class TuneDiracWilsonDslash : public TuneBase {
  public:
   TuneDiracWilsonDslash(const DiracWilson &d, cudaColorSpinorField &a, 
 			const cudaColorSpinorField &b) : 
-  TuneBase(a.Volume(), "DiracWilsonDslash", d.Verbose()), dirac(d), a(a), b(b) { ; }
+  TuneBase(a.X(), a.Volume(), "DiracWilsonDslash", d.Verbose()), dirac(d), a(a), b(b) { ; }
   virtual ~TuneDiracWilsonDslash() { ; }
 
   void Apply() const { dirac.DiracWilson::Dslash(a, b, QUDA_EVEN_PARITY); }
@@ -54,7 +60,7 @@ class TuneDiracWilsonDslashXpay : public TuneBase {
  public:
   TuneDiracWilsonDslashXpay(const DiracWilson &d, cudaColorSpinorField &a, 
 		      const cudaColorSpinorField &b, const cudaColorSpinorField &c) : 
-  TuneBase(a.Volume(), "DiracWilsonDslashXpay", d.Verbose()), dirac(d), a(a), b(b), c(c) { ; }
+  TuneBase(a.X(), a.Volume(), "DiracWilsonDslashXpay", d.Verbose()), dirac(d), a(a), b(b), c(c) { ; }
   virtual ~TuneDiracWilsonDslashXpay() { ; }
 
   void Apply() const { dirac.DiracWilson::DslashXpay(a, b, QUDA_EVEN_PARITY, c, 1.0); }
@@ -71,7 +77,7 @@ class TuneDiracClover : public TuneBase {
  public:
   TuneDiracClover(const DiracClover &d, cudaColorSpinorField &a, 
 		  const cudaColorSpinorField &b) : 
-  TuneBase(a.Volume(), "DiracClover", d.Verbose()), dirac(d), a(a), b(b) { ; }
+  TuneBase(a.X(), a.Volume(), "DiracClover", d.Verbose()), dirac(d), a(a), b(b) { ; }
   virtual ~TuneDiracClover() { ; }
 
   void Apply() const { dirac.Clover(a, b, QUDA_EVEN_PARITY); }
@@ -88,7 +94,7 @@ class TuneDiracCloverDslash : public TuneBase {
  public:
   TuneDiracCloverDslash(const DiracCloverPC &d, cudaColorSpinorField &a, 
 		  const cudaColorSpinorField &b) : 
-  TuneBase(a.Volume(), "DiracCloverDslash", d.Verbose()), dirac(d), a(a), b(b) { ; }
+  TuneBase(a.X(), a.Volume(), "DiracCloverDslash", d.Verbose()), dirac(d), a(a), b(b) { ; }
   virtual ~TuneDiracCloverDslash() { ; }
 
   void Apply() const { dirac.Dslash(a, b, QUDA_EVEN_PARITY); }
@@ -106,7 +112,7 @@ class TuneDiracCloverDslashXpay : public TuneBase {
  public:
   TuneDiracCloverDslashXpay(const DiracCloverPC &d, cudaColorSpinorField &a, 
 		      const cudaColorSpinorField &b, const cudaColorSpinorField &c) : 
-  TuneBase(a.Volume(), "DiracCloverDslashXpay", d.Verbose()), dirac(d), a(a), b(b), c(c) { ; }
+  TuneBase(a.X(), a.Volume(), "DiracCloverDslashXpay", d.Verbose()), dirac(d), a(a), b(b), c(c) { ; }
   virtual ~TuneDiracCloverDslashXpay() { ; }
 
   void Apply() const { dirac.DslashXpay(a, b, QUDA_EVEN_PARITY, c, 1.0); }
@@ -123,7 +129,7 @@ class TuneDiracTwistedMass : public TuneBase {
  public:
   TuneDiracTwistedMass(const DiracTwistedMass &d, cudaColorSpinorField &a, 
 		       const cudaColorSpinorField &b) : 
-  TuneBase(a.Volume(), "DiracTwistedMass", d.Verbose()), dirac(d), a(a), b(b) { ; }
+  TuneBase(a.X(), a.Volume(), "DiracTwistedMass", d.Verbose()), dirac(d), a(a), b(b) { ; }
   virtual ~TuneDiracTwistedMass() { ; }
 
   void Apply() const { dirac.Twist(a, b); }
@@ -140,7 +146,7 @@ class TuneDiracTwistedMassDslash : public TuneBase {
  public:
   TuneDiracTwistedMassDslash(const DiracTwistedMassPC &d, cudaColorSpinorField &a, 
 			     const cudaColorSpinorField &b) : 
-  TuneBase(a.Volume(), "DiracTwistedMassDslash", d.Verbose()), dirac(d), a(a), b(b) { ; }
+  TuneBase(a.X(), a.Volume(), "DiracTwistedMassDslash", d.Verbose()), dirac(d), a(a), b(b) { ; }
   virtual ~TuneDiracTwistedMassDslash() { ; }
 
   void Apply() const { dirac.Dslash(a, b, QUDA_EVEN_PARITY); }
@@ -158,7 +164,7 @@ class TuneDiracTwistedMassDslashXpay : public TuneBase {
  public:
   TuneDiracTwistedMassDslashXpay(const DiracTwistedMassPC &d, cudaColorSpinorField &a, 
 				 const cudaColorSpinorField &b, const cudaColorSpinorField &c) : 
-  TuneBase(a.Volume(), "DiracTwistedMassDslashXpay", d.Verbose()), dirac(d), a(a), b(b), c(c) { ; }
+  TuneBase(a.X(), a.Volume(), "DiracTwistedMassDslashXpay", d.Verbose()), dirac(d), a(a), b(b), c(c) { ; }
   virtual ~TuneDiracTwistedMassDslashXpay() { ; }
 
   void Apply() const { dirac.DslashXpay(a, b, QUDA_EVEN_PARITY, c, 1.0); }
@@ -175,7 +181,7 @@ class TuneDiracDomainWallDslash : public TuneBase {
  public:
   TuneDiracDomainWallDslash(const DiracDomainWall &d, cudaColorSpinorField &a, 
 			    const cudaColorSpinorField &b) : 
-  TuneBase(a.Volume(), "DiracDomainWallDslash", d.Verbose()), dirac(d), a(a), b(b) { ; }
+  TuneBase(a.X(), a.Volume(), "DiracDomainWallDslash", d.Verbose()), dirac(d), a(a), b(b) { ; }
   virtual ~TuneDiracDomainWallDslash() { ; }
 
   void Apply() const { dirac.Dslash(a, b, QUDA_EVEN_PARITY); }
@@ -193,7 +199,7 @@ class TuneDiracDomainWallDslashXpay : public TuneBase {
  public:
   TuneDiracDomainWallDslashXpay(const DiracDomainWall &d, cudaColorSpinorField &a, 
 				const cudaColorSpinorField &b, const cudaColorSpinorField &c) : 
-  TuneBase(a.Volume(), "DiracDomainWallDslashXpay", d.Verbose()), dirac(d), a(a), b(b), c(c) { ; }
+  TuneBase(a.X(), a.Volume(), "DiracDomainWallDslashXpay", d.Verbose()), dirac(d), a(a), b(b), c(c) { ; }
   virtual ~TuneDiracDomainWallDslashXpay() { ; }
 
   void Apply() const { dirac.DslashXpay(a, b, QUDA_EVEN_PARITY, c, 1.0); }
@@ -210,7 +216,7 @@ class TuneDiracStaggeredDslash : public TuneBase {
  public:
   TuneDiracStaggeredDslash(const DiracStaggered &d, cudaColorSpinorField &a, 
 			const cudaColorSpinorField &b) : 
-  TuneBase(a.Volume(), "DiracStaggeredDslash", d.Verbose()), dirac(d), a(a), b(b) { ; }
+  TuneBase(a.X(), a.Volume(), "DiracStaggeredDslash", d.Verbose()), dirac(d), a(a), b(b) { ; }
   virtual ~TuneDiracStaggeredDslash() { ; }
 
   void Apply() const { dirac.DiracStaggered::Dslash(a, b, QUDA_EVEN_PARITY); }
@@ -228,7 +234,7 @@ class TuneDiracStaggeredDslashXpay : public TuneBase {
  public:
   TuneDiracStaggeredDslashXpay(const DiracStaggered &d, cudaColorSpinorField &a, 
 		      const cudaColorSpinorField &b, const cudaColorSpinorField &c) : 
-  TuneBase(a.Volume(), "DiracStaggeredDslashXpay", d.Verbose()), dirac(d), a(a), b(b), c(c) { ; }
+  TuneBase(a.X(), a.Volume(), "DiracStaggeredDslashXpay", d.Verbose()), dirac(d), a(a), b(b), c(c) { ; }
   virtual ~TuneDiracStaggeredDslashXpay() { ; }
 
   void Apply() const { dirac.DiracStaggered::DslashXpay(a, b, QUDA_EVEN_PARITY, c, 1.0); }

@@ -12,6 +12,13 @@ __device__  inline void load_streaming_float4(float4 &a, const float4* addr)
   a.x = x; a.y = y; a.z = z; a.w = w;
 }
 
+__device__  inline void load_global_float4(float4 &a, const float4* addr)
+{
+  float x, y, z, w;
+  asm("ld.cg.global.v4.f32 {%0, %1, %2, %3}, [%4+0];" : "=f"(x), "=f"(y), "=f"(z), "=f"(w) : "l"(addr));
+  a.x = x; a.y = y; a.z = z; a.w = w;
+}
+
 __device__  inline void store_streaming_float4(float4* addr, float x, float y, float z, float w)
 {
   asm("st.cs.global.v4.f32 [%0+0], {%1, %2, %3, %4};" :: "l"(addr), "f"(x), "f"(y), "f"(z), "f"(w));
