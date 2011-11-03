@@ -343,24 +343,25 @@ volatile spinorFloat o32_im;
 #endif
 #endif
 
+int x1, x2, x3, x4;
 #define SHARED_COORDS 0 
 
 #include "read_gauge.h"
 #include "read_clover.h"
 #include "io_spinor.h"
 
-int sid = blockIdx.x*blockDim.x + threadIdx.x;
-
-while (sid < param.threads) {
-
-//if (sid >= param.threads) return;
-
-int x1, x2, x3, x4;
 int X;
 
 #if (defined MULTI_GPU) && (DD_PREC==2) // half precision
 int sp_norm_idx;
 #endif // MULTI_GPU half precision
+
+#ifndef DSLASH_TUNING_3D
+int sid = blockIdx.x*blockDim.x + threadIdx.x;
+if (sid >= param.threads) return;
+#else
+int sid;
+#endif
 
 #ifdef MULTI_GPU
 int face_idx;
@@ -370,7 +371,8 @@ if (kernel_type == INTERIOR_KERNEL) {
   // Inline by hand for the moment and assume even dimensions
   //coordsFromIndex(X, x1, x2, x3, x4, sid, param.parity);
 
-  X = 2*sid;
+#ifndef DSLASH_TUNING_3D
+  X = sid+sid;
   int aux1 = X / X1;
   x1 = X - aux1 * X1;
   int aux2 = aux1 / X2;
@@ -380,6 +382,28 @@ if (kernel_type == INTERIOR_KERNEL) {
   aux1 = (param.parity + x4 + x3 + x2) & 1;
   x1 += aux1;
   X += aux1;
+#else
+
+  int xt = blockIdx.x*blockDim.x + threadIdx.x;
+  int aux = xt+xt;
+  if (aux >= X1*X4) return;
+
+  x4 = aux / X1;
+  x1 = aux - x4*X1;
+
+  x2 = blockIdx.y*blockDim.y + threadIdx.y;
+  if (x2 >= X2) return;
+
+  x3 = blockIdx.z*blockDim.z + threadIdx.z;
+  if (x3 >= X3) return;
+
+  x1 += (param.parity + x4 + x3 + x2) &1;
+  X = ((x4*X3 + x3)*X2 + x2) + x1;
+  sid = X >> 1; 
+
+#endif
+
+  
 
   o00_re = 0;  o00_im = 0;
   o01_re = 0;  o01_im = 0;
@@ -2599,11 +2623,6 @@ if (!incomplete)
 
 // write spinor field back to device memory
 WRITE_SPINOR(sp_stride);
-
-int gridSize = gridDim.x*blockDim.x;
-sid += gridSize;
-
-}
 
 // undefine to prevent warning when precision is changed
 #undef spinorFloat

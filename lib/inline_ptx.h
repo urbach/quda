@@ -3,6 +3,8 @@
   minimal impact on L2 (streaming through L2).
 */
 
+#if (GPU_ARCH > 200)
+
 #if (POINTER_SIZE==8) // 64-bit pointers
 
 __device__  inline void load_streaming_float4(float4 &a, const float4* addr)
@@ -85,4 +87,6 @@ __device__ inline void store_streaming_short2(short2* addr, short x, short y)
   asm("st.cs.global.v2.s16 [%0+0], {%1, %2};" :: "r"(addr), "h"(x), "h"(y));
 }
 
-#endif
+#endif // POINTER_SIZE
+
+#endif // GPU_ARCH

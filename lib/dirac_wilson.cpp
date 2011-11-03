@@ -8,10 +8,30 @@ DiracWilson::DiracWilson(const DiracParam &param) :
   Dirac(param), face(param.gauge->X(), 4, 12, 1, param.gauge->Precision())
 {
   for (int i=0; i<5; i++) {
+
+#ifndef DSLASH_TUNING_3D
+    // 1-d tuning
     blockDslash[i] = dim3(64, 1, 1);
     blockDslashXpay[i] = dim3(64, 1, 1);
     gridDslash[i] = dim3((param.gauge->VolumeCB()+blockDslash[i].x-1)/blockDslash[i].x, 1, 1);
     gridDslashXpay[i] = dim3((param.gauge->VolumeCB()+blockDslashXpay[i].x-1)/blockDslashXpay[i].x, 1, 1);
+#else
+    // 3-d tuning
+    blockDslash[i] = dim3(16, 4, 1);
+    blockDslashXpay[i] = dim3(16, 4, 1);
+
+    // dimensions are (xt, y, z)
+    int x[] = {param.gauge->X()[0]*param.gauge->X()[3]/2, param.gauge->X()[1], param.gauge->X()[2]};
+    gridDslash[i] = dim3((x[0]+blockDslash[i].x-1)/blockDslash[i].x, 
+			 (x[1]+blockDslash[i].y-1)/blockDslash[i].y, 
+			 (x[2]+blockDslash[i].z-1)/blockDslash[i].z);
+
+    gridDslashXpay[i] = dim3((x[0]+blockDslashXpay[i].x-1)/blockDslashXpay[i].x, 
+			     (x[1]+blockDslashXpay[i].y-1)/blockDslashXpay[i].y, 
+			     (x[2]+blockDslashXpay[i].z-1)/blockDslashXpay[i].z);
+
+#endif
+
   }
 }
 
@@ -118,6 +138,7 @@ void DiracWilson::Tune(cudaColorSpinorField &out, const cudaColorSpinorField &in
 		       const cudaColorSpinorField &x) {
   setDslashTuning(QUDA_TUNE_YES);
 
+#ifndef DSLASH_TUNING_3D
   { // Tune Dslash
     TuneDiracWilsonDslash dslashTune(*this, out, in);
     dslashTune.Benchmark(blockDslash[0], gridDslash[0]);
@@ -127,10 +148,25 @@ void DiracWilson::Tune(cudaColorSpinorField &out, const cudaColorSpinorField &in
 
   { // Tune DslashXpay
     TuneDiracWilsonDslashXpay dslashXpayTune(*this, out, in, x);
-    dslashXpayTune.Benchmark(blockDslashXpay[0], gridDslashXpay[0]);
+    dslashXpayTune.Benchmark3d(blockDslashXpay[0], gridDslashXpay[0]);
     for (int i=0; i<4; i++) 
-      if (commDimPartitioned(i)) dslashXpayTune.Benchmark(blockDslashXpay[i+1], gridDslashXpay[i+1]);
+      if (commDimPartitioned(i)) dslashXpayTune.Benchmark3d(blockDslashXpay[i+1], gridDslashXpay[i+1]);
   }
+#else
+  { // Tune Dslash
+    TuneDiracWilsonDslash dslashTune(*this, out, in);
+    dslashTune.Benchmark3d(blockDslash[0], gridDslash[0]);
+    for (int i=0; i<4; i++) 
+      if (commDimPartitioned(i)) dslashTune.Benchmark3d(blockDslash[i+1], gridDslash[i+1]);
+  }
+
+  { // Tune DslashXpay
+    TuneDiracWilsonDslashXpay dslashXpayTune(*this, out, in, x);
+    dslashXpayTune.Benchmark3d(blockDslashXpay[0], gridDslashXpay[0]);
+    for (int i=0; i<4; i++) 
+      if (commDimPartitioned(i)) dslashXpayTune.Benchmark3d(blockDslashXpay[i+1], gridDslashXpay[i+1]);
+  }
+#endif // DSLASH_TUNING_3D
 
   setDslashTuning(QUDA_TUNE_NO);
 

@@ -82,7 +82,7 @@ void TuneBase::Benchmark(dim3 &block, dim3 &grid)  {
 void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 
   int count = 10;
-  unsigned int threadBlockMin = 32;
+  unsigned int threadBlockMin = 1;
   unsigned int threadBlockMax = 512;
   double time;
   double timeMin = 1e10;
@@ -92,23 +92,25 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 
   cudaError_t error;
 
-  for (unsigned int bx=1; bx<x[0]; bx++) {
+  for (unsigned int bx=1; bx<=x[0]; bx++) {
 
     unsigned int gx = (x[0] + bx - 1) / bx;
 
-    for (unsigned int by=1; by<x[1]; by++) {
+    for (unsigned int by=1; by<=x[1]; by++) {
       
       unsigned int gy = (x[1] + by - 1 ) / by;
 
-      for (unsigned int bz=1; bz<x[2]; bz++) {
+      for (unsigned int bz=1; bz<=x[2]; bz++) {
 
 	unsigned int gz = (x[2] + bz - 1) / bz;
 	
 	block = dim3(bx, by, bz);
 	grid = dim3(gx, gy, gz);
 
-	if (bx*by*bz < threadBlockMax) continue;
+	if (bx*by*bz > threadBlockMax) continue;
 	if (bx*by*bz < threadBlockMin) continue;
+
+	printf("(%d %d %d) (%d %d %d)\n", bx, by, bz, gx, gy, gz);
 
 	cudaEvent_t start, end;
 	cudaEventCreate(&start);
@@ -126,6 +128,8 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 	cudaEventSynchronize(end);
 
 	cudaThreadSynchronize();
+
+	checkCudaError();
 	error = cudaGetLastError();
 
 	float runTime;
@@ -152,7 +156,7 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
       }
     }
   }
-  
+
   block = blockOpt;
   grid = gridOpt;
   Flops(); // reset the flop counter
@@ -164,5 +168,7 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
   if (verbose >= QUDA_VERBOSE) 
     printfQuda("Tuned %-15s with (%d,%d,%d) threads per block, (%d, %d, %d) blocks per grid, Gflop/s = %f\n", 
 	       name, block.x, block.y, block.z, grid.x, grid.y, grid.z, gflopsMax);    
+
+  exit(0);
 
 }
