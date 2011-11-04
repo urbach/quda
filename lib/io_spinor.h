@@ -46,6 +46,15 @@
   float4 I4 = spinor[sp_idx + 4*(stride)];   \
   float4 I5 = spinor[sp_idx + 5*(stride)];
 
+#define READ_SPINOR_SINGLE_GLOBAL(spinor, stride, sp_idx, norm_idx)	\
+  float4 I0, I1, I2, I3, I4, I5;					\
+  load_global_float4(I0, &spinor[sp_idx + 0*(stride)]);			\
+  load_global_float4(I1, &spinor[sp_idx + 1*(stride)]);			\
+  load_global_float4(I2, &spinor[sp_idx + 2*(stride)]);			\
+  load_global_float4(I3, &spinor[sp_idx + 3*(stride)]);			\
+  load_global_float4(I4, &spinor[sp_idx + 4*(stride)]);			\
+  load_global_float4(I5, &spinor[sp_idx + 5*(stride)]);			
+
 #define READ_SPINOR_SINGLE_UP_GLOBAL(spinor, stride, sp_idx, norm_idx)	\
   float4 I0, I1, I2;							\
   load_global_float4(I0, &spinor[sp_idx + 0*(stride)]);			\
