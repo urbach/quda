@@ -3,7 +3,7 @@
   minimal impact on L2 (streaming through L2).
 */
 
-#if (GPU_ARCH > 200)
+#if (__CUDA_ARCH__ >= 200)
 
 #if (POINTER_SIZE==8) // 64-bit pointers
 
@@ -89,4 +89,4 @@ __device__ inline void store_streaming_short2(short2* addr, short x, short y)
 
 #endif // POINTER_SIZE
 
-#endif // GPU_ARCH
+#endif // CUDA_ARCH

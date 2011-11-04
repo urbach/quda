@@ -382,7 +382,7 @@ if (kernel_type == INTERIOR_KERNEL) {
   if (x3 >= X3) return;
 
   x1 += (param.parity + x4 + x3 + x2) &1;
-  X = ((x4*X3 + x3)*X2 + x2) + x1;
+  X = ((x4*X3 + x3)*X2 + x2)*X1 + x1;
   sid = X >> 1; 
 
 #endif

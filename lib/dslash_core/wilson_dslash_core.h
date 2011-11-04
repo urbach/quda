@@ -398,7 +398,7 @@ if (kernel_type == INTERIOR_KERNEL) {
   if (x3 >= X3) return;
 
   x1 += (param.parity + x4 + x3 + x2) &1;
-  X = ((x4*X3 + x3)*X2 + x2) + x1;
+  X = ((x4*X3 + x3)*X2 + x2)*X1 + x1;
   sid = X >> 1; 
 
 #endif
@@ -874,22 +874,41 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[1] || x2<X2m1)) ||
   if (kernel_type == INTERIOR_KERNEL) {
 #endif
   
-    // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
-    
-    // project spinor into half spinors
-    a0_re = +i00_re-i30_re;
-    a0_im = +i00_im-i30_im;
-    a1_re = +i01_re-i31_re;
-    a1_im = +i01_im-i31_im;
-    a2_re = +i02_re-i32_re;
-    a2_im = +i02_im-i32_im;
-    b0_re = +i10_re+i20_re;
-    b0_im = +i10_im+i20_im;
-    b1_re = +i11_re+i21_re;
-    b1_im = +i11_im+i21_im;
-    b2_re = +i12_re+i22_re;
-    b2_im = +i12_im+i22_im;
+    //if (threadIdx.y < blockIdx.y - 1) {
+      // read spinor from device memory
+      READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+      
+      // project spinor into half spinors
+      a0_re = +i00_re-i30_re;
+      a0_im = +i00_im-i30_im;
+      a1_re = +i01_re-i31_re;
+      a1_im = +i01_im-i31_im;
+      a2_re = +i02_re-i32_re;
+      a2_im = +i02_im-i32_im;
+      b0_re = +i10_re+i20_re;
+      b0_im = +i10_im+i20_im;
+      b1_re = +i11_re+i21_re;
+      b1_im = +i11_im+i21_im;
+      b2_re = +i12_re+i22_re;
+      b2_im = +i12_im+i22_im;
+      /*} else {
+      // read spinor from device memory
+      READ_SPINOR_GLOBAL(SPINORTEX, sp_stride, sp_idx, sp_idx);
+      
+      // project spinor into half spinors
+      a0_re = +i00_re-i30_re;
+      a0_im = +i00_im-i30_im;
+      a1_re = +i01_re-i31_re;
+      a1_im = +i01_im-i31_im;
+      a2_re = +i02_re-i32_re;
+      a2_im = +i02_im-i32_im;
+      b0_re = +i10_re+i20_re;
+      b0_im = +i10_im+i20_im;
+      b1_re = +i11_re+i21_re;
+      b1_im = +i11_im+i21_im;
+      b2_re = +i12_re+i22_re;
+      b2_im = +i12_im+i22_im;
+      }*/
   
 #ifdef MULTI_GPU
   } else {
@@ -1069,22 +1088,41 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[1] || x2>0)) ||
   if (kernel_type == INTERIOR_KERNEL) {
 #endif
   
-    // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
-    
-    // project spinor into half spinors
-    a0_re = +i00_re+i30_re;
-    a0_im = +i00_im+i30_im;
-    a1_re = +i01_re+i31_re;
-    a1_im = +i01_im+i31_im;
-    a2_re = +i02_re+i32_re;
-    a2_im = +i02_im+i32_im;
-    b0_re = +i10_re-i20_re;
-    b0_im = +i10_im-i20_im;
-    b1_re = +i11_re-i21_re;
-    b1_im = +i11_im-i21_im;
-    b2_re = +i12_re-i22_re;
-    b2_im = +i12_im-i22_im;
+    //if (threadIdx.y > 0) {
+      // read spinor from device memory
+      READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+      
+      // project spinor into half spinors
+      a0_re = +i00_re+i30_re;
+      a0_im = +i00_im+i30_im;
+      a1_re = +i01_re+i31_re;
+      a1_im = +i01_im+i31_im;
+      a2_re = +i02_re+i32_re;
+      a2_im = +i02_im+i32_im;
+      b0_re = +i10_re-i20_re;
+      b0_im = +i10_im-i20_im;
+      b1_re = +i11_re-i21_re;
+      b1_im = +i11_im-i21_im;
+      b2_re = +i12_re-i22_re;
+      b2_im = +i12_im-i22_im;
+      /*} else {
+      // read spinor from device memory
+      READ_SPINOR_GLOBAL(SPINORTEX, sp_stride, sp_idx, sp_idx);
+      
+      // project spinor into half spinors
+      a0_re = +i00_re+i30_re;
+      a0_im = +i00_im+i30_im;
+      a1_re = +i01_re+i31_re;
+      a1_im = +i01_im+i31_im;
+      a2_re = +i02_re+i32_re;
+      a2_im = +i02_im+i32_im;
+      b0_re = +i10_re-i20_re;
+      b0_im = +i10_im-i20_im;
+      b1_re = +i11_re-i21_re;
+      b1_im = +i11_im-i21_im;
+      b2_re = +i12_re-i22_re;
+      b2_im = +i12_im-i22_im;
+      }*/
   
 #ifdef MULTI_GPU
   } else {
@@ -1260,22 +1298,41 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[2] || x3<X3m1)) ||
   if (kernel_type == INTERIOR_KERNEL) {
 #endif
   
-    // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    if (threadIdx.z < blockIdx.z - 1) {
+      // read spinor from device memory
+      READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
     
-    // project spinor into half spinors
-    a0_re = +i00_re+i20_im;
-    a0_im = +i00_im-i20_re;
-    a1_re = +i01_re+i21_im;
-    a1_im = +i01_im-i21_re;
-    a2_re = +i02_re+i22_im;
-    a2_im = +i02_im-i22_re;
-    b0_re = +i10_re-i30_im;
-    b0_im = +i10_im+i30_re;
-    b1_re = +i11_re-i31_im;
-    b1_im = +i11_im+i31_re;
-    b2_re = +i12_re-i32_im;
-    b2_im = +i12_im+i32_re;
+      // project spinor into half spinors
+      a0_re = +i00_re+i20_im;
+      a0_im = +i00_im-i20_re;
+      a1_re = +i01_re+i21_im;
+      a1_im = +i01_im-i21_re;
+      a2_re = +i02_re+i22_im;
+      a2_im = +i02_im-i22_re;
+      b0_re = +i10_re-i30_im;
+      b0_im = +i10_im+i30_re;
+      b1_re = +i11_re-i31_im;
+      b1_im = +i11_im+i31_re;
+      b2_re = +i12_re-i32_im;
+      b2_im = +i12_im+i32_re;
+    } else {
+      // read spinor from device memory
+      READ_SPINOR_GLOBAL(SPINORTEX, sp_stride, sp_idx, sp_idx);
+    
+      // project spinor into half spinors
+      a0_re = +i00_re+i20_im;
+      a0_im = +i00_im-i20_re;
+      a1_re = +i01_re+i21_im;
+      a1_im = +i01_im-i21_re;
+      a2_re = +i02_re+i22_im;
+      a2_im = +i02_im-i22_re;
+      b0_re = +i10_re-i30_im;
+      b0_im = +i10_im+i30_re;
+      b1_re = +i11_re-i31_im;
+      b1_im = +i11_im+i31_re;
+      b2_re = +i12_re-i32_im;
+      b2_im = +i12_im+i32_re;
+    }
   
 #ifdef MULTI_GPU
   } else {
@@ -1455,23 +1512,41 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[2] || x3>0)) ||
   if (kernel_type == INTERIOR_KERNEL) {
 #endif
   
-    // read spinor from device memory
-    READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
-    
-    // project spinor into half spinors
-    a0_re = +i00_re-i20_im;
-    a0_im = +i00_im+i20_re;
-    a1_re = +i01_re-i21_im;
-    a1_im = +i01_im+i21_re;
-    a2_re = +i02_re-i22_im;
-    a2_im = +i02_im+i22_re;
-    b0_re = +i10_re+i30_im;
-    b0_im = +i10_im-i30_re;
-    b1_re = +i11_re+i31_im;
-    b1_im = +i11_im-i31_re;
-    b2_re = +i12_re+i32_im;
-    b2_im = +i12_im-i32_re;
-  
+    if (threadIdx.z > 0) {
+      // read spinor from device memory
+      READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
+      
+      // project spinor into half spinors
+      a0_re = +i00_re-i20_im;
+      a0_im = +i00_im+i20_re;
+      a1_re = +i01_re-i21_im;
+      a1_im = +i01_im+i21_re;
+      a2_re = +i02_re-i22_im;
+      a2_im = +i02_im+i22_re;
+      b0_re = +i10_re+i30_im;
+      b0_im = +i10_im-i30_re;
+      b1_re = +i11_re+i31_im;
+      b1_im = +i11_im-i31_re;
+      b2_re = +i12_re+i32_im;
+      b2_im = +i12_im-i32_re;
+    } else {
+      // read spinor from device memory
+      READ_SPINOR_GLOBAL(SPINORTEX, sp_stride, sp_idx, sp_idx);
+      
+      // project spinor into half spinors
+      a0_re = +i00_re-i20_im;
+      a0_im = +i00_im+i20_re;
+      a1_re = +i01_re-i21_im;
+      a1_im = +i01_im+i21_re;
+      a2_re = +i02_re-i22_im;
+      a2_im = +i02_im+i22_re;
+      b0_re = +i10_re+i30_im;
+      b0_im = +i10_im-i30_re;
+      b1_re = +i11_re+i31_im;
+      b1_im = +i11_im-i31_re;
+      b2_re = +i12_re+i32_im;
+      b2_im = +i12_im-i32_re;
+    }
 #ifdef MULTI_GPU
   } else {
   

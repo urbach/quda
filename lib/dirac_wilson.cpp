@@ -17,8 +17,8 @@ DiracWilson::DiracWilson(const DiracParam &param) :
     gridDslashXpay[i] = dim3((param.gauge->VolumeCB()+blockDslashXpay[i].x-1)/blockDslashXpay[i].x, 1, 1);
 #else
     // 3-d tuning
-    blockDslash[i] = dim3(16, 4, 1);
-    blockDslashXpay[i] = dim3(16, 4, 1);
+    blockDslash[i] = dim3(12, 8, 4);
+    blockDslashXpay[i] = dim3(12, 8, 4);
 
     // dimensions are (xt, y, z)
     int x[] = {param.gauge->X()[0]*param.gauge->X()[3]/2, param.gauge->X()[1], param.gauge->X()[2]};
@@ -160,12 +160,12 @@ void DiracWilson::Tune(cudaColorSpinorField &out, const cudaColorSpinorField &in
       if (commDimPartitioned(i)) dslashTune.Benchmark3d(blockDslash[i+1], gridDslash[i+1]);
   }
 
-  { // Tune DslashXpay
+  /*{ // Tune DslashXpay
     TuneDiracWilsonDslashXpay dslashXpayTune(*this, out, in, x);
     dslashXpayTune.Benchmark3d(blockDslashXpay[0], gridDslashXpay[0]);
     for (int i=0; i<4; i++) 
       if (commDimPartitioned(i)) dslashXpayTune.Benchmark3d(blockDslashXpay[i+1], gridDslashXpay[i+1]);
-  }
+      }*/
 #endif // DSLASH_TUNING_3D
 
   setDslashTuning(QUDA_TUNE_NO);
