@@ -46,6 +46,7 @@
   float4 I4 = spinor[sp_idx + 4*(stride)];   \
   float4 I5 = spinor[sp_idx + 5*(stride)];
 
+#if (__CUDA_ARCH >= 200) 
 #define READ_SPINOR_SINGLE_GLOBAL(spinor, stride, sp_idx, norm_idx)	\
   float4 I0, I1, I2, I3, I4, I5;					\
   load_global_float4(I0, &spinor[sp_idx + 0*(stride)]);			\
@@ -66,6 +67,14 @@
   load_global_float4(I3, &spinor[sp_idx + 3*(stride)]);			\
   load_global_float4(I4, &spinor[sp_idx + 4*(stride)]);			\
   load_global_float4(I5, &spinor[sp_idx + 5*(stride)]);			
+#else
+
+#define READ_SPINOR_SINGLE_GLOBAL READ_SPINOR_SINGLE
+#define READ_SPINOR_SINGLE_UP_GLOBAL READ_SPINOR_SINGLE_UP
+#define READ_SPINOR_SINGLE_DOWN_GLOBAL READ_SPINOR_SINGLE_DOWN
+
+#endif
+
 
 #define READ_SPINOR_HALF_(spinor, stride, sp_idx, norm_idx)	   \
   float4 I0 = short42float4(spinor[sp_idx + 0*(stride)]);	   \
@@ -292,20 +301,6 @@
   out[10*(stride)+sid] = make_double2(o31_re, o31_im);	   \
   out[11*(stride)+sid] = make_double2(o32_re, o32_im);		 
 
-#define WRITE_SPINOR_DOUBLE2_STR(stride)				\
-  store_streaming_double2(&g_out[0*sp_stride+sid], o00_re, o00_im);	\
-  store_streaming_double2(&g_out[1*sp_stride+sid], o01_re, o01_im);	\
-  store_streaming_double2(&g_out[2*sp_stride+sid], o02_re, o02_im);	\
-  store_streaming_double2(&g_out[3*sp_stride+sid], o10_re, o10_im);	\
-  store_streaming_double2(&g_out[4*sp_stride+sid], o11_re, o11_im);	\
-  store_streaming_double2(&g_out[5*sp_stride+sid], o12_re, o12_im);	\
-  store_streaming_double2(&g_out[6*sp_stride+sid], o20_re, o20_im);	\
-  store_streaming_double2(&g_out[7*sp_stride+sid], o21_re, o21_im);	\
-  store_streaming_double2(&g_out[8*sp_stride+sid], o22_re, o22_im);	\
-  store_streaming_double2(&g_out[9*sp_stride+sid], o30_re, o30_im);	\
-  store_streaming_double2(&g_out[10*sp_stride+sid], o31_re, o31_im);	\
-  store_streaming_double2(&g_out[11*sp_stride+sid], o32_re, o32_im);	
-
 #define WRITE_SPINOR_FLOAT4(stride)				     \
   out[0*(stride)+sid] = make_float4(o00_re, o00_im, o01_re, o01_im); \
   out[1*(stride)+sid] = make_float4(o02_re, o02_im, o10_re, o10_im); \
@@ -313,14 +308,6 @@
   out[3*(stride)+sid] = make_float4(o20_re, o20_im, o21_re, o21_im); \
   out[4*(stride)+sid] = make_float4(o22_re, o22_im, o30_re, o30_im); \
   out[5*(stride)+sid] = make_float4(o31_re, o31_im, o32_re, o32_im); 
-
-#define WRITE_SPINOR_FLOAT4_STR(stride)				     \
-  store_streaming_float4(&out[0*(stride)+sid], o00_re, o00_im, o01_re, o01_im); \
-  store_streaming_float4(&out[1*(stride)+sid], o02_re, o02_im, o10_re, o10_im); \
-  store_streaming_float4(&out[2*(stride)+sid], o11_re, o11_im, o12_re, o12_im); \
-  store_streaming_float4(&out[3*(stride)+sid], o20_re, o20_im, o21_re, o21_im); \
-  store_streaming_float4(&out[4*(stride)+sid], o22_re, o22_im, o30_re, o30_im); \
-  store_streaming_float4(&out[5*(stride)+sid], o31_re, o31_im, o32_re, o32_im);
 
 #define WRITE_SPINOR_SHORT4(stride)					\
   float c0 = fmaxf(fabsf(o00_re), fabsf(o00_im));			\
@@ -361,6 +348,29 @@
   out[sid+4*(stride)] = make_short4((short)o22_re, (short)o22_im, (short)o30_re, (short)o30_im); \
   out[sid+5*(stride)] = make_short4((short)o31_re, (short)o31_im, (short)o32_re, (short)o32_im);
 
+#if (__CUDA_ARCH >= 200)
+#define WRITE_SPINOR_DOUBLE2_STR(stride)				\
+  store_streaming_double2(&g_out[0*sp_stride+sid], o00_re, o00_im);	\
+  store_streaming_double2(&g_out[1*sp_stride+sid], o01_re, o01_im);	\
+  store_streaming_double2(&g_out[2*sp_stride+sid], o02_re, o02_im);	\
+  store_streaming_double2(&g_out[3*sp_stride+sid], o10_re, o10_im);	\
+  store_streaming_double2(&g_out[4*sp_stride+sid], o11_re, o11_im);	\
+  store_streaming_double2(&g_out[5*sp_stride+sid], o12_re, o12_im);	\
+  store_streaming_double2(&g_out[6*sp_stride+sid], o20_re, o20_im);	\
+  store_streaming_double2(&g_out[7*sp_stride+sid], o21_re, o21_im);	\
+  store_streaming_double2(&g_out[8*sp_stride+sid], o22_re, o22_im);	\
+  store_streaming_double2(&g_out[9*sp_stride+sid], o30_re, o30_im);	\
+  store_streaming_double2(&g_out[10*sp_stride+sid], o31_re, o31_im);	\
+  store_streaming_double2(&g_out[11*sp_stride+sid], o32_re, o32_im);	
+
+#define WRITE_SPINOR_FLOAT4_STR(stride)				     \
+  store_streaming_float4(&out[0*(stride)+sid], o00_re, o00_im, o01_re, o01_im); \
+  store_streaming_float4(&out[1*(stride)+sid], o02_re, o02_im, o10_re, o10_im); \
+  store_streaming_float4(&out[2*(stride)+sid], o11_re, o11_im, o12_re, o12_im); \
+  store_streaming_float4(&out[3*(stride)+sid], o20_re, o20_im, o21_re, o21_im); \
+  store_streaming_float4(&out[4*(stride)+sid], o22_re, o22_im, o30_re, o30_im); \
+  store_streaming_float4(&out[5*(stride)+sid], o31_re, o31_im, o32_re, o32_im);
+
 #define WRITE_SPINOR_SHORT4_STR(stride)					\
   float c0 = fmaxf(fabsf(o00_re), fabsf(o00_im));			\
   float c1 = fmaxf(fabsf(o01_re), fabsf(o02_im));			\
@@ -399,6 +409,12 @@
   store_streaming_float4(&out[3*(stride)+sid], (short)o20_re, (short)o20_im, (short)o21_re, (short)o21_im); \
   store_streaming_float4(&out[4*(stride)+sid], (short)o22_re, (short)o22_im, (short)o30_re, (short)o30_im); \
   store_streaming_float4(&out[5*(stride)+sid], (short)o31_re, (short)o31_im, (short)o32_re, (short)o32_im);
+#else
+#define WRITE_SPINOR_DOUBLE2_STR(stride) WRITE_SPINOR_DOUBLE2(stride)
+#define WRITE_SPINOR_FLOAT4_STR(stride)	WRITE_SPINOR_FLOAT4(stride)
+#define WRITE_SPINOR_SHORT4_STR(stride)	WRITE_SPINOR_SHORT4(stride)
+#endif
+
 
 // macros used for exterior Wilson Dslash kernels and face packing
 
@@ -692,6 +708,8 @@
     T2.x *= C; T2.y *= C;}
 
 // Non-cache writes to minimize cache polution
+#if (__CUDA_ARCH__ >= 200) 
+
 #define WRITE_ST_SPINOR_DOUBLE2_STR()					\
   store_streaming_double2(&g_out[0*sp_stride+sid], o00_re, o00_im);	\
   store_streaming_double2(&g_out[1*sp_stride+sid], o01_re, o01_im);	\
@@ -715,7 +733,13 @@
   store_streaming_short2(&g_out[0*sp_stride+sid], (short)o00_re, (short)o00_im); \
   store_streaming_short2(&g_out[1*sp_stride+sid], (short)o01_re, (short)o01_im); \
   store_streaming_short2(&g_out[2*sp_stride+sid], (short)o02_re, (short)o02_im);	
+#else
 
+#define WRITE_ST_SPINOR_DOUBLE2_STR() WRITE_ST_SPINOR_DOUBLE2()
+#define WRITE_ST_SPINOR_FLOAT4_STR() WRITE_ST_SPINOR_FLOAT4()
+#define WRITE_ST_SPINOR_SHORT4_STR() WRITE_ST_SPINOR_SHORT4()
+
+#endif
 
 #define WRITE_ST_SPINOR_DOUBLE2()				\
   g_out[0*sp_stride+sid] = make_double2(o00_re, o00_im);	\

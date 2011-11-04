@@ -92,9 +92,9 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 
   cudaError_t error;
 
-  for (unsigned int bx=2; bx<=x[0]; bx++) {
+  for (unsigned int bx=1; bx<=x[0]; bx++) {
 
-    unsigned int gx = (x[0] + bx - 1) / bx;
+    unsigned int gx = (x[0]*x[3] + bx - 1) / bx;
 
     for (unsigned int by=1; by<=x[1]; by++) {
       
@@ -129,7 +129,6 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 
 	cudaThreadSynchronize();
 
-	checkCudaError();
 	error = cudaGetLastError();
 
 	float runTime;

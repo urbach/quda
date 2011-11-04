@@ -185,13 +185,22 @@
   float4 G##1 = gauge[idx + ((dir/2)*3+1)*stride];		\
   float4 G##2 = gauge[idx + ((dir/2)*3+2)*stride];		\
   float4 G##3, G##4; 
-  
+
+#if (__CUDA_ARCH__ > 200)   
+
 #define READ_GAUGE_MATRIX_12_FLOAT4_STR(G, gauge, dir, idx, stride)	\
   float4 G##0, G##1, G##2;                                              \
   load_streaming_float4(G##0, &gauge[idx + ((dir/2)*3+0)*stride]); \
   load_streaming_float4(G##1, &gauge[idx + ((dir/2)*3+1)*stride]); \
   load_streaming_float4(G##2, &gauge[idx + ((dir/2)*3+2)*stride]); \
   float4 G##3, G##4;
+
+#else
+
+#define READ_GAUGE_MATRIX_12_FLOAT4_STR READ_GAUGE_MATRIX_12_FLOAT4
+
+#endif
+
 
 #define READ_GAUGE_MATRIX_12_SHORT4(G, gauge, dir, idx, stride)		\
   float4 G##0 = short42float4(gauge[idx + ((dir/2)*3+0)*stride]);	\

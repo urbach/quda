@@ -16,9 +16,10 @@ class TuneBase {
  public:
   TuneBase(const int* x, const unsigned int size, const char *name, QudaVerbosity verbose) : 
     size(size), name(name), verbose(verbose) {
-    this->x[0] = x[0]*x[3];
-    this->x[1] = x[1];
-    this->x[2] = x[2];
+      this->x[0] = x[0];
+      this->x[1] = x[1];
+      this->x[2] = x[2];
+      this->x[3] = x[3];
   }
    
   virtual ~TuneBase() { ; }
