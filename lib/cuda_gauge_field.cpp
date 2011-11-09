@@ -6,13 +6,13 @@
 cudaGaugeField::cudaGaugeField(const GaugeFieldParam &param) :
   GaugeField(param, QUDA_CUDA_FIELD_LOCATION), gauge(0), even(0), odd(0)
 {
-  if (cudaMalloc((void **)&gauge, bytes) == cudaErrorMemoryAllocation) {
-    errorQuda("Error allocating gauge field");
+  cudaError error;
+  if ((error = cudaMalloc((void **)&gauge, bytes)) != cudaSuccess) {
+    errorQuda("Error allocating gauge field = %s\n", cudaGetErrorString(error));
   }
 
   even = gauge;
   odd = (char*)gauge + bytes/2;
-
 }
 
 cudaGaugeField::~cudaGaugeField() {
