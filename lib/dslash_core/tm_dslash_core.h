@@ -1,6 +1,6 @@
 // *** CUDA DSLASH ***
 
-#define DSLASH_SHARED_FLOATS_PER_THREAD 0
+#define DSLASH_SHARED_FLOATS_PER_THREAD 24
 
 // input spinor
 #ifdef SPINOR_DOUBLE
@@ -128,30 +128,30 @@
 #define gT22_im (-g22_im)
 
 // output spinor
-volatile spinorFloat o00_re;
-volatile spinorFloat o00_im;
-volatile spinorFloat o01_re;
-volatile spinorFloat o01_im;
-volatile spinorFloat o02_re;
-volatile spinorFloat o02_im;
-volatile spinorFloat o10_re;
-volatile spinorFloat o10_im;
-volatile spinorFloat o11_re;
-volatile spinorFloat o11_im;
-volatile spinorFloat o12_re;
-volatile spinorFloat o12_im;
-volatile spinorFloat o20_re;
-volatile spinorFloat o20_im;
-volatile spinorFloat o21_re;
-volatile spinorFloat o21_im;
-volatile spinorFloat o22_re;
-volatile spinorFloat o22_im;
-volatile spinorFloat o30_re;
-volatile spinorFloat o30_im;
-volatile spinorFloat o31_re;
-volatile spinorFloat o31_im;
-volatile spinorFloat o32_re;
-volatile spinorFloat o32_im;
+#define o00_re s[0*SHARED_STRIDE]
+#define o00_im s[1*SHARED_STRIDE]
+#define o01_re s[2*SHARED_STRIDE]
+#define o01_im s[3*SHARED_STRIDE]
+#define o02_re s[4*SHARED_STRIDE]
+#define o02_im s[5*SHARED_STRIDE]
+#define o10_re s[6*SHARED_STRIDE]
+#define o10_im s[7*SHARED_STRIDE]
+#define o11_re s[8*SHARED_STRIDE]
+#define o11_im s[9*SHARED_STRIDE]
+#define o12_re s[10*SHARED_STRIDE]
+#define o12_im s[11*SHARED_STRIDE]
+#define o20_re s[12*SHARED_STRIDE]
+#define o20_im s[13*SHARED_STRIDE]
+#define o21_re s[14*SHARED_STRIDE]
+#define o21_im s[15*SHARED_STRIDE]
+#define o22_re s[16*SHARED_STRIDE]
+#define o22_im s[17*SHARED_STRIDE]
+#define o30_re s[18*SHARED_STRIDE]
+#define o30_im s[19*SHARED_STRIDE]
+#define o31_re s[20*SHARED_STRIDE]
+#define o31_im s[21*SHARED_STRIDE]
+#define o32_re s[22*SHARED_STRIDE]
+#define o32_im s[23*SHARED_STRIDE]
 
 #ifdef SPINOR_DOUBLE
 #if (__CUDA_ARCH__ >= 200)
@@ -166,6 +166,11 @@ volatile spinorFloat o32_im;
 #define SHARED_STRIDE 16 // to avoid bank conflicts on G80 and GT200
 #endif
 #endif
+
+extern __shared__ char s_data[];
+
+volatile spinorFloat *s = (spinorFloat*)s_data + DSLASH_SHARED_FLOATS_PER_THREAD*SHARED_STRIDE*(threadIdx.x/SHARED_STRIDE)
+                                  + (threadIdx.x % SHARED_STRIDE);
 
 int x1, x2, x3, x4;
 #define SHARED_COORDS 0 
@@ -222,7 +227,7 @@ if (kernel_type == INTERIOR_KERNEL) {
   if (x3 >= X3) return;
 
   x1 += (param.parity + x4 + x3 + x2) &1;
-  X = ((x4*X3 + x3)*X2 + x2) + x1;
+  X = ((x4*X3 + x3)*X2 + x2)*X1 + x1;
   sid = X >> 1; 
 
 #endif
@@ -2165,4 +2170,28 @@ WRITE_SPINOR(sp_stride);
 #undef i32_re
 #undef i32_im
 
+#undef o00_re
+#undef o00_im
+#undef o01_re
+#undef o01_im
+#undef o02_re
+#undef o02_im
+#undef o10_re
+#undef o10_im
+#undef o11_re
+#undef o11_im
+#undef o12_re
+#undef o12_im
+#undef o20_re
+#undef o20_im
+#undef o21_re
+#undef o21_im
+#undef o22_re
+#undef o22_im
+#undef o30_re
+#undef o30_im
+#undef o31_re
+#undef o31_im
+#undef o32_re
+#undef o32_im
 

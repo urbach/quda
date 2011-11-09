@@ -812,3 +812,55 @@
   double2 accum0 = fetch_double2((spinor), sid + 0*(sp_stride));   \
   double2 accum1 = fetch_double2((spinor), sid + 1*(sp_stride));   \
   double2 accum2 = fetch_double2((spinor), sid + 2*(sp_stride));   
+
+#define WRITE_TO_SHARED(sh, reg)				\
+  sh[0*SHARED_STRIDE] = reg##00_re;			\
+  sh[1*SHARED_STRIDE] = reg##00_im;			\
+  sh[2*SHARED_STRIDE] = reg##01_re;			\
+  sh[3*SHARED_STRIDE] = reg##01_im;			\
+  sh[4*SHARED_STRIDE] = reg##02_re;			\
+  sh[5*SHARED_STRIDE] = reg##02_im;			\
+  sh[6*SHARED_STRIDE] = reg##10_re;			\
+  sh[7*SHARED_STRIDE] = reg##10_im;			\
+  sh[8*SHARED_STRIDE] = reg##11_re;			\
+  sh[9*SHARED_STRIDE] = reg##11_im;			\
+  sh[10*SHARED_STRIDE] = reg##12_re;			\
+  sh[11*SHARED_STRIDE] = reg##12_im;			\
+  sh[12*SHARED_STRIDE] = reg##20_re;			\
+  sh[13*SHARED_STRIDE] = reg##20_im;			\
+  sh[14*SHARED_STRIDE] = reg##21_re;			\
+  sh[15*SHARED_STRIDE] = reg##21_im;			\
+  sh[16*SHARED_STRIDE] = reg##22_re;			\
+  sh[17*SHARED_STRIDE] = reg##22_im;			\
+  sh[18*SHARED_STRIDE] = reg##30_re;			\
+  sh[19*SHARED_STRIDE] = reg##30_im;			\
+  sh[20*SHARED_STRIDE] = reg##31_re;			\
+  sh[21*SHARED_STRIDE] = reg##31_im;			\
+  sh[22*SHARED_STRIDE] = reg##32_re;			\
+  sh[23*SHARED_STRIDE] = reg##32_im;
+
+#define READ_FROM_SHARED(reg, sh)				\
+  spinorFloat reg##00_re = sh[0*SHARED_STRIDE];			\
+  spinorFloat reg##00_im = sh[1*SHARED_STRIDE];			\
+  spinorFloat reg##01_re = sh[2*SHARED_STRIDE];			\
+  spinorFloat reg##01_im = sh[3*SHARED_STRIDE];			\
+  spinorFloat reg##02_re = sh[4*SHARED_STRIDE];			\
+  spinorFloat reg##02_im = sh[5*SHARED_STRIDE];			\
+  spinorFloat reg##10_re = sh[6*SHARED_STRIDE];			\
+  spinorFloat reg##10_im = sh[7*SHARED_STRIDE];			\
+  spinorFloat reg##11_re = sh[8*SHARED_STRIDE];			\
+  spinorFloat reg##11_im = sh[9*SHARED_STRIDE];			\
+  spinorFloat reg##12_re = sh[10*SHARED_STRIDE];			\
+  spinorFloat reg##12_im = sh[11*SHARED_STRIDE];			\
+  spinorFloat reg##20_re = sh[12*SHARED_STRIDE];			\
+  spinorFloat reg##20_im = sh[13*SHARED_STRIDE];			\
+  spinorFloat reg##21_re = sh[14*SHARED_STRIDE];			\
+  spinorFloat reg##21_im = sh[15*SHARED_STRIDE];			\
+  spinorFloat reg##22_re = sh[16*SHARED_STRIDE];			\
+  spinorFloat reg##22_im = sh[17*SHARED_STRIDE];			\
+  spinorFloat reg##30_re = sh[18*SHARED_STRIDE];			\
+  spinorFloat reg##30_im = sh[19*SHARED_STRIDE];			\
+  spinorFloat reg##31_re = sh[20*SHARED_STRIDE];			\
+  spinorFloat reg##31_im = sh[21*SHARED_STRIDE];			\
+  spinorFloat reg##32_re = sh[22*SHARED_STRIDE];			\
+  spinorFloat reg##32_im = sh[23*SHARED_STRIDE];			
