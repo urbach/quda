@@ -82,7 +82,7 @@ void TuneBase::Benchmark(dim3 &block, dim3 &grid)  {
 void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 
   int count = 10;
-  unsigned int threadBlockMin = 1;
+  unsigned int threadBlockMin = 2;
   unsigned int threadBlockMax = 512;
   double time;
   double timeMin = 1e10;
@@ -92,7 +92,10 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 
   cudaError_t error;
 
-  for (unsigned int bx=1; bx<=x[0]; bx++) {
+  // this will generally fail on pre sm20 since only 2d grids
+
+  // set the x-block dimension equal to the entire x dimension
+  for (unsigned int bx=x[0]; bx<=x[0]; bx++) {
 
     unsigned int gx = (x[0]*x[3] + bx - 1) / bx;
 
@@ -109,8 +112,6 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 
 	if (bx*by*bz > threadBlockMax) continue;
 	if (bx*by*bz < threadBlockMin) continue;
-
-	//printf("(%d %d %d) (%d %d %d)\n", bx, by, bz, gx, gy, gz);
 
 	cudaEvent_t start, end;
 	cudaEventCreate(&start);
@@ -161,7 +162,7 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
   Flops(); // reset the flop counter
   
   if (block.x * block.y * block.z < threadBlockMin) {
-    printfQuda("Auto-tuning failed for %s\n", name);
+    errorQuda("Auto-tuning failed for %s\n", name);
   }
 
   if (verbose >= QUDA_VERBOSE) 
