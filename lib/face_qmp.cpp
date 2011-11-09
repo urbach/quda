@@ -255,58 +255,33 @@ void FaceBuffer::exchangeFacesComms(int dir) {
 
 } 
 
-// Finish backwards send and forwards receive
-#ifdef QMP_COMMS				
-
-#ifndef GPU_DIRECT
-#define QMP_finish_from_fwd(dir)					\
-  QMP_wait(mh_send_back[dir]);						\
-  QMP_wait(mh_from_fwd[dir]);						\
-  memcpy(from_fwd_face[dir], ib_from_fwd_face[dir], nbytes[dir]);		
-
-// Finish forwards send and backwards receive
-#define QMP_finish_from_back(dir)					\
-  QMP_wait(mh_send_fwd[dir]);						\
-  QMP_wait(mh_from_back[dir]);						\
-  memcpy(from_back_face[dir], ib_from_back_face[dir], nbytes[dir]);		
-
-#else
-
-#define QMP_finish_from_fwd(dir)					\
-  QMP_wait(mh_send_back[dir]);						\
-  QMP_wait(mh_from_fwd[dir]);						
-
-// Finish forwards send and backwards receive
-#define QMP_finish_from_back(dir)					\
-  QMP_wait(mh_send_fwd[dir]);						\
-  QMP_wait(mh_from_back[dir]);						
-
-#endif
-
-#else
-#define QMP_finish_from_fwd					
-
-#define QMP_finish_from_back					
-
-#endif
-
 void FaceBuffer::exchangeFacesWait(cudaColorSpinorField &out, int dagger, int dir)
 {
   if(!commDimPartitioned(dir)) return;
 
-  // replaced this memcopy with aliasing pointers - useful benchmarking
-#ifndef QMP_COMMS
-  // NO QMP -- do copies
-  //CUDAMEMCPY(from_fwd_face, my_back_face, nbytes, cudaMemcpyHostToHost, stream[sendBackStrmIdx]); // 174 without these
-  //CUDAMEMCPY(from_back_face, my_fwd_face, nbytes, cudaMemcpyHostToHost, stream[sendFwdStrmIdx]);
-#endif // QMP_COMMS
-
   // Scatter faces.
-  QMP_finish_from_fwd(dir);
+
+// Finish backwards send and forwards receive
+#ifdef QMP_COMMS
+  QMP_wait(mh_send_back[dir]);						\
+  QMP_wait(mh_from_fwd[dir]);						
+
+#ifndef GPU_DIRECT
+  memcpy(from_fwd_face[dir], ib_from_fwd_face[dir], nbytes[dir]);		
+#endif
+#endif
   
   out.unpackGhost(from_fwd_face[dir], dir, QUDA_FORWARDS, dagger, &stream[2*dir+recFwdStrmIdx]); // 0, 2, 4, 6
 
-  QMP_finish_from_back(dir);
+// Finish forwards send and backwards receive
+#ifdef QMP_COMMS
+  QMP_wait(mh_send_fwd[dir]);						\
+  QMP_wait(mh_from_back[dir]);						\
+
+#ifndef GPU_DIRECT
+  memcpy(from_back_face[dir], ib_from_back_face[dir], nbytes[dir]);		
+#endif
+#endif
   
   out.unpackGhost(from_back_face[dir], dir, QUDA_BACKWARDS, dagger, &stream[2*dir+recBackStrmIdx]); // 1, 3, 5, 7
 }
