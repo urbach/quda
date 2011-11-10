@@ -839,28 +839,25 @@
   sh[22*SHARED_STRIDE] = reg##32_re;			\
   sh[23*SHARED_STRIDE] = reg##32_im;
 
-#define READ_FROM_SHARED(reg, sh)				\
-  spinorFloat reg##00_re = sh[0*SHARED_STRIDE];			\
-  spinorFloat reg##00_im = sh[1*SHARED_STRIDE];			\
-  spinorFloat reg##01_re = sh[2*SHARED_STRIDE];			\
-  spinorFloat reg##01_im = sh[3*SHARED_STRIDE];			\
-  spinorFloat reg##02_re = sh[4*SHARED_STRIDE];			\
-  spinorFloat reg##02_im = sh[5*SHARED_STRIDE];			\
-  spinorFloat reg##10_re = sh[6*SHARED_STRIDE];			\
-  spinorFloat reg##10_im = sh[7*SHARED_STRIDE];			\
-  spinorFloat reg##11_re = sh[8*SHARED_STRIDE];			\
-  spinorFloat reg##11_im = sh[9*SHARED_STRIDE];			\
-  spinorFloat reg##12_re = sh[10*SHARED_STRIDE];			\
-  spinorFloat reg##12_im = sh[11*SHARED_STRIDE];			\
-  spinorFloat reg##20_re = sh[12*SHARED_STRIDE];			\
-  spinorFloat reg##20_im = sh[13*SHARED_STRIDE];			\
-  spinorFloat reg##21_re = sh[14*SHARED_STRIDE];			\
-  spinorFloat reg##21_im = sh[15*SHARED_STRIDE];			\
-  spinorFloat reg##22_re = sh[16*SHARED_STRIDE];			\
-  spinorFloat reg##22_im = sh[17*SHARED_STRIDE];			\
-  spinorFloat reg##30_re = sh[18*SHARED_STRIDE];			\
-  spinorFloat reg##30_im = sh[19*SHARED_STRIDE];			\
-  spinorFloat reg##31_re = sh[20*SHARED_STRIDE];			\
-  spinorFloat reg##31_im = sh[21*SHARED_STRIDE];			\
-  spinorFloat reg##32_re = sh[22*SHARED_STRIDE];			\
-  spinorFloat reg##32_im = sh[23*SHARED_STRIDE];			
+#define READ_FROM_SHARED_DOUBLE2(sh)					\
+  double2 I0 = make_double2(sh[0*SHARED_STRIDE], sh[1*SHARED_STRIDE]); \
+  double2 I1 = make_double2(sh[2*SHARED_STRIDE], sh[3*SHARED_STRIDE]); \
+  double2 I2 = make_double2(sh[4*SHARED_STRIDE], sh[5*SHARED_STRIDE]); \
+  double2 I3 = make_double2(sh[6*SHARED_STRIDE], sh[7*SHARED_STRIDE]); \
+  double2 I4 = make_double2(sh[8*SHARED_STRIDE], sh[9*SHARED_STRIDE]); \
+  double2 I5 = make_double2(sh[10*SHARED_STRIDE], sh[11*SHARED_STRIDE]); \
+  double2 I6 = make_double2(sh[12*SHARED_STRIDE], sh[13*SHARED_STRIDE]); \
+  double2 I7 = make_double2(sh[14*SHARED_STRIDE], sh[15*SHARED_STRIDE]); \
+  double2 I8 = make_double2(sh[16*SHARED_STRIDE], sh[17*SHARED_STRIDE]); \
+  double2 I9 = make_double2(sh[18*SHARED_STRIDE], sh[19*SHARED_STRIDE]); \
+  double2 I10 = make_double2(sh[20*SHARED_STRIDE], sh[21*SHARED_STRIDE]); \
+  double2 I11 = make_double2(sh[22*SHARED_STRIDE], sh[23*SHARED_STRIDE]);
+
+#define READ_FROM_SHARED_FLOAT4(sh)				\
+  float4 I0 = make_float4(sh[0*SHARED_STRIDE], sh[1*SHARED_STRIDE], sh[2*SHARED_STRIDE], sh[3*SHARED_STRIDE]);     \
+  float4 I1 = make_float4(sh[4*SHARED_STRIDE], sh[5*SHARED_STRIDE], sh[6*SHARED_STRIDE], sh[7*SHARED_STRIDE]);     \
+  float4 I2 = make_float4(sh[8*SHARED_STRIDE], sh[9*SHARED_STRIDE], sh[10*SHARED_STRIDE], sh[11*SHARED_STRIDE]);   \
+  float4 I3 = make_float4(sh[12*SHARED_STRIDE], sh[13*SHARED_STRIDE], sh[14*SHARED_STRIDE], sh[15*SHARED_STRIDE]); \
+  float4 I4 = make_float4(sh[16*SHARED_STRIDE], sh[17*SHARED_STRIDE], sh[18*SHARED_STRIDE], sh[19*SHARED_STRIDE]); \
+  float4 I5 = make_float4(sh[20*SHARED_STRIDE], sh[21*SHARED_STRIDE], sh[22*SHARED_STRIDE], sh[23*SHARED_STRIDE]);
+
