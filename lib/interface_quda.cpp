@@ -246,7 +246,7 @@ void initQuda(int dev)
   }
 #endif
 
-  initCache();
+  //initCache();
   quda::initBlas();
 }
 

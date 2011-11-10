@@ -160,12 +160,12 @@ void DiracWilson::Tune(cudaColorSpinorField &out, const cudaColorSpinorField &in
       if (commDimPartitioned(i)) dslashTune.Benchmark3d(blockDslash[i+1], gridDslash[i+1]);
   }
 
-  /*{ // Tune DslashXpay
+  { // Tune DslashXpay
     TuneDiracWilsonDslashXpay dslashXpayTune(*this, out, in, x);
     dslashXpayTune.Benchmark3d(blockDslashXpay[0], gridDslashXpay[0]);
     for (int i=0; i<4; i++) 
       if (commDimPartitioned(i)) dslashXpayTune.Benchmark3d(blockDslashXpay[i+1], gridDslashXpay[i+1]);
-      }*/
+  }
 #endif // DSLASH_TUNING_3D
 
   setDslashTuning(QUDA_TUNE_NO);

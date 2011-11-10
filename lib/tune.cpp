@@ -92,10 +92,21 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 
   cudaError_t error;
 
+  blockOpt = dim3(x[0], x[1], x[2]);
+  gridOpt = dim3(x[3], 1, 1);
+  block = blockOpt;
+  grid = gridOpt;
+  Apply();
+  error = cudaGetLastError();
+  cudaThreadSynchronize();
+  printf("%s\n", cudaGetErrorString(error));
+  //exit(0);
+  /*exit(0);*/
+
   // this will generally fail on pre sm20 since only 2d grids
 
   // set the x-block dimension equal to the entire x dimension
-  for (unsigned int bx=x[0]; bx<=x[0]; bx++) {
+  /*for (unsigned int bx=x[0]; bx<=x[0]; bx++) {
 
     unsigned int gx = (x[0]*x[3] + bx - 1) / bx;
 
@@ -131,6 +142,8 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 	cudaThreadSynchronize();
 
 	error = cudaGetLastError();
+	printf("(%d, %d, %d), G = (%d, %d, %d), %s\n", 
+	       bx, by, bz, gx, gy, gz, cudaGetErrorString(error));
 
 	float runTime;
 	cudaEventElapsedTime(&runTime, start, end);
@@ -155,7 +168,7 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 
       }
     }
-  }
+    }*/
 
   block = blockOpt;
   grid = gridOpt;
@@ -169,6 +182,7 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
     printfQuda("Tuned %-15s with (%d,%d,%d) threads per block, (%d, %d, %d) blocks per grid, Gflop/s = %f\n", 
 	       name, block.x, block.y, block.z, grid.x, grid.y, grid.z, gflopsMax);    
 
+  printf("Tuning over\n");
   //exit(0);
 
 }
