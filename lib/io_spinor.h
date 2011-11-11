@@ -813,7 +813,7 @@
   double2 accum1 = fetch_double2((spinor), sid + 1*(sp_stride));   \
   double2 accum2 = fetch_double2((spinor), sid + 2*(sp_stride));   
 
-#define WRITE_TO_SHARED(sh, reg)				\
+#define WRITE_SPINOR_SHARED(sh, reg)			\
   sh[0*SHARED_STRIDE] = reg##00_re;			\
   sh[1*SHARED_STRIDE] = reg##00_im;			\
   sh[2*SHARED_STRIDE] = reg##01_re;			\
@@ -839,7 +839,7 @@
   sh[22*SHARED_STRIDE] = reg##32_re;			\
   sh[23*SHARED_STRIDE] = reg##32_im;
 
-#define READ_FROM_SHARED_DOUBLE2(sh)					\
+#define READ_SPINOR_SHARED_DOUBLE2(sh)					\
   double2 I0 = make_double2(sh[0*SHARED_STRIDE], sh[1*SHARED_STRIDE]); \
   double2 I1 = make_double2(sh[2*SHARED_STRIDE], sh[3*SHARED_STRIDE]); \
   double2 I2 = make_double2(sh[4*SHARED_STRIDE], sh[5*SHARED_STRIDE]); \
@@ -853,7 +853,7 @@
   double2 I10 = make_double2(sh[20*SHARED_STRIDE], sh[21*SHARED_STRIDE]); \
   double2 I11 = make_double2(sh[22*SHARED_STRIDE], sh[23*SHARED_STRIDE]);
 
-#define READ_FROM_SHARED_FLOAT4(sh)				\
+#define READ_SPINOR_SHARED_FLOAT4(sh)				\
   float4 I0 = make_float4(sh[0*SHARED_STRIDE], sh[1*SHARED_STRIDE], sh[2*SHARED_STRIDE], sh[3*SHARED_STRIDE]);     \
   float4 I1 = make_float4(sh[4*SHARED_STRIDE], sh[5*SHARED_STRIDE], sh[6*SHARED_STRIDE], sh[7*SHARED_STRIDE]);     \
   float4 I2 = make_float4(sh[8*SHARED_STRIDE], sh[9*SHARED_STRIDE], sh[10*SHARED_STRIDE], sh[11*SHARED_STRIDE]);   \

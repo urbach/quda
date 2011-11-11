@@ -251,7 +251,7 @@ link_format_gpu_to_cpu(void* dst, void* src,
   
 }
 
-
+#ifdef MULTI_GPU
 
 #define READ_ST_SPINOR(spinor, idx, mystride)           \
   Float2 I0 = spinor[idx + 0*mystride];                 \
@@ -898,6 +898,8 @@ collectGhostStaple(FullStaple* cudaStaple, void* ghost_staple_gpu,
   CUERR;
 }
 
+#endif // MULTI_GPU
 
 #undef gaugeSiteSize 
 #undef BLOCKSIZE 
+

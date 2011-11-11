@@ -92,37 +92,36 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 
   cudaError_t error;
 
-  blockOpt = dim3(x[0], x[1], x[2]);
-  gridOpt = dim3(x[3], 1, 1);
-  block = blockOpt;
-  grid = gridOpt;
-  Apply();
-  error = cudaGetLastError();
-  cudaThreadSynchronize();
-  printf("%s\n", cudaGetErrorString(error));
-  //exit(0);
-  /*exit(0);*/
-
   // this will generally fail on pre sm20 since only 2d grids
 
   // set the x-block dimension equal to the entire x dimension
-  /*for (unsigned int bx=x[0]; bx<=x[0]; bx++) {
+  for (unsigned int bx=x[0]; bx<=x[0]; bx++) {
 
     unsigned int gx = (x[0]*x[3] + bx - 1) / bx;
 
-    for (unsigned int by=1; by<=x[1]; by++) {
+    //if (bx != 2) continue;
+
+    for (unsigned int by=x[1]; by<=x[1]; by++) {
       
+      if (by > 1 && (by%2) != 0) continue; // can't handle odd blocks yet except by=1
+
       unsigned int gy = (x[1] + by - 1 ) / by;
 
-      for (unsigned int bz=1; bz<=x[2]; bz++) {
+      //if (by != 2) continue;
+
+      for (unsigned int bz=2; bz<=x[2]; bz++) {
+
+	if (bz > 1 && (bz%2) != 0) continue; // can't handle odd blocks yet except bz=1
 
 	unsigned int gz = (x[2] + bz - 1) / bz;
 	
-	block = dim3(bx, by, bz);
-	grid = dim3(gx, gy, gz);
-
 	if (bx*by*bz > threadBlockMax) continue;
 	if (bx*by*bz < threadBlockMin) continue;
+
+	if (bx != 2 && by != 4 && bz != 8) continue;
+
+	block = dim3(bx, by, bz);
+	grid = dim3(gx, gy, gz);
 
 	cudaEvent_t start, end;
 	cudaEventCreate(&start);
@@ -168,7 +167,7 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 
       }
     }
-    }*/
+  }
 
   block = blockOpt;
   grid = gridOpt;

@@ -410,7 +410,9 @@ void dslashCuda(DslashCuda &dslash, const size_t regSize, const int parity, cons
   }
 #endif
 
-  int shared_bytes = blockDim[0].x*blockDim[0].y*blockDim[0].z*(DSLASH_SHARED_FLOATS_PER_THREAD*regSize + SHARED_COORDS);
+  int block = blockDim[0].x*blockDim[0].y*blockDim[0].z;
+  if (block <= 32) block *= 2;
+  int shared_bytes = block*(DSLASH_SHARED_FLOATS_PER_THREAD*regSize + SHARED_COORDS);
   dslash.apply(blockDim[0], gridDim[0], shared_bytes, streams[Nstream-1]); // stream 0 or 8
 
 #ifdef MULTI_GPU
