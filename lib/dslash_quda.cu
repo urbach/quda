@@ -9,7 +9,7 @@
 // these control the Wilson-type actions
 //#define DIRECT_ACCESS_LINK
 //#define DIRECT_ACCESS_WILSON_SPINOR
-//#define DIRECT_ACCESS_WILSON_ACCUM
+#define DIRECT_ACCESS_WILSON_ACCUM
 //#define DIRECT_ACCESS_WILSON_INTER
 //#define DIRECT_ACCESS_WILSON_PACK_SPINOR
 
@@ -410,8 +410,11 @@ void dslashCuda(DslashCuda &dslash, const size_t regSize, const int parity, cons
   }
 #endif
 
-  int block = blockDim[0].x*blockDim[0].y*blockDim[0].z;
-  if (block <= 32) block *= 2;
+  
+  int block_xy = blockDim[0].x*blockDim[0].y;
+  if (block_xy % 32 != 0) block_xy = ((block_xy / 32) + 1)*32;
+  int block = block_xy*blockDim[0].z;
+    
   int shared_bytes = block*(DSLASH_SHARED_FLOATS_PER_THREAD*regSize + SHARED_COORDS);
   dslash.apply(blockDim[0], gridDim[0], shared_bytes, streams[Nstream-1]); // stream 0 or 8
 

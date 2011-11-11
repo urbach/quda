@@ -263,7 +263,7 @@ void init(int argc, char **argv) {
     bool pc = (test_type != 2);
     DiracParam diracParam;
     setDiracParam(diracParam, &inv_param, pc);
-    diracParam.verbose = QUDA_DEBUG_VERBOSE;
+    diracParam.verbose = QUDA_VERBOSE;
     diracParam.tmp1 = tmp1;
     diracParam.tmp2 = tmp2;
     
@@ -310,6 +310,8 @@ double dslashCUDA() {
 
   printfQuda("Executing %d kernel loops...\n", loops);
   fflush(stdout);
+
+  cudaThreadSynchronize();
 
   cudaEvent_t start, end;
   cudaEventCreate(&start);

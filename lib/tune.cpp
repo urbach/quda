@@ -99,17 +99,13 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 
     unsigned int gx = (x[0]*x[3] + bx - 1) / bx;
 
-    //if (bx != 2) continue;
-
-    for (unsigned int by=x[1]; by<=x[1]; by++) {
+    for (unsigned int by=1; by<=x[1]; by++) {
       
       if (by > 1 && (by%2) != 0) continue; // can't handle odd blocks yet except by=1
 
       unsigned int gy = (x[1] + by - 1 ) / by;
 
-      //if (by != 2) continue;
-
-      for (unsigned int bz=2; bz<=x[2]; bz++) {
+      for (unsigned int bz=1; bz<=x[2]; bz++) {
 
 	if (bz > 1 && (bz%2) != 0) continue; // can't handle odd blocks yet except bz=1
 
@@ -117,8 +113,6 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 	
 	if (bx*by*bz > threadBlockMax) continue;
 	if (bx*by*bz < threadBlockMin) continue;
-
-	if (bx != 2 && by != 4 && bz != 8) continue;
 
 	block = dim3(bx, by, bz);
 	grid = dim3(gx, gy, gz);
@@ -139,10 +133,7 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 	cudaEventSynchronize(end);
 
 	cudaThreadSynchronize();
-
 	error = cudaGetLastError();
-	printf("(%d, %d, %d), G = (%d, %d, %d), %s\n", 
-	       bx, by, bz, gx, gy, gz, cudaGetErrorString(error));
 
 	float runTime;
 	cudaEventElapsedTime(&runTime, start, end);
@@ -162,8 +153,8 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 	}
 	
 	if (verbose >= QUDA_DEBUG_VERBOSE && error == cudaSuccess) 
-	  printfQuda("%-15s, B = (%d, %d, %d), G = (%d, %d, %d) time = %f s, flops = %e, Gflop/s = %f\n", 
-		     name, bx, by, bz, gx, gy, gz, time, (double)flops, gflops);
+	  printfQuda("%-15s, B = (%d, %d, %d), G = (%d, %d, %d), %s, time = %f s, flops = %e, Gflop/s = %f\n", 
+		     name, bx, by, bz, gx, gy, gz, cudaGetErrorString(error), time, (double)flops, gflops);
 
       }
     }
@@ -180,8 +171,5 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
   if (verbose >= QUDA_VERBOSE) 
     printfQuda("Tuned %-15s with (%d,%d,%d) threads per block, (%d, %d, %d) blocks per grid, Gflop/s = %f\n", 
 	       name, block.x, block.y, block.z, grid.x, grid.y, grid.z, gflopsMax);    
-
-  printf("Tuning over\n");
-  //exit(0);
 
 }
