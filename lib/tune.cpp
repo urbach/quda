@@ -17,7 +17,7 @@ void TuneBase::Benchmark(dim3 &block, dim3 &grid)  {
     block = dim3(threads,1,1);
       
     unsigned int gridDimMax = (size + block.x-1) / block.x;
-    unsigned int gridDimMin = 1;//gridDimMax;
+    unsigned int gridDimMin = gridDimMax;
 
     for (unsigned int gridDim=gridDimMax; gridDim >= gridDimMin; gridDim--) {
       // adjust grid
@@ -113,6 +113,10 @@ void TuneBase::Benchmark3d(dim3 &block, dim3 &grid)  {
 	
 	if (bx*by*bz > threadBlockMax) continue;
 	if (bx*by*bz < threadBlockMin) continue;
+
+	// can't yet handle the last block properly in shared memory addressing
+	if (by*gy != x[1]) continue;
+	if (bz*gz != x[2]) continue;
 
 	block = dim3(bx, by, bz);
 	grid = dim3(gx, gy, gz);

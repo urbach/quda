@@ -27,7 +27,7 @@
 int test_type = 0;
 int device = 0;
 
-bool tune = false;
+bool tune = true;
 
 QudaGaugeParam gaugeParam;
 QudaInvertParam inv_param;
@@ -100,7 +100,6 @@ setDimConstants(int *X)
 
 void init()
 {    
-
   initQuda(device);
 
   gaugeParam = newQudaGaugeParam();
@@ -139,8 +138,7 @@ void init()
   int tmpint = MAX(X[1]*X[2]*X[3], X[0]*X[2]*X[3]);
   tmpint = MAX(tmpint, X[0]*X[1]*X[3]);
   tmpint = MAX(tmpint, X[0]*X[1]*X[2]);
-  
-  
+
   gaugeParam.ga_pad = tmpint;
   inv_param.sp_pad = 0;
 
@@ -429,13 +427,13 @@ static int dslashTest()
   int accuracy_level = 0;
   
   init();
-    
+
   int attempts = 1;
     
   for (int i=0; i<attempts; i++) {
 	
     double secs = dslashCUDA();
-    
+
     if (!transfer) *spinorOut = *cudaSpinorOut;
       
     printfQuda("\n%fms per loop\n", 1000*secs);
@@ -536,7 +534,7 @@ int main(int argc, char **argv)
     fprintf(stderr, "ERROR: Invalid option:%s\n", argv[i]);
     usage(argv);
   }
-  
+
   //qudaSetNumaConfig("/usr/local/gpu_numa_config.txt");
   initCommsQuda(argc, argv, gridsize_from_cmdline, 4);
   

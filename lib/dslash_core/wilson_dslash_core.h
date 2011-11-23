@@ -900,7 +900,8 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[1] || x2<X2m1)) ||
   if (kernel_type == INTERIOR_KERNEL) {
 #endif
   
-    if (threadIdx.y == blockDim.y-1 && blockDim.y < X2) {
+    if (threadIdx.y == blockDim.y-1 && blockDim.y < X2 ) { // end of block not extensive
+	//(x2 == X2-1 && blockDim.y) { // end of the volume 
       // read spinor from device memory
       READ_SPINOR(SPINORTEX, sp_stride, sp_idx, sp_idx);
     
