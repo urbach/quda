@@ -112,6 +112,12 @@ void setDslashTuning(QudaTune tune)
   dslashTuning = tune;
 }
 
+#if (CUDA_VERSION <= 4000)
+#define VOLATILE volatile
+#else
+#define VOLATILE 
+#endif
+
 #include <pack_face_def.h>        // kernels for packing the ghost zones and general indexing
 #include <staggered_dslash_def.h> // staggered Dslash kernels
 #include <wilson_dslash_def.h>    // Wilson Dslash kernels (including clover)
@@ -119,6 +125,8 @@ void setDslashTuning(QudaTune tune)
 #include <tm_dslash_def.h>        // Twisted Mass kernels
 #include <tm_core.h>              // solo twisted mass kernel
 #include <clover_def.h>           // kernels for applying the clover term alone
+
+#undef VOLATILE
 
 #ifndef DSLASH_SHARED_FLOATS_PER_THREAD
 #define DSLASH_SHARED_FLOATS_PER_THREAD 0

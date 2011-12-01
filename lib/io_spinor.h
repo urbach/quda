@@ -288,7 +288,7 @@
 
 
 #define WRITE_SPINOR_DOUBLE2(stride)			   \
-  out[0*(stride)+sid] = make_double2(o01_re, o01_im);	   \
+  out[0*(stride)+sid] = make_double2(o00_re, o00_im);	   \
   out[1*(stride)+sid] = make_double2(o01_re, o01_im);	   \
   out[2*(stride)+sid] = make_double2(o02_re, o02_im);	   \
   out[3*(stride)+sid] = make_double2(o10_re, o10_im);	   \
