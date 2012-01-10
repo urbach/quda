@@ -1405,7 +1405,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
     }
     ydim= atoi(argv[i+1]);
     if (ydim < 0 || ydim > 128){
-      printf("ERROR: invalid T dimension (%d)\n", ydim);
+      printf("ERROR: invalid Y dimension (%d)\n", ydim);
       usage(argv);
     }
     i++;
@@ -1420,7 +1420,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
     }
     zdim= atoi(argv[i+1]);
     if (zdim < 0 || zdim > 128){
-      printf("ERROR: invalid T dimension (%d)\n", zdim);
+      printf("ERROR: invalid Z dimension (%d)\n", zdim);
       usage(argv);
     }
     i++;
@@ -1433,7 +1433,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
       usage(argv);
     }	    
     tdim =  atoi(argv[i+1]);
-    if (tdim < 0 || tdim > 128){
+    if (tdim < 0 || tdim > 512){
       errorQuda("Error: invalid t dimension");
     }
     i++;

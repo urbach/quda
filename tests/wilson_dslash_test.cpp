@@ -20,7 +20,7 @@
 #define MAX(a,b) ((a)>(b)?(a):(b))
 
 // What test are we doing (0 = dslash, 1 = MatPC, 2 = Mat)
-const int test_type = 0;
+const int test_type = 1;
 
 // Dirac operator type
 extern QudaDslashType dslash_type;
@@ -31,7 +31,7 @@ extern QudaDslashType dslash_type;
 const QudaParity parity = QUDA_EVEN_PARITY; // even or odd?
 const int transfer = 0; // include transfer time in the benchmark?
 
-const int loops = 100;
+const int loops = 1000;
 
 bool tune = true;
 
@@ -468,7 +468,7 @@ int main(int argc, char **argv)
     if (!transfer) *spinorOut = *cudaSpinorOut;
 
     // print timing information
-    printfQuda("%fms per loop\n", 1000*secs);
+    printfQuda("%fms per iteration\n", 1000*secs/loops);
     
     unsigned long long flops = 0;
     if (!transfer) flops = dirac->Flops();
@@ -480,8 +480,10 @@ int main(int argc, char **argv)
       gauge_floats += test_type ? 72*2 : 72;
     }
     printfQuda("GFLOPS = %f\n", 1.0e-9*flops/secs);
-    printfQuda("GiB/s = %f\n\n", 
-	       Vh*(spinor_floats+gauge_floats)*inv_param.cuda_prec/((secs/loops)*(1<<30)));
+    //printfQuda("GiB/s = %f\n\n", 
+    //	       Vh*(spinor_floats+gauge_floats)*inv_param.cuda_prec/((secs/loops)*(1<<30)));
+    printfQuda("GB/s = %f\n\n", 
+	       (long long)Vh*(spinor_floats+gauge_floats)*inv_param.cuda_prec/((secs/loops)*(1e9)));
     
     if (!transfer) {
       double norm2_cpu = norm2(*spinorRef);
