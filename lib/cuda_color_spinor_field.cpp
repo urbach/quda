@@ -491,19 +491,18 @@ void cudaColorSpinorField::freeGhostBuffer(void) {
 }
 
 // pack the ghost zone into a contiguous buffer for communications
-void cudaColorSpinorField::packGhost(const int dim, const QudaDirection dir,
-				     const QudaParity parity, const int dagger, cudaStream_t *stream) 
+void cudaColorSpinorField::packGhost(const int dim, const QudaParity parity, 
+				     const int dagger, cudaStream_t *stream) 
 {
 
 #ifdef MULTI_GPU
   if (dim !=3 || kernelPackT) { // use kernels to pack into contiguous buffers then a single cudaMemcpy
-    void* gpu_buf = 
-      (dir == QUDA_BACKWARDS) ? this->backGhostFaceBuffer[dim] : this->fwdGhostFaceBuffer[dim];
-
     if (nSpin == 1) { // use different packing kernels for staggered and Wilson
-      collectGhostSpinor(this->v, this->norm, gpu_buf, dim, dir, parity, this, stream); 
+      collectGhostSpinor(this->v, this->norm, this->backGhostFaceBuffer[dim], 
+			 this->fwdGhostFaceBuffer[dim], dim, parity, this, stream); 
     } else {
-      packFaceWilson(gpu_buf, *this, dim, dir, dagger, parity, *stream); 
+      packFaceWilson(this->backGhostFaceBuffer[dim], this->fwdGhostFaceBuffer[dim], 
+		     *this, dim, dagger, parity, *stream); 
     }
   }
 #else

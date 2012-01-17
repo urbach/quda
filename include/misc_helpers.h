@@ -11,9 +11,8 @@ void link_format_gpu_to_cpu(void* dst, void* src,
 			    cudaStream_t stream);
 
 void collectGhostSpinor(void *in, const void *inNorm,
-			void* ghost_spinor_gpu,		   
-			int dir, int whichway,
-			const int parity, cudaColorSpinorField* inSpinor,
+			void* ghost_spinor_back, void* ghost_spinor_fwd,
+			int dim, const int parity, cudaColorSpinorField* inSpinor,
 			cudaStream_t* stream);
 void collectGhostStaple(FullStaple* cudaStaple, void* ghost_staple_gpu,		   
 		   int dir, int whichway, cudaStream_t* stream);

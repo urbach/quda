@@ -422,7 +422,7 @@ staggeredCollectGhostSpinorNormKernel(float* in_norm, const int oddBit,
 void
 collectGhostSpinor(void *in, const void *inNorm,
                    void* ghost_spinor_gpu,		   
-		   int dir, int whichway,
+		   int dir,
                    const int parity, cudaColorSpinorField* inSpinor, 
 		   cudaStream_t* stream)
 {
@@ -430,6 +430,9 @@ collectGhostSpinor(void *in, const void *inNorm,
   dim3 gridDim(inSpinor->Volume()/BLOCKSIZE, 1, 1);
   dim3 blockDim(BLOCKSIZE, 1, 1);
     
+  int whichway;
+  printfQuda("Temprarily disabled\n");
+
   if (inSpinor->Precision() == QUDA_DOUBLE_PRECISION){
     switch(dir){
     case 0:

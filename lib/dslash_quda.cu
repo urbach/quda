@@ -553,22 +553,23 @@ void dslashCuda(DslashCuda &dslash, const size_t regSize, const int parity, cons
   for(int i = 3; i >=0; i--){
     if (!dslashParam.commDim[i]) continue;
 
-    for (int dir = 0; dir<2; dir++) {
-      // Record the start of the packing
-      CUDA_EVENT_RECORD(packStart[2*i+dir], streams[2*i+dir]);
+    // Record the start of the packing
+    CUDA_EVENT_RECORD(packStart[2*i], streams[2*i]);
 
-      // Initialize pack from source spinor
-      face->pack(*inSpinor, 1-parity, dagger, 2*i+dir, streams);
+    // Initialize pack from source spinor
+    face->pack(*inSpinor, 1-parity, dagger, i, streams);
 
-      // Record the end of the packing
-      CUDA_EVENT_RECORD(packEnd[2*i+dir], streams[2*i+dir]);
-    }
+    // Record the end of the packing
+    CUDA_EVENT_RECORD(packEnd[2*i], streams[2*i]);
   }
 
   for(int i = 3; i >=0; i--){
     if (!dslashParam.commDim[i]) continue;
 
     for (int dir = 0; dir<2; dir++) {
+      /*if (dir == 1)
+	cudaStreamWaitEvent(streams[2*i], packEnd[2*i], 0);*/
+
       // Record the start of the gathering
       CUDA_EVENT_RECORD(gatherStart[2*i+dir], streams[2*i+dir]);
 
