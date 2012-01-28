@@ -4,6 +4,8 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
+#include "quda_mem.h"
+
 #ifdef QMP_COMMS
 #include <qmp.h>
 #endif
