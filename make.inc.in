@@ -1,6 +1,7 @@
 ###### Local configuration:
 
 CUDA_INSTALL_PATH = @CUDA_INSTALL_PATH@
+QDP_INSTALL_PATH = @QDP_INSTALL_PATH@
 
 CPU_ARCH = @CPU_ARCH@  	  # x86 or x86_64
 GPU_ARCH = @GPU_ARCH@	  # sm_10, sm_11, sm_12, sm_13, sm_20 or sm_21
@@ -40,6 +41,8 @@ BUILD_QIO = @BUILD_QIO@ # set to 'yes' to build QIO code for binary i/o
 # Do we compile the numa support
 #HAVE_NUMA = @HAVE_NUMA@
 HAVE_NUMA = no
+
+USE_QMEM = @USE_QMEM@         # build QMEM support?
 
 FECC = @FECC@ 	      # Front end CC
 FECXX = @FECXX@           # Front end CXX
@@ -195,6 +198,12 @@ ifeq ($(strip $(HAVE_NUMA)), yes)
   LIB += -lnuma
 endif
 
+ifeq ($(strip $(USE_QMEM)), yes)
+  NVCCOPT += -DUSE_QMEM
+  COPT += -DUSE_QMEM
+  LIB += -L$(QDP_INSTALL_PATH)/lib -lqmem
+  INC += -I$(QDP_INSTALL_PATH)/include
+endif
 
 CFLAGS = -Wall -O3 -std=c99 $(COPT) $(INC)
 CXXFLAGS = -Wall -O3 $(COPT) $(INC)

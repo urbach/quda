@@ -486,5 +486,8 @@ AC_SUBST( FERMI_DBLE_TEX, [${fermi_double_tex}])
 AC_MSG_NOTICE([Setting USE_QMEM = ${build_qmem} ])
 AC_SUBST( USE_QMEM, [${build_qmem}])
 
+AC_MSG_NOTICE([Setting QDP_INSTALL_PATH = ${qdp_home} ])
+AC_SUBST( QDP_INSTALL_PATH, [${qdp_home} ])
+
 AC_CONFIG_FILES(make.inc)
 AC_OUTPUT

@@ -638,6 +638,8 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+QDP_INSTALL_PATH
+USE_QMEM
 FERMI_DBLE_TEX
 HAVE_NUMA
 QIO_HOME
@@ -747,6 +749,8 @@ enable_overlap_comms
 with_mpi
 with_qmp
 with_qio
+enable_qmem
+with_qdp
 enable_fermi_double_tex
 '
       ac_precious_vars='build_alias
@@ -1410,6 +1414,7 @@ Optional Features:
   --enable-hisq-force     Build Hisq Force Term (default=disabled)
   --enable-multi-gpu      Enable Multi-GPU mode (default is no)
   --enable-overlap-comms  Enable comms/compute overlap (default is yes)
+   --enable-qmem          QMEM support (default=disabled)
   --enable-fermi-double-tex
                           Enable double-precision texture reads on Fermi
                           (default is no)
@@ -1422,6 +1427,7 @@ Optional Packages:
   --with-mpi= MPIDIR      Specify installation directory for MPI
   --with-qmp=QMPDIR       Specify QMP installation directory
   --with-qio=QIODIR       Specify QIO installation directory
+  --with-qdp=QDPDIR       Specify QDP++ installation directory
 
 Some influential environment variables:
   CC          C compiler command
@@ -3986,6 +3992,26 @@ else
 fi
 
 
+# Check whether --enable-qmem was given.
+if test "${enable_qmem+set}" = set; then
+  enableval=$enable_qmem;  build_qmem=${enableval}
+else
+   build_qmem="no"
+
+fi
+
+
+
+# Check whether --with-qdp was given.
+if test "${with_qdp+set}" = set; then
+  withval=$with_qdp;  qdp_home=${withval}
+else
+   qdp_home=""
+
+fi
+
+
+
 # Check whether --enable-fermi-double-tex was given.
 if test "${enable_fermi_double_tex+set}" = set; then
   enableval=$enable_fermi_double_tex;  fermi_double_tex=${enableval}
@@ -4147,6 +4173,15 @@ yes|no);;
 *)
   { { $as_echo "$as_me:$LINENO: error:  invalid value for --enable-overlap-comms " >&5
 $as_echo "$as_me: error:  invalid value for --enable-overlap-comms " >&2;}
+   { (exit 1); exit 1; }; }
+  ;;
+esac
+
+case ${build_qmem} in
+yes|no);;
+*)
+  { { $as_echo "$as_me:$LINENO: error:  invalid value for --enable-qmem : ${build_qmem} " >&5
+$as_echo "$as_me: error:  invalid value for --enable-qmem : ${build_qmem} " >&2;}
    { (exit 1); exit 1; }; }
   ;;
 esac
@@ -4362,6 +4397,16 @@ HAVE_NUMA=${ac_cv_header_numa_h}
 { $as_echo "$as_me:$LINENO: Setting FERMI_DBLE_TEX= ${fermi_double_tex}" >&5
 $as_echo "$as_me: Setting FERMI_DBLE_TEX= ${fermi_double_tex}" >&6;}
 FERMI_DBLE_TEX=${fermi_double_tex}
+
+
+{ $as_echo "$as_me:$LINENO: Setting USE_QMEM = ${build_qmem} " >&5
+$as_echo "$as_me: Setting USE_QMEM = ${build_qmem} " >&6;}
+USE_QMEM=${build_qmem}
+
+
+{ $as_echo "$as_me:$LINENO: Setting QDP_INSTALL_PATH = ${qdp_home} " >&5
+$as_echo "$as_me: Setting QDP_INSTALL_PATH = ${qdp_home} " >&6;}
+QDP_INSTALL_PATH=${qdp_home}
 
 
 ac_config_files="$ac_config_files make.inc"
