@@ -63,11 +63,11 @@ class FaceBuffer {
   FaceBuffer(const FaceBuffer &);
   virtual ~FaceBuffer();
 
-  void exchangeFacesPack(cudaColorSpinorField &in, int parity,
-			 int dagger, int dir, cudaStream_t *stream);
-  void exchangeFacesStart(cudaColorSpinorField &in, int dagger, int dir);
-  void exchangeFacesComms(int dir, struct timeval &, cudaEvent_t &);
-  void exchangeFacesWait(cudaColorSpinorField &out, int dagger, int dir, cudaEvent_t &, struct timeval &);
+  void pack(cudaColorSpinorField &in, int parity, int dagger, int dir, cudaStream_t *stream);
+  void gather(cudaColorSpinorField &in, int dagger, int dir);
+  void commsStart(int dir);
+  int  commsQuery(int dir);
+  void scatter(cudaColorSpinorField &out, int dagger, int dir);
 
   void exchangeCpuSpinor(cpuColorSpinorField &in, int parity, int dagger);
 
@@ -87,6 +87,7 @@ void transferGaugeFaces(void *gauge, void *gauge_face, QudaPrecision precision,
 #define ZDOWN 5
 #define YDOWN 6
 #define XDOWN 7
+
 
 class FaceBuffer {
 
@@ -122,9 +123,9 @@ class FaceBuffer {
   void* pageable_fwd_nbr_spinor[QUDA_MAX_DIM];
   void* pageable_back_nbr_spinor[QUDA_MAX_DIM];
   
-  unsigned long recv_request1[QUDA_MAX_DIM], recv_request2[QUDA_MAX_DIM];
-  unsigned long send_request1[QUDA_MAX_DIM], send_request2[QUDA_MAX_DIM];
-
+  void* recv_request1[QUDA_MAX_DIM], *recv_request2[QUDA_MAX_DIM];
+  void* send_request1[QUDA_MAX_DIM], *send_request2[QUDA_MAX_DIM];
+  
   void setupDims(const int *X);
   
  public:
@@ -133,11 +134,11 @@ class FaceBuffer {
   FaceBuffer(const FaceBuffer &);
   virtual ~FaceBuffer();
 
-  void exchangeFacesPack(cudaColorSpinorField &in, int parity,
-			 int dagger, int dir, cudaStream_t *stream);
-  void exchangeFacesStart(cudaColorSpinorField &in, int dagger, int dir);
-  void exchangeFacesComms(int dir, struct timeval &, cudaEvent_t &);
-  void exchangeFacesWait(cudaColorSpinorField &out, int dagger, int dir, cudaEvent_t &, struct timeval &);
+  void pack(cudaColorSpinorField &in, int parity, int dagger, int dir, cudaStream_t *stream);
+  void gather(cudaColorSpinorField &in, int dagger, int dir);
+  void commsStart(int dir);
+  int  commsQuery(int dir);
+  void scatter(cudaColorSpinorField &out, int dagger, int dir);
 
   void exchangeCpuSpinor(cpuColorSpinorField &in, int parity, int dagger);
 
@@ -150,7 +151,7 @@ extern "C" {
 #endif
   void exchange_cpu_sitelink(int* X,void** sitelink, void** ghost_sitelink,
 			     void** ghost_sitelink_diag, 
-			     QudaPrecision gPrecision, int optflag); 
+			     QudaPrecision gPrecision, QudaGaugeParam* param, int optflag); 
   void exchange_cpu_sitelink_ex(int* X, void** sitelink,
                                 QudaPrecision gPrecision, int optflag);
   void exchange_gpu_staple_start(int* X, void* _cudaStaple, int dir, int whichway,  cudaStream_t * stream);

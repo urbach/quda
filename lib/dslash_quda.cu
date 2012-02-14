@@ -15,7 +15,7 @@
 //#define DIRECT_ACCESS_CLOVER
 
 //these are access control for staggered action
-#if (__CUDA_ARCH__ >= 200)
+#if (__COMPUTE_CAPABILITY__ >= 200)
 //#define DIRECT_ACCESS_FAT_LINK
 //#define DIRECT_ACCESS_LONG_LINK
 #define DIRECT_ACCESS_SPINOR
@@ -169,7 +169,7 @@ __global__ void dummyKernel() {
 
 void initCache() {
 
-#if (__CUDA_ARCH__ >= 200)
+#if (__COMPUTE_CAPABILITY__ >= 200)
 
   static int firsttime = 1;
   if (firsttime){	
@@ -489,7 +489,7 @@ void dslashTimeProfile() {
       packTime[2*i+dir][0] += runTime; // start time
       cudaEventElapsedTime(&runTime, dslashStart, packEnd[2*i+dir]);
       packTime[2*i+dir][1] += runTime; // end time
-      
+  
       // gather timing
       cudaEventElapsedTime(&runTime, dslashStart, gatherStart[2*i+dir]);
       gatherTime[2*i+dir][0] += runTime; // start time
@@ -575,12 +575,12 @@ void dslashCuda(DslashCuda &dslash, const size_t regSize, const int parity, cons
   for(int i = 3; i >=0; i--){
     if (!dslashParam.commDim[i]) continue;
 
-    for (int dir = 0; dir<2; dir++) {
+    for (int dir=1; dir>=0; dir--) {
       // Record the start of the packing
       CUDA_EVENT_RECORD(packStart[2*i+dir], streams[2*i+dir]);
 
       // Initialize pack from source spinor
-      face->exchangeFacesPack(*inSpinor, 1-parity, dagger, 2*i+dir, streams);
+      face->pack(*inSpinor, 1-parity, dagger, 2*i+dir, streams);
 
       // Record the end of the packing
       CUDA_EVENT_RECORD(packEnd[2*i+dir], streams[2*i+dir]);
@@ -590,12 +590,12 @@ void dslashCuda(DslashCuda &dslash, const size_t regSize, const int parity, cons
   for(int i = 3; i >=0; i--){
     if (!dslashParam.commDim[i]) continue;
 
-    for (int dir = 0; dir<2; dir++) {
+    for (int dir=1; dir>=0; dir--) {
       // Record the start of the gathering
       CUDA_EVENT_RECORD(gatherStart[2*i+dir], streams[2*i+dir]);
 
       // Initialize host transfer from source spinor
-      face->exchangeFacesStart(*inSpinor, dagger, 2*i+dir);
+      face->gather(*inSpinor, dagger, 2*i+dir);
 
       // Record the end of the gathering
       cudaEventRecord(gatherEnd[2*i+dir], streams[2*i+dir]);
@@ -616,25 +616,63 @@ void dslashCuda(DslashCuda &dslash, const size_t regSize, const int parity, cons
 
 #ifdef MULTI_GPU
 
-  for (int i=3; i>=0; i--) {
-    if (!dslashParam.commDim[i]) continue;
-    
-    for (int dir=0; dir<2; dir++) {
-      // Finish gather and start comms
-      face->exchangeFacesComms(2*i+dir, commsStart[2*i+dir], gatherEnd[2*i+dir]);
-    }
+  int completeSum = 0;
+  int gatherCompleted[Nstream];
+  int commsCompleted[Nstream];
+  for (int i=0; i<Nstream; i++) {
+    gatherCompleted[i] = 0;
+    commsCompleted[i] = 0;
   }
 
-  for (int i=3; i>=0; i--) {
-    if (!dslashParam.commDim[i]) continue;
-
-    for (int dir=0; dir<2; dir++) {
-      // Wait for comms to finish, and scatter into the end zone
-      face->exchangeFacesWait(*inSpinor, dagger, 2*i+dir, scatterStart[2*i+dir], commsEnd[2*i+dir]);
-
-      // Record the end of the scattering
-      cudaEventRecord(scatterEnd[2*i+dir], streams[2*i+dir]);
+  for (int i=3; i>=0; i--) 
+    if (dslashParam.commDim[i]) {
+      gatherCompleted[2*i+2] = 1;
+      commsCompleted[2*i+2] = 1;
+      break;
     }
+  
+  int commDimTotal = 0;
+  for (int i=0; i<4; i++) commDimTotal += dslashParam.commDim[i];
+  commDimTotal *= 4; // 2 from pipe length, 2 from direction
+
+  while (completeSum < commDimTotal) {
+    for (int i=3; i>=0; i--) {
+      if (!dslashParam.commDim[i]) continue;
+      
+      for (int dir=1; dir>=0; dir--) {
+	
+	// Query if gather has completed
+	if (!gatherCompleted[2*i+dir] && gatherCompleted[2*i+dir+1]) { 
+	  if (cudaSuccess == cudaEventQuery(gatherEnd[2*i+dir])) {
+	    gatherCompleted[2*i+dir] = 1;
+	    completeSum++;
+	    gettimeofday(&commsStart[2*i+dir], NULL);
+	    face->commsStart(2*i+dir);
+	  }
+	}
+	
+	if (!commsCompleted[2*i+dir] && commsCompleted[2*i+dir+1] &&
+	    gatherCompleted[2*i+dir]) {
+	  if (face->commsQuery(2*i+dir)) { // Query if comms has finished
+	    commsCompleted[2*i+dir] = 1;
+	    completeSum++;
+	    gettimeofday(&commsEnd[2*i+dir], NULL);
+	    
+	    // Record the end of the scattering
+	    CUDA_EVENT_RECORD(scatterStart[2*i+dir], streams[2*i+dir]);
+	    
+	    cudaStreamSynchronize(streams[2*i+dir]);
+	    // Scatter into the end zone
+	    face->scatter(*inSpinor, dagger, 2*i+dir);
+	    
+	    // Record the end of the scattering
+	    cudaEventRecord(scatterEnd[2*i+dir], streams[2*i+dir]);
+	  }
+	}
+
+      }
+    }
+    
   }
 
   for (int i=3; i>=0; i--) {
@@ -692,7 +730,7 @@ void wilsonDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &gauge, co
   DslashCuda *dslash = 0;
   size_t regSize = sizeof(float);
   if (in->Precision() == QUDA_DOUBLE_PRECISION) {
-#if (__CUDA_ARCH__ >= 130)
+#if (__COMPUTE_CAPABILITY__ >= 130)
     dslash = new WilsonDslashCuda<double2, double2>((double2*)out->V(), (float*)out->Norm(), 
 						    (double2*)gauge0, (double2*)gauge1, 
 						    gauge.Reconstruct(), (double2*)in->V(), 
@@ -758,7 +796,7 @@ void cloverDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &gauge, co
   size_t regSize = sizeof(float);
 
   if (in->Precision() == QUDA_DOUBLE_PRECISION) {
-#if (__CUDA_ARCH__ >= 130)
+#if (__COMPUTE_CAPABILITY__ >= 130)
     dslash = new CloverDslashCuda<double2, double2, double2>((double2*)out->V(), (float*)out->Norm(), (double2*)gauge0, 
 							     (double2*)gauge1, gauge.Reconstruct(), (double2*)cloverP, 
 							     (float*)cloverNormP, (double2*)in->V(), (float*)in->Norm(),
@@ -822,7 +860,7 @@ void twistedMassDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &gaug
   size_t regSize = sizeof(float);
 
   if (in->Precision() == QUDA_DOUBLE_PRECISION) {
-#if (__CUDA_ARCH__ >= 130)
+#if (__COMPUTE_CAPABILITY__ >= 130)
     dslash = new TwistedDslashCuda<double2,double2>((double2*)out->V(), (float*)out->Norm(), (double2*)gauge0, 
 						    (double2*)gauge1, gauge.Reconstruct(), (double2*)in->V(), 
 						    (float*)in->Norm(), (double2*)xv, (float*)xn, 
@@ -882,7 +920,7 @@ void domainWallDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &gauge
   size_t regSize = sizeof(float);
 
   if (in->Precision() == QUDA_DOUBLE_PRECISION) {
-#if (__CUDA_ARCH__ >= 130)
+#if (__COMPUTE_CAPABILITY__ >= 130)
     dslash = new DomainWallDslashCuda<double2,double2>((double2*)out->V(), (float*)out->Norm(), (double2*)gauge0, (double2*)gauge1, 
 						       gauge.Reconstruct(), (double2*)in->V(), (float*)in->Norm(), (double2*)xv, 
 						       (float*)xn, m_f, k2, dagger, in->Bytes(), in->NormBytes());
@@ -949,7 +987,7 @@ void staggeredDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &fatGau
   size_t regSize = sizeof(float);
 
   if (in->Precision() == QUDA_DOUBLE_PRECISION) {
-#if (__CUDA_ARCH__ >= 130)
+#if (__COMPUTE_CAPABILITY__ >= 130)
     dslash = new StaggeredDslashCuda<double2, double2, double2>((double2*)out->V(), (float*)out->Norm(), 
 								(double2*)fatGauge0, (double2*)fatGauge1,
 								(double2*)longGauge0, (double2*)longGauge1, 
@@ -1021,7 +1059,7 @@ void cloverCuda(cudaColorSpinorField *out, const cudaGaugeField &gauge, const Fu
     errorQuda("Mixing clover and spinor precision not supported");
 
   if (in->Precision() == QUDA_DOUBLE_PRECISION) {
-#if (__CUDA_ARCH__ >= 130)
+#if (__COMPUTE_CAPABILITY__ >= 130)
     cloverCuda((double2*)out->V(), (float*)out->Norm(), (double2*)cloverP, 
 	       (float*)cloverNormP, (double2*)in->V(), (float*)in->Norm(), 
 	       in->Bytes(), in->NormBytes(), tune);
@@ -1070,7 +1108,7 @@ void twistGamma5Cuda(cudaColorSpinorField *out, const cudaColorSpinorField *in,
 
 #ifdef GPU_TWISTED_MASS_DIRAC
   if (in->Precision() == QUDA_DOUBLE_PRECISION) {
-#if (__CUDA_ARCH__ >= 130)
+#if (__COMPUTE_CAPABILITY__ >= 130)
     twistGamma5Cuda((double2*)out->V(), (float*)out->Norm(), 
 		    (double2*)in->V(), (float*)in->Norm(), 
 		    dagger, kappa, mu, in->Bytes(), 
@@ -1099,7 +1137,7 @@ void twistGamma5Cuda(cudaColorSpinorField *out, const cudaColorSpinorField *in,
 #include "misc_helpers.cu"
 
 
-#if defined(GPU_FATLINK) || defined(GPU_GAUGE_FORCE) || defined(GPU_FERMION_FORCE) || defined(GPU_HISQ_FORCE)
+#if defined(GPU_FATLINK) || defined(GPU_GAUGE_FORCE) || defined(GPU_FERMION_FORCE) || defined(GPU_HISQ_FORCE) || defined(GPU_UNITARIZE)
 #include <force_common.h>
 #include "force_kernel_common.cu"
 #endif
@@ -1114,6 +1152,10 @@ void twistGamma5Cuda(cudaColorSpinorField *out, const cudaColorSpinorField *in,
 
 #ifdef GPU_FERMION_FORCE
 #include "fermion_force_quda.cu"
+#endif
+
+#ifdef GPU_UNITARIZE
+#include "unitarize_links_quda.cu"
 #endif
 
 #ifdef GPU_HISQ_FORCE

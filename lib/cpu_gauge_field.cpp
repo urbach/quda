@@ -72,7 +72,6 @@ cpuGaugeField::cpuGaugeField(const GaugeFieldParam &param) :
 
 cpuGaugeField::~cpuGaugeField() {
 
-#if 1
   if (create == QUDA_NULL_FIELD_CREATE  
       || create == QUDA_ZERO_FIELD_CREATE  ) {
     if (order == QUDA_QDP_GAUGE_ORDER){
@@ -91,6 +90,10 @@ cpuGaugeField::~cpuGaugeField() {
 	  if (gauge) free(gauge);
 	}
     }
+  }else{ // QUDA_REFERENCE_FIELD_CREATE 
+    if (order == QUDA_QDP_GAUGE_ORDER){
+      free(gauge);
+    }
   }
   
   
@@ -102,8 +105,6 @@ cpuGaugeField::~cpuGaugeField() {
     }
   }
   free(ghost);
-
- #endif
   
 }
 
@@ -221,3 +222,11 @@ void cpuGaugeField::exchangeGhost() const {
   free(send);
 }
 
+void cpuGaugeField::setGauge(void**_gauge)
+{
+  if(create != QUDA_REFERENCE_FIELD_CREATE){
+    errorQuda("Setting gauge pointer is only allowed when cpu gauge"
+	      "is of QUDA_REFERENCE_FIELD_CREATE type\n");
+  }
+  gauge= _gauge;
+}
