@@ -212,7 +212,7 @@ endif
 ifeq ($(strip $(USE_QMEM)), yes)
   NVCCOPT += -DUSE_QMEM
   COPT += -DUSE_QMEM
-  LIB += -L$(QDP_INSTALL_PATH)/lib -lqmem
+  LIB += -L$(QDP_INSTALL_PATH)/lib -lqdp
   INC += -I$(QDP_INSTALL_PATH)/include
 endif
 
