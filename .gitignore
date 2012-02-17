@@ -3,3 +3,6 @@
 *~
 tests/*_test
 make.inc
+.*.sw*
+new_*
+old_*
