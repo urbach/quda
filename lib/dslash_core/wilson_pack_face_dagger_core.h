@@ -56,20 +56,20 @@
 #include "io_spinor.h"
 
 if (face_num) {
-  
+
   switch(dim) {
   case 0:
     {
       // read spinor from device memory
       READ_SPINOR(SPINORTEX, sp_stride, idx, idx);
-      
+
       spinorFloat a0_re, a0_im;
       spinorFloat a1_re, a1_im;
       spinorFloat a2_re, a2_im;
       spinorFloat b0_re, b0_im;
       spinorFloat b1_re, b1_im;
       spinorFloat b2_re, b2_im;
-      
+
       // project spinor into half spinors
       a0_re = +i00_re+i30_im;
       a0_im = +i00_im-i30_re;
@@ -83,7 +83,7 @@ if (face_num) {
       b1_im = +i11_im-i21_re;
       b2_re = +i12_re+i22_im;
       b2_im = +i12_im-i22_re;
-      
+
       // write half spinor back to device memory
       WRITE_HALF_SPINOR(face_volume, face_idx);
     }
@@ -92,14 +92,14 @@ if (face_num) {
     {
       // read spinor from device memory
       READ_SPINOR(SPINORTEX, sp_stride, idx, idx);
-      
+
       spinorFloat a0_re, a0_im;
       spinorFloat a1_re, a1_im;
       spinorFloat a2_re, a2_im;
       spinorFloat b0_re, b0_im;
       spinorFloat b1_re, b1_im;
       spinorFloat b2_re, b2_im;
-      
+
       // project spinor into half spinors
       a0_re = +i00_re-i30_re;
       a0_im = +i00_im-i30_im;
@@ -113,7 +113,7 @@ if (face_num) {
       b1_im = +i11_im+i21_im;
       b2_re = +i12_re+i22_re;
       b2_im = +i12_im+i22_im;
-      
+
       // write half spinor back to device memory
       WRITE_HALF_SPINOR(face_volume, face_idx);
     }
@@ -122,14 +122,14 @@ if (face_num) {
     {
       // read spinor from device memory
       READ_SPINOR(SPINORTEX, sp_stride, idx, idx);
-      
+
       spinorFloat a0_re, a0_im;
       spinorFloat a1_re, a1_im;
       spinorFloat a2_re, a2_im;
       spinorFloat b0_re, b0_im;
       spinorFloat b1_re, b1_im;
       spinorFloat b2_re, b2_im;
-      
+
       // project spinor into half spinors
       a0_re = +i00_re+i20_im;
       a0_im = +i00_im-i20_re;
@@ -143,7 +143,7 @@ if (face_num) {
       b1_im = +i11_im+i31_re;
       b2_re = +i12_re-i32_im;
       b2_im = +i12_im+i32_re;
-      
+
       // write half spinor back to device memory
       WRITE_HALF_SPINOR(face_volume, face_idx);
     }
@@ -152,14 +152,14 @@ if (face_num) {
     {
       // read spinor from device memory
       READ_SPINOR_DOWN(SPINORTEX, sp_stride, idx, idx);
-      
+
       spinorFloat a0_re, a0_im;
       spinorFloat a1_re, a1_im;
       spinorFloat a2_re, a2_im;
       spinorFloat b0_re, b0_im;
       spinorFloat b1_re, b1_im;
       spinorFloat b2_re, b2_im;
-      
+
       // project spinor into half spinors
       a0_re = +2*i20_re;
       a0_im = +2*i20_im;
@@ -173,28 +173,28 @@ if (face_num) {
       b1_im = +2*i31_im;
       b2_re = +2*i32_re;
       b2_im = +2*i32_im;
-      
+
       // write half spinor back to device memory
       WRITE_HALF_SPINOR(face_volume, face_idx);
     }
     break;
   }
-  
+
 } else {
-  
+
   switch(dim) {
   case 0:
     {
       // read spinor from device memory
       READ_SPINOR(SPINORTEX, sp_stride, idx, idx);
-      
+
       spinorFloat a0_re, a0_im;
       spinorFloat a1_re, a1_im;
       spinorFloat a2_re, a2_im;
       spinorFloat b0_re, b0_im;
       spinorFloat b1_re, b1_im;
       spinorFloat b2_re, b2_im;
-      
+
       // project spinor into half spinors
       a0_re = +i00_re-i30_im;
       a0_im = +i00_im+i30_re;
@@ -208,7 +208,7 @@ if (face_num) {
       b1_im = +i11_im+i21_re;
       b2_re = +i12_re-i22_im;
       b2_im = +i12_im+i22_re;
-      
+
       // write half spinor back to device memory
       WRITE_HALF_SPINOR(face_volume, face_idx);
     }
@@ -217,14 +217,14 @@ if (face_num) {
     {
       // read spinor from device memory
       READ_SPINOR(SPINORTEX, sp_stride, idx, idx);
-      
+
       spinorFloat a0_re, a0_im;
       spinorFloat a1_re, a1_im;
       spinorFloat a2_re, a2_im;
       spinorFloat b0_re, b0_im;
       spinorFloat b1_re, b1_im;
       spinorFloat b2_re, b2_im;
-      
+
       // project spinor into half spinors
       a0_re = +i00_re+i30_re;
       a0_im = +i00_im+i30_im;
@@ -238,7 +238,7 @@ if (face_num) {
       b1_im = +i11_im-i21_im;
       b2_re = +i12_re-i22_re;
       b2_im = +i12_im-i22_im;
-      
+
       // write half spinor back to device memory
       WRITE_HALF_SPINOR(face_volume, face_idx);
     }
@@ -247,14 +247,14 @@ if (face_num) {
     {
       // read spinor from device memory
       READ_SPINOR(SPINORTEX, sp_stride, idx, idx);
-      
+
       spinorFloat a0_re, a0_im;
       spinorFloat a1_re, a1_im;
       spinorFloat a2_re, a2_im;
       spinorFloat b0_re, b0_im;
       spinorFloat b1_re, b1_im;
       spinorFloat b2_re, b2_im;
-      
+
       // project spinor into half spinors
       a0_re = +i00_re-i20_im;
       a0_im = +i00_im+i20_re;
@@ -268,7 +268,7 @@ if (face_num) {
       b1_im = +i11_im-i31_re;
       b2_re = +i12_re+i32_im;
       b2_im = +i12_im-i32_re;
-      
+
       // write half spinor back to device memory
       WRITE_HALF_SPINOR(face_volume, face_idx);
     }
@@ -277,14 +277,14 @@ if (face_num) {
     {
       // read spinor from device memory
       READ_SPINOR_UP(SPINORTEX, sp_stride, idx, idx);
-      
+
       spinorFloat a0_re, a0_im;
       spinorFloat a1_re, a1_im;
       spinorFloat a2_re, a2_im;
       spinorFloat b0_re, b0_im;
       spinorFloat b1_re, b1_im;
       spinorFloat b2_re, b2_im;
-      
+
       // project spinor into half spinors
       a0_re = +2*i00_re;
       a0_im = +2*i00_im;
@@ -298,13 +298,13 @@ if (face_num) {
       b1_im = +2*i11_im;
       b2_re = +2*i12_re;
       b2_im = +2*i12_im;
-      
+
       // write half spinor back to device memory
       WRITE_HALF_SPINOR(face_volume, face_idx);
     }
     break;
   }
-  
+
 }
 
 // undefine to prevent warning when precision is changed

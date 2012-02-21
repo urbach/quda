@@ -90,8 +90,7 @@ def projectorToStr(p):
     out = ""
     for i in range(0, 4):
         for j in range(0,4):
-            out += '%2s' % complexToStr(p[4*i+j])
-            if j < 3: out += " "
+            out += '%3s' % complexToStr(p[4*i+j])
         out += "\n"
     return out
 
@@ -501,7 +500,7 @@ def gen(dir, pack_only=False):
     projName = "P"+`dir/2`+["-","+"][projIdx%2]
     str += "// Projector "+projName+"\n"
     for l in projStr.splitlines():
-        str += "// "+l+"\n"
+        str += "//"+l+"\n"
     str += "\n"
 
     str += "#ifdef MULTI_GPU\n"

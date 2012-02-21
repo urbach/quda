@@ -289,7 +289,7 @@ if (sid >= param.threads) return;
 READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
 
 {
-  
+
   // change to chiral basis
   {
     spinorFloat a00_re = -i10_re - i30_re;
@@ -300,13 +300,13 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     spinorFloat a20_im = -i10_im + i30_im;
     spinorFloat a30_re =  i00_re - i20_re;
     spinorFloat a30_im =  i00_im - i20_im;
-    
+
     o00_re = a00_re;  o00_im = a00_im;
     o10_re = a10_re;  o10_im = a10_im;
     o20_re = a20_re;  o20_im = a20_im;
     o30_re = a30_re;  o30_im = a30_im;
   }
-  
+
   {
     spinorFloat a01_re = -i11_re - i31_re;
     spinorFloat a01_im = -i11_im - i31_im;
@@ -316,13 +316,13 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     spinorFloat a21_im = -i11_im + i31_im;
     spinorFloat a31_re =  i01_re - i21_re;
     spinorFloat a31_im =  i01_im - i21_im;
-    
+
     o01_re = a01_re;  o01_im = a01_im;
     o11_re = a11_re;  o11_im = a11_im;
     o21_re = a21_re;  o21_im = a21_im;
     o31_re = a31_re;  o31_im = a31_im;
   }
-  
+
   {
     spinorFloat a02_re = -i12_re - i32_re;
     spinorFloat a02_im = -i12_im - i32_im;
@@ -332,24 +332,24 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     spinorFloat a22_im = -i12_im + i32_im;
     spinorFloat a32_re =  i02_re - i22_re;
     spinorFloat a32_im =  i02_im - i22_im;
-    
+
     o02_re = a02_re;  o02_im = a02_im;
     o12_re = a12_re;  o12_im = a12_im;
     o22_re = a22_re;  o22_im = a22_im;
     o32_re = a32_re;  o32_im = a32_im;
   }
-  
+
   // apply first chiral block
   {
     READ_CLOVER(CLOVERTEX, 0)
-    
+
     spinorFloat a00_re = 0; spinorFloat a00_im = 0;
     spinorFloat a01_re = 0; spinorFloat a01_im = 0;
     spinorFloat a02_re = 0; spinorFloat a02_im = 0;
     spinorFloat a10_re = 0; spinorFloat a10_im = 0;
     spinorFloat a11_re = 0; spinorFloat a11_im = 0;
     spinorFloat a12_re = 0; spinorFloat a12_im = 0;
-    
+
     a00_re += c00_00_re * o00_re;
     a00_im += c00_00_re * o00_im;
     a00_re += c00_01_re * o01_re;
@@ -372,7 +372,7 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     a00_re -= c00_12_im * o12_im;
     a00_im += c00_12_re * o12_im;
     a00_im += c00_12_im * o12_re;
-    
+
     a01_re += c01_00_re * o00_re;
     a01_re -= c01_00_im * o00_im;
     a01_im += c01_00_re * o00_im;
@@ -395,7 +395,7 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     a01_re -= c01_12_im * o12_im;
     a01_im += c01_12_re * o12_im;
     a01_im += c01_12_im * o12_re;
-    
+
     a02_re += c02_00_re * o00_re;
     a02_re -= c02_00_im * o00_im;
     a02_im += c02_00_re * o00_im;
@@ -418,7 +418,7 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     a02_re -= c02_12_im * o12_im;
     a02_im += c02_12_re * o12_im;
     a02_im += c02_12_im * o12_re;
-    
+
     a10_re += c10_00_re * o00_re;
     a10_re -= c10_00_im * o00_im;
     a10_im += c10_00_re * o00_im;
@@ -441,7 +441,7 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     a10_re -= c10_12_im * o12_im;
     a10_im += c10_12_re * o12_im;
     a10_im += c10_12_im * o12_re;
-    
+
     a11_re += c11_00_re * o00_re;
     a11_re -= c11_00_im * o00_im;
     a11_im += c11_00_re * o00_im;
@@ -464,7 +464,7 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     a11_re -= c11_12_im * o12_im;
     a11_im += c11_12_re * o12_im;
     a11_im += c11_12_im * o12_re;
-    
+
     a12_re += c12_00_re * o00_re;
     a12_re -= c12_00_im * o00_im;
     a12_im += c12_00_re * o00_im;
@@ -487,27 +487,27 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     a12_im += c12_11_im * o11_re;
     a12_re += c12_12_re * o12_re;
     a12_im += c12_12_re * o12_im;
-    
+
     o00_re = a00_re;  o00_im = a00_im;
     o01_re = a01_re;  o01_im = a01_im;
     o02_re = a02_re;  o02_im = a02_im;
     o10_re = a10_re;  o10_im = a10_im;
     o11_re = a11_re;  o11_im = a11_im;
     o12_re = a12_re;  o12_im = a12_im;
-    
+
   }
-  
+
   // apply second chiral block
   {
     READ_CLOVER(CLOVERTEX, 1)
-    
+
     spinorFloat a20_re = 0; spinorFloat a20_im = 0;
     spinorFloat a21_re = 0; spinorFloat a21_im = 0;
     spinorFloat a22_re = 0; spinorFloat a22_im = 0;
     spinorFloat a30_re = 0; spinorFloat a30_im = 0;
     spinorFloat a31_re = 0; spinorFloat a31_im = 0;
     spinorFloat a32_re = 0; spinorFloat a32_im = 0;
-    
+
     a20_re += c20_20_re * o20_re;
     a20_im += c20_20_re * o20_im;
     a20_re += c20_21_re * o21_re;
@@ -530,7 +530,7 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     a20_re -= c20_32_im * o32_im;
     a20_im += c20_32_re * o32_im;
     a20_im += c20_32_im * o32_re;
-    
+
     a21_re += c21_20_re * o20_re;
     a21_re -= c21_20_im * o20_im;
     a21_im += c21_20_re * o20_im;
@@ -553,7 +553,7 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     a21_re -= c21_32_im * o32_im;
     a21_im += c21_32_re * o32_im;
     a21_im += c21_32_im * o32_re;
-    
+
     a22_re += c22_20_re * o20_re;
     a22_re -= c22_20_im * o20_im;
     a22_im += c22_20_re * o20_im;
@@ -576,7 +576,7 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     a22_re -= c22_32_im * o32_im;
     a22_im += c22_32_re * o32_im;
     a22_im += c22_32_im * o32_re;
-    
+
     a30_re += c30_20_re * o20_re;
     a30_re -= c30_20_im * o20_im;
     a30_im += c30_20_re * o20_im;
@@ -599,7 +599,7 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     a30_re -= c30_32_im * o32_im;
     a30_im += c30_32_re * o32_im;
     a30_im += c30_32_im * o32_re;
-    
+
     a31_re += c31_20_re * o20_re;
     a31_re -= c31_20_im * o20_im;
     a31_im += c31_20_re * o20_im;
@@ -622,7 +622,7 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     a31_re -= c31_32_im * o32_im;
     a31_im += c31_32_re * o32_im;
     a31_im += c31_32_im * o32_re;
-    
+
     a32_re += c32_20_re * o20_re;
     a32_re -= c32_20_im * o20_im;
     a32_im += c32_20_re * o20_im;
@@ -645,16 +645,16 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     a32_im += c32_31_im * o31_re;
     a32_re += c32_32_re * o32_re;
     a32_im += c32_32_re * o32_im;
-    
+
     o20_re = a20_re;  o20_im = a20_im;
     o21_re = a21_re;  o21_im = a21_im;
     o22_re = a22_re;  o22_im = a22_im;
     o30_re = a30_re;  o30_im = a30_im;
     o31_re = a31_re;  o31_im = a31_im;
     o32_re = a32_re;  o32_im = a32_im;
-    
+
   }
-  
+
   // change back from chiral basis
   // (note: required factor of 1/2 is included in clover term normalization)
   {
@@ -666,13 +666,13 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     spinorFloat a20_im =  o10_im - o30_im;
     spinorFloat a30_re = -o00_re + o20_re;
     spinorFloat a30_im = -o00_im + o20_im;
-    
+
     o00_re = a00_re;  o00_im = a00_im;
     o10_re = a10_re;  o10_im = a10_im;
     o20_re = a20_re;  o20_im = a20_im;
     o30_re = a30_re;  o30_im = a30_im;
   }
-  
+
   {
     spinorFloat a01_re =  o11_re + o31_re;
     spinorFloat a01_im =  o11_im + o31_im;
@@ -682,13 +682,13 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     spinorFloat a21_im =  o11_im - o31_im;
     spinorFloat a31_re = -o01_re + o21_re;
     spinorFloat a31_im = -o01_im + o21_im;
-    
+
     o01_re = a01_re;  o01_im = a01_im;
     o11_re = a11_re;  o11_im = a11_im;
     o21_re = a21_re;  o21_im = a21_im;
     o31_re = a31_re;  o31_im = a31_im;
   }
-  
+
   {
     spinorFloat a02_re =  o12_re + o32_re;
     spinorFloat a02_im =  o12_im + o32_im;
@@ -698,17 +698,17 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
     spinorFloat a22_im =  o12_im - o32_im;
     spinorFloat a32_re = -o02_re + o22_re;
     spinorFloat a32_im = -o02_im + o22_im;
-    
+
     o02_re = a02_re;  o02_im = a02_im;
     o12_re = a12_re;  o12_im = a12_im;
     o22_re = a22_re;  o22_im = a22_im;
     o32_re = a32_re;  o32_im = a32_im;
   }
-  
+
 #ifdef DSLASH_XPAY
-  
+
   READ_ACCUM(ACCUMTEX, sp_stride)
-  
+
 #ifdef SPINOR_DOUBLE
   o00_re = a*o00_re + accum0.x;
   o00_im = a*o00_im + accum0.y;
@@ -760,7 +760,7 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
   o32_re = a*o32_re + accum5.z;
   o32_im = a*o32_im + accum5.w;
 #endif // SPINOR_DOUBLE
-  
+
 #endif // DSLASH_XPAY
 }
 
