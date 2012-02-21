@@ -70,6 +70,15 @@ igamma5 = complexify([
     0, 1j, 0, 0
 ])
 
+two_P_L = [ id[x] - igamma5[x]/1j for x in range(0,4*4) ]
+two_P_R = [ id[x] + igamma5[x]/1j for x in range(0,4*4) ]
+
+# for s1 in range(0,4) :
+#   for s2 in range (0,4): print "%8s" % two_P_L[s1*4+s2],
+#   print "        ",
+#   for s2 in range (0,4): print "%8s" % two_P_R[s1*4+s2],
+#   print ""
+
 
 def gplus(g1, g2):
     return [x+y for (x,y) in zip(g1,g2)]
@@ -81,7 +90,8 @@ def projectorToStr(p):
     out = ""
     for i in range(0, 4):
         for j in range(0,4):
-            out += complexToStr(p[4*i+j]) + " "
+            out += '%2s' % complexToStr(p[4*i+j])
+            if j < 3: out += " "
         out += "\n"
     return out
 
@@ -94,8 +104,8 @@ projectors = [
 
 ### code generation  ########################################################################
 
-def indent(code):
-    def indentline(line): return ("  "+line if (line.count("#", 0, 1) == 0) else line)
+def indent(code, n=1):
+    def indentline(line): return (n*"  "+line if ( line and line.count("#", 0, 1) == 0) else line)
     return ''.join([indentline(line)+"\n" for line in code.splitlines()])
 
 def block(code):
@@ -282,6 +292,8 @@ def prolog():
         print "Undefined prolog"
         exit
 
+    if domain_wall: prolog_str += "// NB! Don't trust any MULTI_GPU code\n"
+
     prolog_str+= (
 """
 #if (CUDA_VERSION >= 4010)
@@ -334,15 +346,12 @@ VOLATILE spinorFloat *s = (spinorFloat*)s_data + CLOVER_SHARED_FLOATS_PER_THREAD
 
 
     if dslash:
+        prolog_str += "\n#include \"read_gauge.h\"\n"
+        if not domain_wall:
+          prolog_str += "#include \"read_clover.h\"\n"
+        prolog_str += "#include \"io_spinor.h\"\n"
         prolog_str += (
 """
-#include "read_gauge.h"
-#include "read_clover.h"
-#include "io_spinor.h"
-
-int x1, x2, x3, x4;
-int X;
-
 #if (defined MULTI_GPU) && (DD_PREC==2) // half precision
 int sp_norm_idx;
 #endif // MULTI_GPU half precision
@@ -357,14 +366,32 @@ if (kernel_type == INTERIOR_KERNEL) {
 
   // Inline by hand for the moment and assume even dimensions
   //coordsFromIndex(X, x1, x2, x3, x4, sid, param.parity);
+""")
+        if domain_wall:
+          print "need to reconcile wilson and dw coordinates?"
+          prolog_str+=(
+"""
+  const int s_parity = ( 2 * sid / (X1*X2*X3*X4) ) % 2;
+  const int site_parity = ( sid/X1h + sid/(X2*X1h) + sid/(X3*X2*X1h) + s_parity ) % 2;
 
-  X = 2*sid;
+  int X  = 2*sid + (site_parity + param.parity) % 2;
+  int x1 = X % X1;
+  int x2 = (X/X1) % X2;
+  int x3 = (X/(X1*X2)) % X3;
+  int x4 = (X/(X1*X2*X3)) % X4;
+  int xs = X/(X1*X2*X3*X4);
+
+""")
+        else:
+          prolog_str+=(
+"""
+  int X = 2*sid;
   int aux1 = X / X1;
-  x1 = X - aux1 * X1;
+  int x1 = X - aux1 * X1;
   int aux2 = aux1 / X2;
-  x2 = aux1 - aux2 * X2;
-  x4 = aux2 / X3;
-  x3 = aux2 - x4 * X3;
+  int x2 = aux1 - aux2 * X2;
+  int x4 = aux2 / X3;
+  int x3 = aux2 - x4 * X3;
   aux1 = (param.parity + x4 + x3 + x2) & 1;
   x1 += aux1;
   X += aux1;
@@ -407,7 +434,16 @@ if (kernel_type == INTERIOR_KERNEL) {
                 out += out_re(s,c)+" = "+in_re(s,c)+";  "+out_im(s,c)+" = "+in_im(s,c)+";\n"
         prolog_str+= indent(out)
         prolog_str+= "}\n"
-        prolog_str+= "#endif // MULTI_GPU\n\n\n"
+        prolog_str+= "#endif // MULTI_GPU\n"
+
+        if domain_wall:
+          prolog_str += (
+"""
+// declare G## here and use ASSN below instead of READ
+DECL_GAUGE_MATRIX(G);
+""")
+
+        prolog_str+= "\n\n"
 
     else:
         prolog_str+=(
@@ -427,7 +463,7 @@ READ_SPINOR(SPINORTEX, sp_stride, sid, sid);
 
 
 def gen(dir, pack_only=False):
-    projIdx = dir if not dagger else dir + (1 - 2*(dir%2))
+    projIdx = dir if not dagger else dir + ( +1 if dir%2 == 0 else -1 )
     projStr = projectorToStr(projectors[projIdx])
     def proj(i,j):
         return projectors[projIdx][4*i+j]
@@ -477,12 +513,15 @@ def gen(dir, pack_only=False):
 
     str += "\n"
     if dir % 2 == 0:
-        str += "const int ga_idx = sid;\n"
+        if domain_wall: str += "const int ga_idx = sid % Vh;\n"
+        else:           str += "const int ga_idx = sid;\n"
     else:
         str += "#ifdef MULTI_GPU\n"
-        str += "const int ga_idx = ((kernel_type == INTERIOR_KERNEL) ? sp_idx : Vh+face_idx);\n"
+        if domain_wall: str += "const int ga_idx = ((kernel_type == INTERIOR_KERNEL) ? sp_idx : Vh+face_idx);\n"
+        else:           str += "const int ga_idx = ((kernel_type == INTERIOR_KERNEL) ? sp_idx : Vh+face_idx);\n"
         str += "#else\n"
-        str += "const int ga_idx = sp_idx;\n"
+        if domain_wall: str += "const int ga_idx = sp_idx % Vh;\n"
+        else:           str += "const int ga_idx = sp_idx;\n"
         str += "#endif\n"
     str += "\n"
 
@@ -527,7 +566,11 @@ def gen(dir, pack_only=False):
     if (dir+1) % 2 == 0: load_half += "READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx, sp_norm_idx);\n\n"
     else: load_half += "READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx);\n\n"
     load_gauge = "// read gauge matrix from device memory\n"
-    load_gauge += "READ_GAUGE_MATRIX(G, GAUGE"+`dir%2`+"TEX, "+`dir`+", ga_idx, ga_stride);\n\n"
+    if domain_wall:
+        load_gauge += "if ( ! s_parity ) { ASSN_GAUGE_MATRIX(G, GAUGE"+`(  dir%2)`+"TEX, "+`dir`+", ga_idx, ga_stride); }\n"
+        load_gauge += "else              { ASSN_GAUGE_MATRIX(G, GAUGE"+`(1-dir%2)`+"TEX, "+`dir`+", ga_idx, ga_stride); }\n\n"
+    else:
+        load_gauge += "READ_GAUGE_MATRIX(G, GAUGE"+`dir%2`+"TEX, "+`dir`+", ga_idx, ga_stride);\n\n"
 
     reconstruct_gauge = "// reconstruct gauge matrix\n"
     reconstruct_gauge += "RECONSTRUCT_GAUGE_MATRIX("+`dir`+");\n\n"
@@ -630,7 +673,7 @@ def gen(dir, pack_only=False):
                 reconstruct += out_re(s, m) + " " + sign(-im) + "= " + h2_im(h,m) + ";\n"
                 reconstruct += out_im(s, m) + " " + sign(+im) + "= " + h2_re(h,m) + ";\n"
         
-        reconstruct += "\n"
+        if ( m < 2 ): reconstruct += "\n"
 
     if dir >= 6:
         str += "if (gauge_fixed && ga_idx < X4X3X2X1hmX3X2X1h)\n"
@@ -647,6 +690,87 @@ def gen(dir, pack_only=False):
     else:
         return cond + block(str)+"\n\n"
 # end def gen
+
+
+def gen_dw():
+    str = (
+"""
+
+// 5th dimension -- NB: not partitionable!
+{
+  // 2 P_L = 2 P_- = ( ( +1, -1 ), ( -1, +1 ) )
+  {
+    int sp_idx = ( xs == 0 ? X+(Ls-1)*2*Vh : X-2*Vh ) / 2;
+
+    // read spinor from device memory
+    READ_SPINOR( SPINORTEX, sp_stride, sp_idx, sp_idx );
+
+    if ( xs != 0 )
+    {
+""")
+    
+    def proj(i,j):
+        return two_P_L[4*i+j]
+    
+    # xs != 0:
+    out_L = ""
+    for s1 in range(0,4):
+    #{
+        for c in range(0,3):
+            re_rhs, im_rhs = "", ""
+            for s2 in range(0,4):
+                re, im = proj(s1,s2).real, proj(s1,s2).imag
+                if re != 0 :
+                    re_rhs += sign(re) + in_re(s2,c)
+                    im_rhs += sign(re) + in_im(s2,c)
+                if im != 0 :
+                    re_rhs += sign(-im) + in_im(s2,c)
+                    im_rhs += sign(im)  + in_re(s2,c)
+            out_L += 3*"  " + out_re(s1,c) + " += " + re_rhs + ";"
+            out_L += 3*"  " + out_im(s1,c) + " += " + im_rhs + ";\n"
+        if s1 < 3 : out_L += "\n"
+    #}
+    
+    str += out_L
+
+    str += "    }\n"
+    str += "    else\n"
+    str += "    {\n"
+    
+    # xs == 0:
+    str += out_L.replace(" += "," += -mferm*(").replace(";",");")
+
+    str += "    } // end if ( xs != 0 )\n"
+    str += "  } // end P_L\n"
+    str += (
+"""
+  // 2 P_R = 2 P_+ = ( ( +1, +1 ), ( +1, +1 ) )
+  {
+    int sp_idx = ( xs == Ls-1 ? X-(Ls-1)*2*Vh : X+2*Vh ) / 2;
+
+    // read spinor from device memory
+    READ_SPINOR( SPINORTEX, sp_stride, sp_idx, sp_idx );
+
+    if ( xs < Ls-1 )
+    {
+""")
+    
+    # xs < Ls-1
+    str += out_L.replace("-","+")
+
+    str += "    }\n"
+    str += "    else\n"
+    str += "    {\n"
+
+    # xs == Ls-1
+    str += out_L.replace("-","+").replace(" += "," += -mferm*(").replace(";",");")
+
+    str += "    } // end if ( xs < Ls-1 )\n"
+    str += "  } // end P_R\n"
+    str += "} // end 5th dimension\n\n\n"
+
+    return str
+# end def gen_dw
 
 
 def input_spinor(s,c,z):
@@ -730,6 +854,7 @@ def clover_mult(chi):
 
 
 def apply_clover():
+    if domain_wall: return ""
     str = ""
     if dslash: str += "#ifdef DSLASH_CLOVER\n\n"
     str += "// change to chiral basis\n"
@@ -847,20 +972,23 @@ def epilog():
         if twist:
             str += "#ifdef MULTI_GPU\n"
         else:
-            str += "#if defined MULTI_GPU && (defined DSLASH_XPAY || defined DSLASH_CLOVER)\n"        
+            if domain_wall:
+                str += "#if defined MULTI_GPU && defined DSLASH_XPAY\n"
+            else:
+                str += "#if defined MULTI_GPU && (defined DSLASH_XPAY || defined DSLASH_CLOVER)\n"
         str += (
 """
 int incomplete = 0; // Have all 8 contributions been computed for this site?
 
 switch(kernel_type) { // intentional fall-through
-case INTERIOR_KERNEL:
-  incomplete = incomplete || (param.commDim[3] && (x4==0 || x4==X4m1));
-case EXTERIOR_KERNEL_T:
-  incomplete = incomplete || (param.commDim[2] && (x3==0 || x3==X3m1));
-case EXTERIOR_KERNEL_Z:
-  incomplete = incomplete || (param.commDim[1] && (x2==0 || x2==X2m1));
-case EXTERIOR_KERNEL_Y:
-  incomplete = incomplete || (param.commDim[0] && (x1==0 || x1==X1m1));
+  case INTERIOR_KERNEL:
+    incomplete = incomplete || (param.commDim[3] && (x4==0 || x4==X4m1));
+  case EXTERIOR_KERNEL_T:
+    incomplete = incomplete || (param.commDim[2] && (x3==0 || x3==X3m1));
+  case EXTERIOR_KERNEL_Z:
+    incomplete = incomplete || (param.commDim[1] && (x2==0 || x2==X2m1));
+  case EXTERIOR_KERNEL_Y:
+    incomplete = incomplete || (param.commDim[0] && (x1==0 || x1==X1m1));
 }
 
 """)    
@@ -967,7 +1095,13 @@ def generate_pack():
 
 
 def generate_dslash():
-    return prolog() + gen(0) + gen(1) + gen(2) + gen(3) + gen(4) + gen(5) + gen(6) + gen(7) + epilog()
+    r = prolog()
+    for i in range(0,8) :
+      r += gen( i )
+    if domain_wall:
+      r += gen_dw()
+    r += epilog()
+    return r
 
 def generate_clover():
     return prolog() + epilog()
@@ -983,6 +1117,8 @@ if(len(sys.argv) > 1):
 print "Shared floats set to " + str(sharedFloats);
 
 # generate Wilson-like Dslash kernels
+domain_wall = False
+
 dslash = True
 
 twist = False
@@ -1036,3 +1172,18 @@ print sys.argv[0] + ": generating clover_core.h";
 f = open('dslash_core/clover_core.h', 'w')
 f.write(generate_clover())
 f.close()
+
+
+# generate Domain Wall Dslash kernels
+domain_wall = True
+twist       = False
+clover      = False
+
+print sys.argv[0] + ": generating dw_dslash_core.h";
+dslash      = True
+dagger      = False
+f = open('dslash_core/new_dw_dslash_core.h', 'w')
+f.write(generate_dslash())
+f.close()
+
+
