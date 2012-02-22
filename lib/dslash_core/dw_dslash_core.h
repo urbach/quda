@@ -1977,7 +1977,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4>0)) ||
     // read spinor from device memory
     READ_SPINOR( SPINORTEX, sp_stride, sp_idx, sp_idx );
 
-    if ( xs < Ls-1 )
+    if ( xs != Ls-1 )
     {
       o00_re += +i00_re+i20_re;      o00_im += +i00_im+i20_im;
       o01_re += +i01_re+i21_re;      o01_im += +i01_im+i21_im;
@@ -2012,7 +2012,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4>0)) ||
       o30_re += -mferm*(+i10_re+i30_re);      o30_im += -mferm*(+i10_im+i30_im);
       o31_re += -mferm*(+i11_re+i31_re);      o31_im += -mferm*(+i11_im+i31_im);
       o32_re += -mferm*(+i12_re+i32_re);      o32_im += -mferm*(+i12_im+i32_im);
-    } // end if ( xs < Ls-1 )
+    } // end if ( xs != Ls-1 )
   } // end P_R
 } // end 5th dimension
 

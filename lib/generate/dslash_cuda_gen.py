@@ -692,21 +692,21 @@ def gen(dir, pack_only=False):
 
 
 def gen_dw():
-    str = (
-"""
+    if dagger: lsign='+'; ledge = 'Ls-1'; rsign='-'; redge='0'
+    else:      lsign='-'; ledge = '0';    rsign='+'; redge='Ls-1'
 
-// 5th dimension -- NB: not partitionable!
-{
-  // 2 P_L = 2 P_- = ( ( +1, -1 ), ( -1, +1 ) )
-  {
-    int sp_idx = ( xs == 0 ? X+(Ls-1)*2*Vh : X-2*Vh ) / 2;
-
-    // read spinor from device memory
-    READ_SPINOR( SPINORTEX, sp_stride, sp_idx, sp_idx );
-
-    if ( xs != 0 )
-    {
-""")
+    str =  "\n\n"
+    str += "// 5th dimension -- NB: not partitionable!\n"
+    str += "{\n"
+    str += "  // 2 P_L = 2 P_- = ( ( +1, -1 ), ( -1, +1 ) )\n"
+    str += "  {\n"
+    str += "    int sp_idx = ( xs == %s ? X%s(Ls-1)*2*Vh : X%s2*Vh ) / 2;\n" % (ledge, rsign, lsign)
+    str += "\n"
+    str += "    // read spinor from device memory\n"
+    str += "    READ_SPINOR( SPINORTEX, sp_stride, sp_idx, sp_idx );\n"
+    str += "\n"
+    str += "    if ( xs != %s )\n" % ledge
+    str += "    {\n"
     
     def proj(i,j):
         return two_P_L[4*i+j]
@@ -739,22 +739,19 @@ def gen_dw():
     # xs == 0:
     str += out_L.replace(" += "," += -mferm*(").replace(";",");")
 
-    str += "    } // end if ( xs != 0 )\n"
-    str += "  } // end P_L\n"
-    str += (
-"""
-  // 2 P_R = 2 P_+ = ( ( +1, +1 ), ( +1, +1 ) )
-  {
-    int sp_idx = ( xs == Ls-1 ? X-(Ls-1)*2*Vh : X+2*Vh ) / 2;
-
-    // read spinor from device memory
-    READ_SPINOR( SPINORTEX, sp_stride, sp_idx, sp_idx );
-
-    if ( xs < Ls-1 )
-    {
-""")
+    str += "    } // end if ( xs != %s )\n" % ledge
+    str += "  } // end P_L\n\n"
+    str += "  // 2 P_R = 2 P_+ = ( ( +1, +1 ), ( +1, +1 ) )\n"
+    str += "  {\n"
+    str += "    int sp_idx = ( xs == %s ? X%s(Ls-1)*2*Vh : X%s2*Vh ) / 2;\n" % (redge, lsign, rsign)
+    str += "\n"
+    str += "    // read spinor from device memory\n"
+    str += "    READ_SPINOR( SPINORTEX, sp_stride, sp_idx, sp_idx );\n"
+    str += "\n"
+    str += "    if ( xs != %s )\n" % redge
+    str += "    {\n"
     
-    # xs < Ls-1
+    # xs != Ls-1
     str += out_L.replace("-","+")
 
     str += "    }\n"
@@ -764,7 +761,7 @@ def gen_dw():
     # xs == Ls-1
     str += out_L.replace("-","+").replace(" += "," += -mferm*(").replace(";",");")
 
-    str += "    } // end if ( xs < Ls-1 )\n"
+    str += "    } // end if ( xs != %s )\n" % redge
     str += "  } // end P_R\n"
     str += "} // end 5th dimension\n\n\n"
 
@@ -1182,6 +1179,13 @@ print sys.argv[0] + ": generating dw_dslash_core.h";
 dslash      = True
 dagger      = False
 f = open('dslash_core/new_dw_dslash_core.h', 'w')
+f.write(generate_dslash())
+f.close()
+
+print sys.argv[0] + ": generating dw_dslash_dagger_core.h";
+dslash      = True
+dagger      = True
+f = open('dslash_core/new_dw_dslash_dagger_core.h', 'w')
 f.write(generate_dslash())
 f.close()
 
