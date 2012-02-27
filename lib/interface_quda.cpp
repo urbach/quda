@@ -18,8 +18,6 @@
 #include <invert_quda.h>
 #include <color_spinor_field.h>
 
-#include <cuda.h>
-
 #ifdef MULTI_GPU
 #ifdef MPI_COMMS
 #include <mpi.h>
@@ -174,17 +172,6 @@ void initQuda(int dev)
   }
   initialized = 1;
 
-#if (CUDA_VERSION >= 4000)
-  //check if CUDA_NIC_INTEROP is set to 1 in the enviroment
-  char* cni_str = getenv("CUDA_NIC_INTEROP");
-  if(cni_str == NULL){
-    errorQuda("Environment variable CUDA_NIC_INTEROP is not set\n");
-  }
-  int cni_int = atoi(cni_str);
-  if (cni_int != 1){
-    errorQuda("Environment variable CUDA_NIC_INTEROP is not set to 1\n");    
-  }
-#endif
 
   int deviceCount;
   cudaGetDeviceCount(&deviceCount);
@@ -242,9 +229,7 @@ void initQuda(int dev)
   if(numa_config_set){
     if(gpu_affinity[dev] >=0){
       printfQuda("Numa setting to cpu node %d\n", gpu_affinity[dev]);
-      if(numa_run_on_node(gpu_affinity[dev]) != 0){
-        printfQuda("Warning: Setting numa to cpu node %d failed\n", gpu_affinity[dev]);
-      }
+      numa_run_on_node(gpu_affinity[dev]);
     }
 
   }
@@ -283,7 +268,6 @@ void initQuda(int dev)
 
 void loadGaugeQuda(void *h_gauge, QudaGaugeParam *param)
 {
-
   double anisotropy;
   FullGauge *precise = NULL, *sloppy = NULL;
 
@@ -318,6 +302,7 @@ void loadGaugeQuda(void *h_gauge, QudaGaugeParam *param)
       param->gauge_fix == QUDA_GAUGE_FIXED_YES) {
     errorQuda("Temporal gauge fixing not supported for staggered");
   }
+
 
   createGaugeField(precise, h_gauge, param->cuda_prec, param->cpu_prec, param->gauge_order, param->reconstruct, param->gauge_fix,
 		   param->t_boundary, param->X, anisotropy, param->tadpole_coeff, param->ga_pad, param->type); 
@@ -637,6 +622,9 @@ void setDiracParam(DiracParam &diracParam, QudaInvertParam *inv_param, const boo
     break;
   case QUDA_DOMAIN_WALL_DSLASH:
     diracParam.type = pc ? QUDA_DOMAIN_WALLPC_DIRAC : QUDA_DOMAIN_WALL_DIRAC;
+//BEGIN NEW :
+    diracParam.Ls = inv_param->Ls;
+//END NEW
     break;
   case QUDA_ASQTAD_DSLASH:
     diracParam.type = pc ? QUDA_ASQTADPC_DIRAC : QUDA_ASQTAD_DIRAC;
@@ -1039,6 +1027,8 @@ void invertQuda(void *hp_x, void *hp_b, QudaInvertParam *param)
     if (param->solution_type != QUDA_MATDAG_MAT_SOLUTION && param->solution_type != QUDA_MATPCDAG_MATPC_SOLUTION) {
       copyCuda(*out, *in);
       dirac.Mdag(*in, *out);
+      double nin = norm2(*in);
+      printfQuda("Prepared source = %f\n", nin);
     }
     invertCgCuda(DiracMdagM(dirac), DiracMdagM(diracSloppy), *out, *in, param);
     break;
@@ -1660,5 +1650,266 @@ void endCommsQuda() {
 #endif 
 
 #endif
+}
+
+void testCG(void *hp_x, void *hp_b, QudaInvertParam *param)
+{
+  checkInvertParam(param);
+  if (param->cuda_prec_sloppy != param->prec_precondition && 
+      param->inv_type_precondition != QUDA_INVALID_INVERTER)
+    errorQuda("Sorry, cannot yet use different sloppy and preconditioner precisions");
+
+  verbosity = param->verbosity;
+
+  bool pc_solve = (param->solve_type == QUDA_DIRECT_PC_SOLVE ||
+		   param->solve_type == QUDA_NORMEQ_PC_SOLVE);
+
+  bool pc_solution = (param->solution_type == QUDA_MATPC_SOLUTION ||
+		      param->solution_type == QUDA_MATPCDAG_MATPC_SOLUTION);
+
+  param->spinorGiB = cudaGaugePrecise.volumeCB * spinorSiteSize;
+  if (!pc_solve) param->spinorGiB *= 2;
+  param->spinorGiB *= (param->cuda_prec == QUDA_DOUBLE_PRECISION ? sizeof(double) : sizeof(float));
+  if (param->preserve_source == QUDA_PRESERVE_SOURCE_NO) {
+    param->spinorGiB *= (param->inv_type == QUDA_CG_INVERTER ? 5 : 7)/(double)(1<<30);
+  } else {
+    param->spinorGiB *= (param->inv_type == QUDA_CG_INVERTER ? 8 : 9)/(double)(1<<30);
+  }
+
+  param->secs = 0;
+  param->gflops = 0;
+  param->iter = 0;
+
+  // create the dirac operator
+
+  DiracParam diracParam;
+  createDirac(diracParam, *param, pc_solve);
+  Dirac &dirac = *d;
+  Dirac &diracSloppy = *dSloppy;
+  Dirac &diracPre = *dPre;
+
+  cpuColorSpinorField *h_b = NULL;
+  cpuColorSpinorField *h_x = NULL;
+  cudaColorSpinorField *b = NULL;
+  cudaColorSpinorField *x = NULL;
+  cudaColorSpinorField *in = NULL;
+  cudaColorSpinorField *out = NULL;
+
+  int *X = param->dslash_type == QUDA_ASQTAD_DSLASH ? 
+    cudaFatLinkPrecise.X : cudaGaugePrecise.X;
+
+  // wrap CPU host side pointers
+  ColorSpinorParam cpuParam(hp_b, *param, X, pc_solution);
+  h_b = new cpuColorSpinorField(cpuParam);
+  cpuParam.v = hp_x;
+  h_x = new cpuColorSpinorField(cpuParam);
+    
+  // download source
+  ColorSpinorParam cudaParam(cpuParam, *param);     
+  cudaParam.create = QUDA_COPY_FIELD_CREATE;
+  b = new cudaColorSpinorField(*h_b, cudaParam); 
+
+  if (param->use_init_guess == QUDA_USE_INIT_GUESS_YES) { // download initial guess
+    x = new cudaColorSpinorField(*h_x, cudaParam); // solution  
+  } else { // zero initial guess
+    cudaParam.create = QUDA_ZERO_FIELD_CREATE;
+    x = new cudaColorSpinorField(cudaParam); // solution
+  }
+    
+  if (param->verbosity >= QUDA_VERBOSE) {
+    double nh_b = norm2(*h_b);
+    double nb = norm2(*b);
+    printfQuda("Source: CPU = %f, CUDA copy = %f\n", nh_b, nb);
+  }
+
+  tuneDirac(*param, pc_solution ? *x : x->Even());
+
+  dirac.prepare(in, out, *x, *b, param->solution_type);
+  if (param->verbosity >= QUDA_VERBOSE) {
+    double nin = norm2(*in);
+    printfQuda("Prepared source = %f\n", nin);   
+  }
+
+  massRescale(param->dslash_type, diracParam.kappa, param->solution_type, param->mass_normalization, *in);
+
+//BEGIN CG iterations:  
+  if (param->solution_type != QUDA_MATDAG_MAT_SOLUTION && param->solution_type != QUDA_MATPCDAG_MATPC_SOLUTION) {
+      copyCuda(*out, *in);
+      dirac.Mdag(*in, *out);
+    }
+{
+  printfQuda("\nStart CG iterations\n");
+  int k=0;
+  int rUpdate = 0;
+    
+  cudaColorSpinorField r(*in);
+
+  ColorSpinorParam sparam(*out);
+  sparam.create = QUDA_ZERO_FIELD_CREATE;
+  cudaColorSpinorField y(*in, sparam); 
+
+  dirac.M(y, *out);
+  dirac.Mdag(r, y);   
+  zeroCuda(y);
+
+  double r2 = xmyNormCuda(*in, r);
+  rUpdate ++;
+  
+  sparam.precision = param->cuda_prec_sloppy;
+  cudaColorSpinorField Ap(*out, sparam);
+  cudaColorSpinorField tmp(*out, sparam);
+  cudaColorSpinorField tmp2(*out, sparam); // only needed for clover and twisted mass
+
+  cudaColorSpinorField *x_sloppy, *r_sloppy;
+  if (param->cuda_prec_sloppy == out->Precision()) {
+    sparam.create = QUDA_REFERENCE_FIELD_CREATE;
+    x_sloppy = out;
+    r_sloppy = &r;
+  } else {
+    sparam.create = QUDA_COPY_FIELD_CREATE;
+    x_sloppy = new cudaColorSpinorField(*out, sparam);
+    r_sloppy = new cudaColorSpinorField(r, sparam);
+  }
+
+  cudaColorSpinorField &xSloppy = *x_sloppy;
+  cudaColorSpinorField &rSloppy = *r_sloppy;
+
+  cudaColorSpinorField p(rSloppy);
+
+  double r2_old;
+  double src_norm = norm2(*in);
+  double stop = src_norm*param->tol*param->tol; // stopping condition of solver
+
+  double alpha, beta;
+  double pAp;
+
+  double rNorm = sqrt(r2);
+  double r0Norm = rNorm;
+  double maxrx = rNorm;
+  double maxrr = rNorm;
+  double delta = param->reliable_delta;
+
+  if (param->verbosity >= QUDA_VERBOSE) printfQuda("CG: %d iterations, r2 = %e\n", k, r2);
+
+  blas_quda_flops = 0;
+
+  stopwatchStart();
+  while (r2 > stop && k<param->maxiter) {
+
+    //diracSloppy.MdagM(Ap, p); // tmp as tmp
+    diracSloppy.M(tmp, p); 
+    diracSloppy.Mdag(Ap, tmp); 
+    
+    pAp = reDotProductCuda(p, Ap);
+    alpha = r2 / pAp;        
+    r2_old = r2;
+    r2 = axpyNormCuda(-alpha, Ap, rSloppy);
+
+    // reliable update conditions
+    rNorm = sqrt(r2);
+    if (rNorm > maxrx) maxrx = rNorm;
+    if (rNorm > maxrr) maxrr = rNorm;
+    int updateX = (rNorm < delta*r0Norm && r0Norm <= maxrx) ? 1 : 0;
+    int updateR = ((rNorm < delta*maxrr && r0Norm <= maxrr) || updateX) ? 1 : 0;
+    
+    if (!(updateR || updateX)) {
+      beta = r2 / r2_old;
+      axpyZpbxCuda(alpha, p, xSloppy, rSloppy, beta);
+    } else {
+      axpyCuda(alpha, p, xSloppy);
+      if (out->Precision() != xSloppy.Precision()) copyCuda(*out, xSloppy);
+      
+      xpyCuda(*out, y); // swap these around?
+      //dirac.MdagM(r, y); // here we can use *out as tmp
+
+      dirac.M(*out, y); // here we can use *out as tmp MdagM(r, y)
+      dirac.Mdag(r, *out);
+
+      r2 = xmyNormCuda(*in, r);
+      if (out->Precision() != rSloppy.Precision()) copyCuda(rSloppy, r);            
+      zeroCuda(xSloppy);
+
+      rNorm = sqrt(r2);
+      maxrr = rNorm;
+      maxrx = rNorm;
+      r0Norm = rNorm;      
+      rUpdate++;
+
+      beta = r2 / r2_old; 
+      xpayCuda(rSloppy, beta, p);
+    }
+
+    k++;
+    if (param->verbosity >= QUDA_VERBOSE)
+      printfQuda("CG: %d iterations, r2 = %e\n", k, r2);
+  }
+
+  if (out->Precision() != xSloppy.Precision()) copyCuda(*out, xSloppy);
+  xpyCuda(y, *out);
+
+  param->secs = stopwatchReadSeconds();
+
+  
+  if (k == param->maxiter) 
+    warningQuda("Exceeded maximum iterations %d", param->maxiter);
+
+  if (param->verbosity >= QUDA_SUMMARIZE)
+    printfQuda("CG: Reliable updates = %d\n", rUpdate);
+
+  double gflops = (blas_quda_flops + dirac.Flops() + diracSloppy.Flops())*1e-9;
+  reduceDouble(gflops);
+
+  printfQuda("%f gflops\n", gflops / stopwatchReadSeconds());
+  param->gflops = gflops;
+  param->iter = k;
+
+  blas_quda_flops = 0;
+
+  if (param->verbosity >= QUDA_SUMMARIZE){
+    //dirac->MdagM(r, *out);
+    dirac.M(y, *out); 
+    dirac.Mdag(r, y);    
+    
+    double true_res = xmyNormCuda(*in, r);
+    printfQuda("CG: Converged after %d iterations, relative residua: iterated = %e, true = %e\n", 
+	       k, sqrt(r2/src_norm), sqrt(true_res / src_norm));    
+  }
+
+  if (param->cuda_prec_sloppy != out->Precision()) {
+    delete r_sloppy;
+    delete x_sloppy;
+  }
+}
+    
+//END CG iterations    
+  
+  if (param->verbosity >= QUDA_VERBOSE){
+   double nx = norm2(*x);
+   printfQuda("Solution = %f\n",nx);
+  }
+  dirac.reconstruct(*x, *b, param->solution_type);
+  
+  x->saveCPUSpinorField(*h_x); // since this is a reference, this won't work: h_x = x;
+  
+  if (param->verbosity >= QUDA_VERBOSE){
+    double nx = norm2(*x);
+    double nh_x = norm2(*h_x);
+    printfQuda("Reconstructed: CUDA solution = %f, CPU copy = %f\n", nx, nh_x);
+  }
+  
+  if (!param->preserve_dirac) {
+    delete d;
+    delete dSloppy;
+    delete dPre;
+    diracCreation = false;
+    diracTune = false;
+  } 
+
+  delete h_b;
+  delete h_x;
+  delete b;
+  delete x;
+  
+  return;
 }
 

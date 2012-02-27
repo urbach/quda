@@ -4,6 +4,8 @@
 
 #include <tune_quda.h>
 
+//A.S. added new class constructor
+
 DiracWilson::DiracWilson(const DiracParam &param) : 
   Dirac(param), face(param.gauge->X, 4, 12, 1, param.gauge->precision)
 {
@@ -21,6 +23,19 @@ DiracWilson::DiracWilson(const DiracWilson &dirac) :
     blockDslashXpay[i] = dirac.blockDslashXpay[i];
   }
 }
+
+//BEGIN NEW
+//WARNING : used exclusively for Domain Wall, note that constructor for BufferFace object contains an extra argument:
+DiracWilson::DiracWilson(const DiracParam &param, const int nDims) : 
+  Dirac(param), face(param.gauge->X, nDims, 12, 1, param.gauge->precision, param.Ls)
+{
+  for (int i=0; i<5; i++) {
+    blockDslash[i] = dim3(64, 1, 1);
+    blockDslashXpay[i] = dim3(64, 1, 1);
+  }
+}
+//END NEW
+
 
 DiracWilson::~DiracWilson()
 {

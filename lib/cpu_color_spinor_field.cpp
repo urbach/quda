@@ -27,6 +27,7 @@ aligned_malloc(size_t n, void **m0)
 
   }*/
 
+//A.S. : added 5th dim for DW dirac (splitting space-time only) for allocateGhostBuffer and packGhost methods  
 
 int cpuColorSpinorField::initGhostFaceBuffer =0;
 void* cpuColorSpinorField::fwdGhostFaceBuffer[QUDA_MAX_DIM]; 
@@ -213,10 +214,13 @@ cpuColorSpinorField& cpuColorSpinorField::Odd() const {
 
 //sets the elements of the field to random [0, 1]
 // FIXME: needs to be made "order safe"
+
+
 template <typename Float>
 void random(Float *v, const int length) {    
+  srand(comm_rank() + 1);
   for(int i = 0; i < length; i++) {
-    v[i] = rand() / (double)RAND_MAX;
+     v[i] = rand() / (double)RAND_MAX;
   }
 }
 
@@ -275,8 +279,10 @@ static int  compareSpinor(const FloatA *u, const FloatB *v, const int volume,
     for (int j=0; j<N; j++) {
       int is = i*N+j;
       double diff = fabs(u[is]-v[is]);
+
       for (int f=0; f<fail_check; f++)
-	if (diff > pow(10.0,-(f+1)/(double)resolution)) fail[f]++;
+        if (diff > pow(10.0,-(f+1)/(double)resolution)) fail[f]++;
+       
       if (diff > 1e-3) iter[j]++;
     }
   }
@@ -338,7 +344,6 @@ void print_vector(const Order &o, unsigned int x) {
     }
     std::cout << std::endl;
   }
-
 }
 
 // print out the vector at volume point x
@@ -357,6 +362,7 @@ void cpuColorSpinorField::PrintVector(unsigned int x) {
 
 }
 
+
 void cpuColorSpinorField::allocateGhostBuffer(void)
 {
   if (initGhostFaceBuffer) return;
@@ -369,11 +375,14 @@ void cpuColorSpinorField::allocateGhostBuffer(void)
   int X2 = this->x[1];
   int X3 = this->x[2];
   int X4 = this->x[3];
-  int Vsh[4]={ X2*X3*X4/2,
-	       X1*X3*X4/2,
-	       X1*X2*X4/2,
-	       X1*X2*X3/2};
+//BEGIN NEW  
+  int X5 = this->nDim == 5 ? this->x[4] : 1;
   
+  int Vsh[4]={ X2*X3*X4*X5/2,
+	       X1*X3*X4*X5/2,
+	       X1*X2*X4*X5/2,
+	       X1*X2*X3*X5/2};
+//END NEW  
   int num_faces = 1;
   if(this->nSpin == 1) num_faces = 3; // staggered
 
@@ -411,8 +420,6 @@ void cpuColorSpinorField::freeGhostBuffer(void)
   return;
 }
 
-
-
 void cpuColorSpinorField::packGhost(void* ghost_spinor, const int dim, 
 				    const QudaDirection dir, const QudaParity oddBit, const int dagger)
 {
@@ -430,6 +437,9 @@ void cpuColorSpinorField::packGhost(void* ghost_spinor, const int dim,
   int X2 = this->x[1];
   int X3 = this->x[2];
   int X4 = this->x[3];
+//BEGIN NEW 
+  int X5 = this->nDim == 5 ? this->x[4]: 1;
+//END NEW  
 
   for(int i=0;i < this->volume;i++){    
     /*
@@ -442,26 +452,32 @@ void cpuColorSpinorField::packGhost(void* ghost_spinor, const int dim,
     int za = sid/X1h;
     int x1h = sid - za*X1h;
     int zb = za/X2;
-  int x2 = za - zb*X2;
-  int x4 = zb/X3;
-  int x3 = zb - x4*X3;
-  int x1odd = (x2 + x3 + x4 + oddBit) & 1;
-  int x1 = 2*x1h + x1odd;
-  int X = 2*sid + x1odd; 
+    int x2 = za - zb*X2;
+//BEGIN NEW
+    int zc = zb / X3;
+    int x3 = zb - zc*X3;
+    int x5 = zc / X4; //this->nDim == 5 ? zz / X4 : 0;
+    int x4 = zc - x5*X4;
+    int x1odd = (x2 + x3 + x4 + x5 + oddBit) & 1;
+//END NEW
+    int x1 = 2*x1h + x1odd;
+    int X = 2*sid + x1odd; 
 
 
     int ghost_face_idx ;
     
+//NOTE: added extra dimension for DW dslash    
+
     switch(dim){            
     case 0: //X dimension
       if (dir == QUDA_BACKWARDS){
 	if (x1 < num_faces){
-	  ghost_face_idx =  (x1*X4*X3*X2 + x4*(X3*X2)+x3*X2 +x2)>>1;
+	  ghost_face_idx =  (x1*X5*X4*X3*X2 + x5*X4*X3*X2 + x4*(X3*X2)+x3*X2 +x2)>>1;
 	  memcpy( ((char*)ghost_spinor) + ghost_face_idx*spinor_size, ((char*)v)+i*spinor_size, spinor_size);
 	}
       }else{  // QUDA_FORWARDS
 	if (x1 >=X1 - num_faces){
-	  ghost_face_idx = ((x1-X1+num_faces)*X4*X3*X2 + x4*(X3*X2)+x3*X2 +x2)>>1;
+	  ghost_face_idx = ((x1-X1+num_faces)*X5*X4*X3*X2 + x5*X4*X3*X2 + x4*(X3*X2)+x3*X2 +x2)>>1;
 	  memcpy( ((char*)ghost_spinor) + ghost_face_idx*spinor_size, ((char*)v)+i*spinor_size, spinor_size);	  
 	}
       }
@@ -470,12 +486,12 @@ void cpuColorSpinorField::packGhost(void* ghost_spinor, const int dim,
     case 1: //Y dimension
       if (dir == QUDA_BACKWARDS){
 	if (x2 < num_faces){
-	  ghost_face_idx = (x2*X4*X3*X1 + x4*X3*X1+x3*X1+x1)>>1;
+	  ghost_face_idx = (x2*X5*X4*X3*X1 +x5*X4*X3*X1 + x4*X3*X1+x3*X1+x1)>>1;
 	  memcpy( ((char*)ghost_spinor) + ghost_face_idx*spinor_size, ((char*)v)+i*spinor_size, spinor_size);	  
 	}
       }else{ // QUDA_FORWARDS      
 	if (x2 >= X2 - num_faces){
-	  ghost_face_idx = ((x2-X2+num_faces)*X4*X3*X1+ x4*X3*X1+x3*X1+x1)>>1;
+	  ghost_face_idx = ((x2-X2+num_faces)*X5*X4*X3*X1 +x5*X4*X3*X1+ x4*X3*X1+x3*X1+x1)>>1;
 	  memcpy( ((char*)ghost_spinor) + ghost_face_idx*spinor_size, ((char*)v)+i*spinor_size, spinor_size);	  
 	}
       }
@@ -484,12 +500,12 @@ void cpuColorSpinorField::packGhost(void* ghost_spinor, const int dim,
     case 2: //Z dimension      
       if (dir == QUDA_BACKWARDS){
 	if (x3 < num_faces){
-	  ghost_face_idx = (x3*X4*X2*X1 + x4*X2*X1+x2*X1+x1)>>1;
+	  ghost_face_idx = (x3*X5*X4*X2*X1 + x5*X4*X2*X1 + x4*X2*X1+x2*X1+x1)>>1;
 	  memcpy( ((char*)ghost_spinor) + ghost_face_idx*spinor_size, ((char*)v)+i*spinor_size, spinor_size);	  
 	}
       }else{ // QUDA_FORWARDS     
 	if (x3 >= X3 - num_faces){
-	  ghost_face_idx = ((x3-X3+num_faces)*X4*X2*X1 + x4*X2*X1 + x2*X1 + x1)>>1;
+	  ghost_face_idx = ((x3-X3+num_faces)*X5*X4*X2*X1 + x5*X4*X2*X1 + x4*X2*X1 + x2*X1 + x1)>>1;
 	  memcpy( ((char*)ghost_spinor) + ghost_face_idx*spinor_size, ((char*)v)+i*spinor_size, spinor_size);	  
 	}
       }
@@ -498,12 +514,12 @@ void cpuColorSpinorField::packGhost(void* ghost_spinor, const int dim,
     case 3:  //T dimension      
       if (dir == QUDA_BACKWARDS){
 	if (x4 < num_faces){
-	  ghost_face_idx = (x4*X3*X2*X1 + x3*X2*X1+x2*X1+x1)>>1;
+	  ghost_face_idx = (x4*X5*X3*X2*X1 + x5*X3*X2*X1 + x3*X2*X1+x2*X1+x1)>>1;
 	  memcpy( ((char*)ghost_spinor) + ghost_face_idx*spinor_size, ((char*)v)+i*spinor_size, spinor_size);	  
 	}
       }else{ // QUDA_FORWARDS     
 	if (x4 >= X4 - num_faces){
-	  ghost_face_idx = ((x4-X4+num_faces)*X3*X2*X1 + x3*X2*X1+x2*X1+x1)>>1;
+	  ghost_face_idx = ((x4-X4+num_faces)*X5*X3*X2*X1 + x5*X3*X2*X1 + x3*X2*X1+x2*X1+x1)>>1;
 	  memcpy( ((char*)ghost_spinor) + ghost_face_idx*spinor_size, ((char*)v)+i*spinor_size, spinor_size);	  
 	}
       }
@@ -512,7 +528,6 @@ void cpuColorSpinorField::packGhost(void* ghost_spinor, const int dim,
       errorQuda("Invalid dim value\n");
     }//switch
   }//for i
-
   return;
 }
 
@@ -523,7 +538,5 @@ void cpuColorSpinorField::unpackGhost(void* ghost_spinor, const int dim,
   if (this->siteSubset == QUDA_FULL_SITE_SUBSET){
     errorQuda("Full spinor is not supported in unpackGhost for cpu\n");
   }
-  
-  
   
 }

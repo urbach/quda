@@ -154,6 +154,8 @@
 
 #if (DD_PREC==0) // double-precision fields
 
+#define TPROJSCALE tProjScale
+
 // double-precision gauge field
 #ifdef DIRECT_ACCESS_LINK
 #define GAUGE0TEX gauge0
@@ -179,6 +181,15 @@
 #define READ_SPINOR_DOWN READ_SPINOR_DOUBLE_DOWN_TEX
 #define SPINORTEX spinorTexDouble
 #endif
+
+#ifdef DIRECT_ACCESS_WILSON_INTER
+#define READ_INTERMEDIATE_SPINOR READ_SPINOR_DOUBLE
+#define INTERTEX out
+#else
+#define READ_INTERMEDIATE_SPINOR READ_SPINOR_DOUBLE_TEX
+#define INTERTEX interTexDouble
+#endif
+
 #define WRITE_SPINOR WRITE_SPINOR_DOUBLE2
 #define SPINOR_DOUBLE
 #if (DD_XPAY==1)
@@ -192,7 +203,11 @@
 
 #endif
 
+#define SPINOR_HOP 12
+
 #elif (DD_PREC==1) // single-precision fields
+
+#define TPROJSCALE tProjScale_f
 
 // single-precision gauge field
 #ifdef DIRECT_ACCESS_LINK
@@ -223,6 +238,15 @@
 #define READ_SPINOR_DOWN READ_SPINOR_SINGLE_DOWN_TEX
 #define SPINORTEX spinorTexSingle
 #endif
+
+#ifdef DIRECT_ACCESS_WILSON_INTER
+#define READ_INTERMEDIATE_SPINOR READ_SPINOR_SINGLE
+#define INTERTEX out
+#else
+#define READ_INTERMEDIATE_SPINOR READ_SPINOR_SINGLE_TEX
+#define INTERTEX interTexSingle
+#endif
+
 #define WRITE_SPINOR WRITE_SPINOR_FLOAT4
 #if (DD_XPAY==1)
 #ifdef DIRECT_ACCESS_WILSON_ACCUM
@@ -235,7 +259,11 @@
 
 #endif
 
+#define SPINOR_HOP 6
+
 #else             // half-precision fields
+
+#define TPROJSCALE tProjScale_f
 
 // half-precision gauge field
 #ifdef DIRECT_ACCESS_LINK
@@ -264,6 +292,15 @@
 #define READ_SPINOR_DOWN READ_SPINOR_HALF_DOWN_TEX
 #define SPINORTEX spinorTexHalf
 #endif
+
+#ifdef DIRECT_ACCESS_WILSON_INTER
+#define READ_INTERMEDIATE_SPINOR READ_SPINOR_HALF
+#define INTERTEX out
+#else
+#define READ_INTERMEDIATE_SPINOR READ_SPINOR_HALF_TEX
+#define INTERTEX interTexHalf
+#endif
+
 #define DD_PARAM1 short4* out, float *outNorm
 #define DD_PARAM3 const short4* in, const float *inNorm
 #define WRITE_SPINOR WRITE_SPINOR_SHORT4
@@ -275,13 +312,14 @@
 #define ACCUMTEX accumTexHalf
 #define READ_ACCUM READ_ACCUM_HALF_TEX
 #endif
-
 #endif
+
+#define SPINOR_HOP 6
 
 #endif
 
 // only build double precision if supported
-#if !(__CUDA_ARCH__ < 130 && DD_PREC == 0) 
+#if !(__CUDA_ARCH__ < 130 && DD_PREC == 0)
 
 #define DD_CONCAT(n,r,d,x) n ## r ## d ## x ## Kernel
 #define DD_FUNC(n,r,d,x) DD_CONCAT(n,r,d,x)
@@ -294,9 +332,9 @@ __global__ void	DD_FUNC(DD_NAME_F, DD_RECON_F, DD_DAG_F, DD_XPAY_F)
 
 #ifdef GPU_DOMAIN_WALL_DIRAC
 #if DD_DAG
-#include "dw_dslash_dagger_core.h"
+#include "dw_mgpu_dslash_dagger_core.h"
 #else
-#include "dw_dslash_core.h"
+#include "dw_mgpu_dslash_core.h"
 #endif
 #endif
 
@@ -326,11 +364,16 @@ __global__ void	DD_FUNC(DD_NAME_F, DD_RECON_F, DD_DAG_F, DD_XPAY_F)
 #undef READ_SPINOR_UP
 #undef READ_SPINOR_DOWN
 #undef SPINORTEX
+#undef READ_INTERMEDIATE_SPINOR
+#undef INTERTEX
 #undef WRITE_SPINOR
 #undef ACCUMTEX
 #undef READ_ACCUM
 #undef GAUGE_FLOAT2
 #undef SPINOR_DOUBLE
+#undef SPINOR_HOP
+
+#undef TPROJSCALE
 
 // prepare next set of options, or clean up after final iteration
 

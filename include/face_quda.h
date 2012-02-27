@@ -4,6 +4,8 @@
 #include <quda_internal.h>
 #include <color_spinor_field.h>
 
+//A.S. NEW:  added default agr in class constructor (Ls)
+
 #ifndef MPI_COMMS
 
 class FaceBuffer {
@@ -59,7 +61,7 @@ class FaceBuffer {
   void setupDims(const int *X);
  public:
   FaceBuffer(const int *X, const int nDim, const int Ninternal,
-	     const int nFace, const QudaPrecision precision);
+	     const int nFace, const QudaPrecision precision, const int Ls = 1);//NEW 
   FaceBuffer(const FaceBuffer &);
   virtual ~FaceBuffer();
 
@@ -128,7 +130,7 @@ class FaceBuffer {
   
  public:
   FaceBuffer(const int *X, const int nDim, const int Ninternal,
-	     const int nFace, const QudaPrecision precision);
+	     const int nFace, const QudaPrecision precision, const int Ls = 1);//NEW
   FaceBuffer(const FaceBuffer &);
   virtual ~FaceBuffer();
 

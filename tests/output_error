@@ -1,0 +1,159 @@
+My rank: 6, gridid(t,z,y,x): 6 0 0 0          
+MPI rank: rank=6, hostname=forge025, x_fwd_nbr=6, x_back_nbr=6
+MPI rank: rank=6, hostname=forge025, y_fwd_nbr=6, y_back_nbr=6
+MPI rank: rank=6, hostname=forge025, z_fwd_nbr=6, z_back_nbr=6
+MPI rank: rank=6, hostname=forge025, t_fwd_nbr=7, t_back_nbr=5
+My rank: 7, gridid(t,z,y,x): 7 0 0 0                          
+MPI rank: rank=7, hostname=forge025, x_fwd_nbr=7, x_back_nbr=7
+MPI rank: rank=7, hostname=forge025, y_fwd_nbr=7, y_back_nbr=7
+MPI rank: rank=7, hostname=forge025, z_fwd_nbr=7, z_back_nbr=7
+MPI rank: rank=7, hostname=forge025, t_fwd_nbr=0, t_back_nbr=6
+My rank: 5, gridid(t,z,y,x): 5 0 0 0                          
+MPI rank: rank=5, hostname=forge026, x_fwd_nbr=5, x_back_nbr=5
+MPI rank: rank=5, hostname=forge026, y_fwd_nbr=5, y_back_nbr=5
+MPI rank: rank=5, hostname=forge026, z_fwd_nbr=5, z_back_nbr=5
+MPI rank: rank=5, hostname=forge026, t_fwd_nbr=6, t_back_nbr=4
+My rank: 1, gridid(t,z,y,x): 1 0 0 0                          
+MPI rank: rank=1, hostname=forge026, x_fwd_nbr=1, x_back_nbr=1
+MPI rank: rank=1, hostname=forge026, y_fwd_nbr=1, y_back_nbr=1
+MPI rank: rank=1, hostname=forge026, z_fwd_nbr=1, z_back_nbr=1
+MPI rank: rank=1, hostname=forge026, t_fwd_nbr=2, t_back_nbr=0
+My rank: 2, gridid(t,z,y,x): 2 0 0 0                          
+MPI rank: rank=2, hostname=forge026, x_fwd_nbr=2, x_back_nbr=2
+MPI rank: rank=2, hostname=forge026, y_fwd_nbr=2, y_back_nbr=2
+MPI rank: rank=2, hostname=forge026, z_fwd_nbr=2, z_back_nbr=2
+MPI rank: rank=2, hostname=forge026, t_fwd_nbr=3, t_back_nbr=1
+My rank: 3, gridid(t,z,y,x): 3 0 0 0                          
+MPI rank: rank=3, hostname=forge026, x_fwd_nbr=3, x_back_nbr=3
+MPI rank: rank=3, hostname=forge026, y_fwd_nbr=3, y_back_nbr=3
+MPI rank: rank=3, hostname=forge026, z_fwd_nbr=3, z_back_nbr=3
+MPI rank: rank=3, hostname=forge026, t_fwd_nbr=4, t_back_nbr=2
+My rank: 4, gridid(t,z,y,x): 4 0 0 0                          
+MPI rank: rank=4, hostname=forge026, x_fwd_nbr=4, x_back_nbr=4
+MPI rank: rank=4, hostname=forge026, y_fwd_nbr=4, y_back_nbr=4
+MPI rank: rank=4, hostname=forge026, z_fwd_nbr=4, z_back_nbr=4
+MPI rank: rank=4, hostname=forge026, t_fwd_nbr=5, t_back_nbr=3
+My rank: 0, gridid(t,z,y,x): 0 0 0 0                          
+MPI rank: rank=0, hostname=forge026, x_fwd_nbr=0, x_back_nbr=0
+MPI rank: rank=0, hostname=forge026, y_fwd_nbr=0, y_back_nbr=0
+MPI rank: rank=0, hostname=forge026, z_fwd_nbr=0, z_back_nbr=0
+MPI rank: rank=0, hostname=forge026, t_fwd_nbr=1, t_back_nbr=7
+QUDA: Found device 0: Tesla M2070                             
+QUDA: Found device 1: Tesla M2070                             
+QUDA: Found device 2: Tesla M2070                             
+QUDA: Found device 3: Tesla M2070                             
+QUDA: Found device 4: Tesla M2070                             
+QUDA: Found device 5: Tesla M2070                             
+QUDA: Using device 0: Tesla M2070                             
+Creating a DiracDomainWallPC operator                         
+Creating a DiracDomainWallPC operator                         
+Creating a DiracDomainWallPC operator                         
+Source: CPU = 1.000000, CUDA copy = 1.000000                  
+Tuned DiracDomainWallDslash with (256,1,1) threads per block, Gflop/s = 23.995411
+Tuned DiracDomainWallDslash with (128,1,1) threads per block, Gflop/s = 26.327183
+Tuned DiracDomainWallDslashXpay with (160,1,1) threads per block, Gflop/s = 27.132772
+Tuned DiracDomainWallDslashXpay with (256,1,1) threads per block, Gflop/s = 27.547875
+Tuned DiracDomainWallDslash with (160,1,1) threads per block, Gflop/s = 45.348552    
+Tuned DiracDomainWallDslash with (224,1,1) threads per block, Gflop/s = 44.472458    
+Tuned DiracDomainWallDslashXpay with (256,1,1) threads per block, Gflop/s = 47.359155
+Tuned DiracDomainWallDslashXpay with (96,1,1) threads per block, Gflop/s = 46.789444 
+Tuned DiracDomainWallDslash with (96,1,1) threads per block, Gflop/s = 197.143585    
+Tuned DiracDomainWallDslash with (256,1,1) threads per block, Gflop/s = 197.390731   
+Tuned DiracDomainWallDslashXpay with (96,1,1) threads per block, Gflop/s = 182.590753
+Tuned DiracDomainWallDslashXpay with (128,1,1) threads per block, Gflop/s = 183.044239
+Prepared source = 1.000000                                                            
+
+Start CG iterations
+CG: 0 iterations, r2 = 1.637961e-01
+CG: 1 iterations, r2 = 1.718406e-02
+CG: 2 iterations, r2 = 4.113621e-03
+CG: 3 iterations, r2 = 1.161212e-03
+CG: 4 iterations, r2 = 4.709055e-04
+CG: 5 iterations, r2 = 2.096527e-04
+CG: 6 iterations, r2 = 1.031877e-04
+CG: 7 iterations, r2 = 5.484533e-05
+CG: 8 iterations, r2 = 3.054800e-05
+CG: 9 iterations, r2 = 1.797357e-05
+CG: 10 iterations, r2 = 1.100944e-05
+CG: 11 iterations, r2 = 6.965693e-06
+CG: 12 iterations, r2 = 4.508200e-06
+CG: 13 iterations, r2 = 3.008750e-06
+CG: 14 iterations, r2 = 2.057032e-06
+CG: 15 iterations, r2 = 1.436436e-06
+CG: 16 iterations, r2 = 1.028168e-06
+CG: 17 iterations, r2 = 7.496014e-07
+CG: 18 iterations, r2 = 5.582493e-07
+CG: 19 iterations, r2 = 4.240420e-07
+CG: 20 iterations, r2 = 3.279795e-07
+CG: 21 iterations, r2 = 2.579273e-07
+CG: 22 iterations, r2 = 2.055011e-07
+^Cmpirun: killing job...            
+
+--------------------------------------------------------------------------
+mpirun noticed that process rank 0 with PID 7593 on node forge026 exited on signal 0 (Unknown signal 0).
+--------------------------------------------------------------------------                              
+8 total processes killed (some possibly by mpirun during cleanup)                                       
+mpirun: clean termination accomplished                                                                  
+
+[astrelch@forge026 tests]$ sh launch_np8.sh 
+My rank: 6, gridid(t,z,y,x): 6 0 0 0        
+MPI rank: rank=6, hostname=forge025, x_fwd_nbr=6, x_back_nbr=6
+MPI rank: rank=6, hostname=forge025, y_fwd_nbr=6, y_back_nbr=6
+MPI rank: rank=6, hostname=forge025, z_fwd_nbr=6, z_back_nbr=6
+MPI rank: rank=6, hostname=forge025, t_fwd_nbr=7, t_back_nbr=5
+My rank: 7, gridid(t,z,y,x): 7 0 0 0                          
+MPI rank: rank=7, hostname=forge025, x_fwd_nbr=7, x_back_nbr=7
+MPI rank: rank=7, hostname=forge025, y_fwd_nbr=7, y_back_nbr=7
+MPI rank: rank=7, hostname=forge025, z_fwd_nbr=7, z_back_nbr=7
+MPI rank: rank=7, hostname=forge025, t_fwd_nbr=0, t_back_nbr=6
+My rank: 0, gridid(t,z,y,x): 0 0 0 0                          
+MPI rank: rank=0, hostname=forge026, x_fwd_nbr=0, x_back_nbr=0
+MPI rank: rank=0, hostname=forge026, y_fwd_nbr=0, y_back_nbr=0
+MPI rank: rank=0, hostname=forge026, z_fwd_nbr=0, z_back_nbr=0
+MPI rank: rank=0, hostname=forge026, t_fwd_nbr=1, t_back_nbr=7
+My rank: 4, gridid(t,z,y,x): 4 0 0 0                          
+MPI rank: rank=4, hostname=forge026, x_fwd_nbr=4, x_back_nbr=4
+MPI rank: rank=4, hostname=forge026, y_fwd_nbr=4, y_back_nbr=4
+MPI rank: rank=4, hostname=forge026, z_fwd_nbr=4, z_back_nbr=4
+MPI rank: rank=4, hostname=forge026, t_fwd_nbr=5, t_back_nbr=3
+My rank: 1, gridid(t,z,y,x): 1 0 0 0                          
+MPI rank: rank=1, hostname=forge026, x_fwd_nbr=1, x_back_nbr=1
+MPI rank: rank=1, hostname=forge026, y_fwd_nbr=1, y_back_nbr=1
+MPI rank: rank=1, hostname=forge026, z_fwd_nbr=1, z_back_nbr=1
+MPI rank: rank=1, hostname=forge026, t_fwd_nbr=2, t_back_nbr=0
+My rank: 5, gridid(t,z,y,x): 5 0 0 0                          
+MPI rank: rank=5, hostname=forge026, x_fwd_nbr=5, x_back_nbr=5
+MPI rank: rank=5, hostname=forge026, y_fwd_nbr=5, y_back_nbr=5
+MPI rank: rank=5, hostname=forge026, z_fwd_nbr=5, z_back_nbr=5
+MPI rank: rank=5, hostname=forge026, t_fwd_nbr=6, t_back_nbr=4
+My rank: 2, gridid(t,z,y,x): 2 0 0 0
+MPI rank: rank=2, hostname=forge026, x_fwd_nbr=2, x_back_nbr=2
+MPI rank: rank=2, hostname=forge026, y_fwd_nbr=2, y_back_nbr=2
+MPI rank: rank=2, hostname=forge026, z_fwd_nbr=2, z_back_nbr=2
+MPI rank: rank=2, hostname=forge026, t_fwd_nbr=3, t_back_nbr=1
+My rank: 3, gridid(t,z,y,x): 3 0 0 0
+MPI rank: rank=3, hostname=forge026, x_fwd_nbr=3, x_back_nbr=3
+MPI rank: rank=3, hostname=forge026, y_fwd_nbr=3, y_back_nbr=3
+MPI rank: rank=3, hostname=forge026, z_fwd_nbr=3, z_back_nbr=3
+MPI rank: rank=3, hostname=forge026, t_fwd_nbr=4, t_back_nbr=2
+QUDA: Found device 0: Tesla M2070
+QUDA: Found device 1: Tesla M2070
+QUDA: Found device 2: Tesla M2070
+QUDA: Found device 3: Tesla M2070
+QUDA: Found device 4: Tesla M2070
+QUDA: Found device 5: Tesla M2070
+QUDA: Using device 0: Tesla M2070
+Creating a DiracDomainWallPC operator
+Creating a DiracDomainWallPC operator
+Creating a DiracDomainWallPC operator
+Source: CPU = 1.000000, CUDA copy = 1.000000
+Tuned DiracDomainWallDslash with (256,1,1) threads per block, Gflop/s = 24.292826
+Tuned DiracDomainWallDslash with (192,1,1) threads per block, Gflop/s = 25.984369
+Tuned DiracDomainWallDslashXpay with (192,1,1) threads per block, Gflop/s = 26.564450
+Tuned DiracDomainWallDslashXpay with (32,1,1) threads per block, Gflop/s = 24.544451
+Tuned DiracDomainWallDslash with (160,1,1) threads per block, Gflop/s = 38.808576
+Tuned DiracDomainWallDslash with (32,1,1) threads per block, Gflop/s = 39.418198
+Tuned DiracDomainWallDslashXpay with (256,1,1) threads per block, Gflop/s = 38.578616
+Tuned DiracDomainWallDslashXpay with (32,1,1) threads per block, Gflop/s = 38.935272
+--------------------------------------------------------------------------
+mpirun noticed that process rank 5 with PID 7645 on node forge026 exited on signal 11 (Segmentation fault).

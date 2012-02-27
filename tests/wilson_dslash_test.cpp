@@ -31,9 +31,9 @@ extern QudaDslashType dslash_type;
 const QudaParity parity = QUDA_EVEN_PARITY; // even or odd?
 const int transfer = 0; // include transfer time in the benchmark?
 
-const int loops = 100;
+const int loops = 1;
 
-bool tune = true;
+bool tune = false;
 
 QudaPrecision cpu_prec = QUDA_DOUBLE_PRECISION;
 QudaPrecision cuda_prec;
@@ -66,8 +66,6 @@ extern char latfile[];
 
 void init(int argc, char **argv) {
 
-  //qudaSetNumaConfig("/usr/local/gpu_numa_config.txt");
-
   kernelPackT = false; // Set true for kernel T face packing
   cuda_prec= prec;
 
@@ -84,7 +82,7 @@ void init(int argc, char **argv) {
 
   gauge_param.type = QUDA_WILSON_LINKS;
   gauge_param.gauge_order = QUDA_QDP_GAUGE_ORDER;
-  gauge_param.t_boundary = QUDA_PERIODIC_T;
+  gauge_param.t_boundary = QUDA_ANTI_PERIODIC_T;
 
   gauge_param.cpu_prec = cpu_prec;
   gauge_param.cuda_prec = cuda_prec;

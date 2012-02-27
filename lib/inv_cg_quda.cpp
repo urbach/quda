@@ -25,9 +25,14 @@ void invertCgCuda(const DiracMatrix &mat, const DiracMatrix &matSloppy, cudaColo
   ColorSpinorParam param(x);
   param.create = QUDA_ZERO_FIELD_CREATE;
   cudaColorSpinorField y(b, param); 
+
+printfQuda("\nCheck norms here: r = %g, x = %g, y =  %g\n", norm2(r), norm2(x), norm2(y));
   
   mat(r, x, y);
   zeroCuda(y);
+
+printfQuda("\nCheck norms here: r = %g, x = %g, y =  %g\n", norm2(r), norm2(x), norm2(y));
+
 
   double r2 = xmyNormCuda(b, r);
   rUpdate ++;
@@ -79,7 +84,6 @@ void invertCgCuda(const DiracMatrix &mat, const DiracMatrix &matSloppy, cudaColo
     alpha = r2 / pAp;        
     r2_old = r2;
     r2 = axpyNormCuda(-alpha, Ap, rSloppy);
-
     // reliable update conditions
     rNorm = sqrt(r2);
     if (rNorm > maxrx) maxrx = rNorm;

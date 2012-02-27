@@ -53,26 +53,29 @@ void invertMRCuda(const DiracMatrix &mat, cudaColorSpinorField &x, cudaColorSpin
   cudaColorSpinorField &Ar = *Arp_mr;
   cudaColorSpinorField &tmp = *tmpp_mr;
 
-  // set initial guess to zero and thus the residual is just the source
-  zeroCuda(x);  // can get rid of this for a special first update kernel  
-  double b2 = normCuda(b);
   if (&r != &b) copyCuda(r, b);
 
-  // domain-wise normalization of the initial residual to prevent underflow
-  double r2=0.0; // if zero source then we will exit immediately doing no work
-   if (b2 > 0.0) {
-    axCuda(1/sqrt(b2), r); // can merge this with the prior copy
-    r2 = 1.0; // by definition by this is now true
-  }
-  double stop = r2*invert_param->tol*invert_param->tol; // stopping condition of solver
+  double b2 = normCuda(b);
+  double stop = b2*invert_param->tol*invert_param->tol; // stopping condition of solver
+
+  // calculate initial residual
+  //mat(Ar, x, tmp);
+  //double r2 = xmyNormCuda(b, Ar);  
+  //r = Ar;
+
+  zeroCuda(x);
+  double r2 = b2;
 
   if (invert_param->inv_type_precondition != QUDA_GCR_INVERTER) {
     blas_quda_flops = 0;
     stopwatchStart();
   }
 
+  double omega = 1.0;
+
   int k = 0;
-  if (invert_param->verbosity >= QUDA_VERBOSE) printfQuda("MR: %d iterations, r2 = %e\n", k, r2);
+  if (invert_param->verbosity >= QUDA_VERBOSE) 
+    printfQuda("MR: %d iterations, r2 = %e\n", k, r2);
 
   while (r2 > stop && k < invert_param->maxiter) {
     
@@ -83,17 +86,14 @@ void invertMRCuda(const DiracMatrix &mat, cudaColorSpinorField &x, cudaColorSpin
 
     //printfQuda("%d MR %e %e %e\n", k, Ar3.x, Ar3.y, Ar3.z);
 
-    // x += alpha*r, r -= alpha*Ar, r2 = norm2(r)
-    r2 = caxpyXmazNormXCuda(alpha, r, x, Ar);
+    // x += omega*alpha*r, r -= omega*alpha*Ar, r2 = norm2(r)
+    r2 = caxpyXmazNormXCuda(omega*alpha, r, x, Ar);
 
     k++;
 
     if (invert_param->verbosity >= QUDA_VERBOSE) printfQuda("MR: %d iterations, r2 = %e\n", k, r2);
   }
   
-  // Obtain global solution by rescaling
-  if (b2 > 0.0) axCuda(sqrt(b2), x);
-
   if (k>=invert_param->maxiter && invert_param->verbosity >= QUDA_SUMMARIZE) 
     warningQuda("Exceeded maximum iterations %d", invert_param->maxiter);
   

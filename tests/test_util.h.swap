@@ -58,7 +58,7 @@ extern "C" {
   int process_command_line_option(int argc, char** argv, int* idx);
   
   // for nersc gauge field config:
-  int read_nersc_gauge_field(double **gauge, char *filename, double *plaq, QudaGaugeParam *param, const int bigendian);
+  int read_nersc_gauge_field(double**gauge, char*filename, double *plaq, const int *partition, const int *LX, const int bigendian, QudaTboundary bc) ;
  
 #ifdef __cplusplus
 }

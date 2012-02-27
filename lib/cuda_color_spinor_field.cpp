@@ -8,6 +8,8 @@
 #include "misc_helpers.h"
 #include <face_quda.h>
 
+//A.S.: changes in packGhost method for DWF
+
 // Easy to switch between overlapping communication or not
 #ifdef OVERLAP_COMMS
 #define CUDAMEMCPY(dst, src, size, type, stream) cudaMemcpyAsync(dst, src, size, type, stream)
@@ -24,7 +26,7 @@ void* cudaColorSpinorField::fwdGhostFaceBuffer[QUDA_MAX_DIM]; //gpu memory
 void* cudaColorSpinorField::backGhostFaceBuffer[QUDA_MAX_DIM]; //gpu memory
 QudaPrecision cudaColorSpinorField::facePrecision; 
 
-extern bool kernelPackT;
+extern bool kernelPackT;//Defined in dslash_quda.cu
 
 /*cudaColorSpinorField::cudaColorSpinorField() : 
   ColorSpinorField(), v(0), norm(0), alloc(false), init(false) {
@@ -273,7 +275,7 @@ void cudaColorSpinorField::loadCPUSpinorField(const cpuColorSpinorField &src) {
 
   // (temporary?) bug fix for padding
   memset(buffer, 0, bufferBytes);
-  
+
 #define LOAD_SPINOR_CPU_TO_GPU(myNs)					\
   if (precision == QUDA_DOUBLE_PRECISION) {				\
       if (src.precision == QUDA_DOUBLE_PRECISION) {			\
@@ -497,9 +499,8 @@ void cudaColorSpinorField::packGhost(void *ghost_spinor, const int dim, const Qu
   int Nvec = (nSpin == 1 || precision == QUDA_DOUBLE_PRECISION) ? 2 : 4;
   int nFace = (nSpin == 1) ? 3 : 1; //3 faces for asqtad
   int Nint = (nColor * nSpin * 2) / (nSpin == 4 ? 2 : 1);  // (spin proj.) degrees of freedom
-
+//A.S.:added for DW MPI
   if (dim !=3 || kernelPackT) { // use kernels to pack into contiguous buffers then a single cudaMemcpy
-
     size_t bytes = nFace*Nint*ghostFace[dim]*precision;
     if (precision == QUDA_HALF_PRECISION) bytes += nFace*ghostFace[dim]*sizeof(float);
     void* gpu_buf = 
@@ -507,10 +508,16 @@ void cudaColorSpinorField::packGhost(void *ghost_spinor, const int dim, const Qu
 
     if (nSpin == 1) { // use different packing kernels for staggered and Wilson
       collectGhostSpinor(this->v, this->norm, gpu_buf, dim, dir, parity, this, stream); CUERR;
-    } else {
+    } 
+//BEGIN NEW    
+    else if(this->nDim == 5){/// DW dslash:
+      packFaceDW(gpu_buf, *this, dim, dir, dagger, parity, *stream); CUERR;
+    }else{
       packFaceWilson(gpu_buf, *this, dim, dir, dagger, parity, *stream); CUERR;
     }
+//END NEW    
     CUDAMEMCPY(ghost_spinor, gpu_buf, bytes, cudaMemcpyDeviceToHost, *stream); CUERR;
+
   } else { // do multiple cudaMemcpys 
 
     int Npad = Nint / Nvec; // number Nvec buffers we have
@@ -546,7 +553,7 @@ void cudaColorSpinorField::packGhost(void *ghost_spinor, const int dim, const Qu
       void *src = (char*)norm + norm_offset;
       CUDAMEMCPY(dst, src, nFace*ghostFace[3]*sizeof(float), cudaMemcpyDeviceToHost, *stream); CUERR;
     }
-  }
+  }//end of else
 #else
   errorQuda("packGhost not built on single-GPU build");
 #endif
@@ -570,7 +577,7 @@ void cudaColorSpinorField::unpackGhost(void* ghost_spinor, const int dim,
   void *src = ghost_spinor;
 
   CUDAMEMCPY(dst, src, len*precision, cudaMemcpyHostToDevice, *stream); CUERR;
-    
+
   if (precision == QUDA_HALF_PRECISION) {
     int normlen = nFace*ghostFace[dim];
     int norm_offset = stride + ghostNormOffset[dim];

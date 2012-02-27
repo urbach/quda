@@ -1,7 +1,6 @@
 #ifndef _QUDA_INTERNAL_H
 #define _QUDA_INTERNAL_H
 
-#include <cuda.h>
 #include <cuda_runtime.h>
 
 #ifdef QMP_COMMS
@@ -29,6 +28,7 @@
 #include <enum_quda.h>
 #include <util_quda.h>
 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -43,7 +43,7 @@ extern "C" {
     int volumeCB; // geometric volume (single parity)
     int pad; // padding from end of array to start of next
     int stride; // geometric stride between volume lengthed arrays
-    int X[4]; // the geometric lengths
+    int X[4]; // the geometric lengths (also for DW dslash)
     int Nc; // number of colors
     ReconstructType reconstruct;
     GaugeFixed gauge_fixed;

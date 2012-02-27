@@ -13,12 +13,16 @@ extern "C" {
 
   void setDims(int *, const int);
   
-  void dslash(void *res, void **gaugeFull, void *spinorField, 
+  void dw_dslash(void *res, void **gaugeFull, void *spinorField, 
 	      int oddBit, int daggerBit, 
-	      QudaPrecision sPrecision, QudaPrecision gPrecision, double mferm);
+	      QudaPrecision precision, double mferm, const int nodes);
 
   void mat(void *out, void **gauge, void *in, double kappa, int daggerBit,
 	   QudaPrecision sPrecision, QudaPrecision gPrecision, double mferm);
+
+  void dw_mat(void *out, void **gauge, void *in, double kappa, int dagger_bit, QudaPrecision precision, double mferm, const int nodes);
+
+  void dw_matdagmat(void *out, void **gauge, void *in, double kappa, int dagger_bit, QudaPrecision precision, double mferm, const int nodes);
 
   void matpc(void *out, void **gauge, void *in, double kappa,
 	     QudaMatPCType matpc_type,  int daggerBit,

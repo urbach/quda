@@ -961,13 +961,13 @@ twist = False
 clover = True
 dagger = False
 print sys.argv[0] + ": generating wilson_dslash_core.h";
-f = open('dslash_core/wilson_dslash_core.h', 'w')
+f = open('../dslash_core/wilson_dslash_core.h', 'w')
 f.write(generate_dslash())
 f.close()
 
 dagger = True
 print sys.argv[0] + ": generating wilson_dslash_dagger_core.h";
-f = open('dslash_core/wilson_dslash_dagger_core.h', 'w')
+f = open('../dslash_core/wilson_dslash_dagger_core.h', 'w')
 f.write(generate_dslash())
 f.close()
 
@@ -975,13 +975,13 @@ twist = True
 clover = False
 dagger = False
 print sys.argv[0] + ": generating tm_dslash_core.h";
-f = open('dslash_core/tm_dslash_core.h', 'w')
+f = open('../dslash_core/tm_dslash_core.h', 'w')
 f.write(generate_dslash())
 f.close()
 
 dagger = True
 print sys.argv[0] + ": generating tm_dslash_dagger_core.h";
-f = open('dslash_core/tm_dslash_dagger_core.h', 'w')
+f = open('../dslash_core/tm_dslash_dagger_core.h', 'w')
 f.write(generate_dslash())
 f.close()
 
@@ -990,13 +990,13 @@ twist = False
 clover = False
 dagger = False
 print sys.argv[0] + ": generating wilson_pack_face_core.h";
-f = open('dslash_core/wilson_pack_face_core.h', 'w')
+f = open('../dslash_core/wilson_pack_face_core.h', 'w')
 f.write(generate_pack())
 f.close()
 
 dagger = True
 print sys.argv[0] + ": generating wilson_pack_face_dagger_core.h";
-f = open('dslash_core/wilson_pack_face_dagger_core.h', 'w')
+f = open('../dslash_core/wilson_pack_face_dagger_core.h', 'w')
 f.write(generate_pack())
 f.close()
 

@@ -228,6 +228,11 @@ class ColorSpinorField {
 
   friend void packFaceWilson(void *ghost_buf, cudaColorSpinorField &in, const int dim, const QudaDirection dir, const int dagger, 
 			     const int parity, const cudaStream_t &stream);
+//BEGIN NEW
+  friend void packFaceDW(void *ghost_buf, cudaColorSpinorField &in, const int dim, const QudaDirection dir, const int dagger, 
+			     const int parity, const cudaStream_t &stream);
+//END NEW
+
   friend void collectGhostSpinor(void *in, const void *inNorm, void* ghost_spinor_gpu, int dir, int whichway,
 				 const int parity, cudaColorSpinorField* inSpinor, cudaStream_t* stream);
 };
@@ -304,7 +309,7 @@ class cudaColorSpinorField : public ColorSpinorField {
   friend void domainWallDslashCuda(cudaColorSpinorField *out, const FullGauge gauge, 
 				   const cudaColorSpinorField *in, const int parity, const int dagger, 
 				   const cudaColorSpinorField *x, const double &m_f, const double &k2,
-				   const dim3 *block);
+				   const dim3 *block, const int *commDim);
   friend void staggeredDslashCuda(cudaColorSpinorField *out, const FullGauge fatGauge, 
 				  const FullGauge longGauge, const cudaColorSpinorField *in,
 				  const int parity, const int dagger, const cudaColorSpinorField *x,
@@ -321,6 +326,10 @@ class cudaColorSpinorField : public ColorSpinorField {
 			      const QudaTwistGamma5Type twist, const dim3 &block);
   friend void packFaceWilson(void *ghost_buf, cudaColorSpinorField &in, const int dim, const QudaDirection dir, const int dagger, 
 			     const int parity, const cudaStream_t &stream);
+//BEGIN NEW
+  friend void packFaceDW(void *ghost_buf, cudaColorSpinorField &in, const int dim, const QudaDirection dir, const int dagger,
+                             const int parity, const cudaStream_t &stream);
+//END NEW
 
  private:
   void *v; // the field elements

@@ -47,7 +47,7 @@ void cloverCuda(cudaColorSpinorField *out, const FullGauge gauge, const FullClov
 // domain wall Dslash  
 void domainWallDslashCuda(cudaColorSpinorField *out, const FullGauge gauge, const cudaColorSpinorField *in, 
 			  const int parity, const int dagger, const cudaColorSpinorField *x, 
-			  const double &m_f, const double &k, const dim3 *blockDim);
+			  const double &m_f, const double &k, const dim3 *blockDim, const int *commDim);//NOTE:new arg is added
 
 // staggered Dslash    
 void staggeredDslashCuda(cudaColorSpinorField *out, const FullGauge fatGauge, FullGauge longGauge,
@@ -69,4 +69,8 @@ void twistGamma5Cuda(cudaColorSpinorField *out, const cudaColorSpinorField *in,
 void packFaceWilson(void *ghost_buf, cudaColorSpinorField &in, const int dim, const QudaDirection dir, const int dagger, 
 		    const int parity, const cudaStream_t &stream);
 
+//BEGIN NEW		    
+void packFaceDW(void *ghost_buf, cudaColorSpinorField &in, const int dim, const QudaDirection dir, const int dagger, 
+		    const int parity, const cudaStream_t &stream);		    
+//END NEW
 #endif // _DSLASH_QUDA_H

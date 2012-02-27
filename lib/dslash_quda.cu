@@ -49,7 +49,8 @@ struct DslashParam {
 
 // determines whether the temporal ghost zones are packed with a gather kernel,
 // as opposed to multiple calls to cudaMemcpy()
-bool kernelPackT = false;
+//! WARNING:for DW must be currently set to 'true'
+bool kernelPackT = false; 
 
 DslashParam dslashParam;
 
@@ -61,8 +62,6 @@ static const int Nstream = 9;
 static const int Nstream = 1;
 #endif
 static cudaStream_t streams[Nstream];
-static cudaEvent_t scatterEvent[Nstream];
-static cudaEvent_t dslashEnd;
 
 FaceBuffer *face;
 cudaColorSpinorField *inSpinor;
@@ -335,7 +334,6 @@ public:
 
   void apply(const dim3 &blockDim, const int shared_bytes, const cudaStream_t &stream) {
     dim3 gridDim( (dslashParam.threads+blockDim.x-1) / blockDim.x, 1, 1);
-    //printfQuda("Applying dslash: threads = %d, type = %d\n", dslashParam.threads, dslashParam.kernel_type);
     DSLASH(dslash, gridDim, blockDim, shared_bytes, stream, dslashParam,
 	   out, outNorm, gauge0, gauge1, in, inNorm, x, xNorm, a);
   }
@@ -467,15 +465,13 @@ void dslashCuda(DslashCuda &dslash, const size_t regSize, const int parity, cons
   dslashParam.parity = parity;
 
   dslashParam.kernel_type = INTERIOR_KERNEL;
-  dslashParam.tOffset = 0;
-  dslashParam.tMul = 1;
+
+  dslashParam.tOffset = 0;//! 
+  dslashParam.tMul = 1;   //! 
   dslashParam.threads = volume;
 
 #ifdef MULTI_GPU
-  // wait for any previous outstanding dslashes to finish
-  cudaStreamWaitEvent(0, dslashEnd, 0);
-
-  // Gather from source spinor
+    // Gather from source spinor
   for(int dir = 3; dir >=0; dir--){ // count down for Wilson
     if (!dslashParam.commDim[dir]) continue;
     face->exchangeFacesStart(*inSpinor, 1-parity, dagger, dir, streams);
@@ -495,10 +491,6 @@ void dslashCuda(DslashCuda &dslash, const size_t regSize, const int parity, cons
     
     // Wait for comms to finish, and scatter into the end zone
     face->exchangeFacesWait(*inSpinor, dagger, i);
-
-    // Record the end of the scattering
-    cudaEventRecord(scatterEvent[2*i], streams[2*i]);
-    cudaEventRecord(scatterEvent[2*i+1], streams[2*i+1]);
   }
 
   for (int i=3; i>=0; i--) { // count down for Wilson
@@ -506,22 +498,15 @@ void dslashCuda(DslashCuda &dslash, const size_t regSize, const int parity, cons
 
     shared_bytes = blockDim[i+1].x*(DSLASH_SHARED_FLOATS_PER_THREAD*regSize + SHARED_COORDS);
     
-    //cudaStreamSynchronize(streams[2*i]);
-    //cudaStreamSynchronize(streams[2*i + 1]);
-    
+    cudaStreamSynchronize(streams[2*i]);
+    cudaStreamSynchronize(streams[2*i + 1]);
     dslashParam.kernel_type = static_cast<KernelType>(i);
     //dslashParam.tOffset = dims[i]-2; // is this redundant?
     dslashParam.threads = 2*faceVolumeCB[i]; // updating 2 faces
 
-    // wait for scattering to finish and then launch dslash
-    cudaStreamWaitEvent(streams[Nstream-1], scatterEvent[2*i], 0);
-    cudaStreamWaitEvent(streams[Nstream-1], scatterEvent[2*i+1], 0);
     dslash.apply(blockDim[i+1], shared_bytes, streams[Nstream-1]); // all faces use this stream
   }
-
-  cudaEventRecord(dslashEnd, streams[Nstream-1]);
-  //cudaStreamSynchronize(streams[Nstream-1]);
-
+  cudaStreamSynchronize(streams[Nstream-1]);
 #endif // MULTI_GPU
 }
 
@@ -539,7 +524,6 @@ void wilsonDslashCuda(cudaColorSpinorField *out, const FullGauge gauge, const cu
     dslashParam.ghostOffset[i] = Npad*(in->ghostOffset[i] + in->stride);
     dslashParam.ghostNormOffset[i] = in->ghostNormOffset[i] + in->stride;
     dslashParam.commDim[i] = (!commOverride[i]) ? 0 : commDimPartitioned(i); // switch off comms if override = 0
-    //printf("%d ghostDim = %d commDim = %d\n", i, dslashParam.ghostDim[i], dslashParam.commDim[i]);
   }
 
   void *gauge0, *gauge1;
@@ -717,29 +701,48 @@ void twistedMassDslashCuda(cudaColorSpinorField *out, const FullGauge gauge,
 void domainWallDslashCuda(cudaColorSpinorField *out, const FullGauge gauge, 
 			  const cudaColorSpinorField *in, const int parity, const int dagger, 
 			  const cudaColorSpinorField *x, const double &m_f, const double &k2,
-			  const dim3 *blockDim) {
+			  const dim3 *blockDim, const int *commOverride) {//new arg added
 
   inSpinor = (cudaColorSpinorField*)in; // EVIL
 
-#ifdef MULTI_GPU
-  errorQuda("Multi-GPU domain wall not implemented\n");
-#endif
+//#ifdef MULTI_GPU
+//  errorQuda("Multi-GPU domain wall not implemented\n");
+//#endif
 
   dslashParam.parity = parity;
-  dslashParam.threads = in->volume;
+  dslashParam.threads = in->volume;//!check this: must be 5d cb volume
 
 #ifdef GPU_DOMAIN_WALL_DIRAC
+//BEGIN NEW
+  kernelPackT = true; 
+  
+  int Npad = (in->nColor*in->nSpin*2)/in->fieldOrder; // SPINOR_HOP in old code
+  
+  //currently splitting in space-time is impelemented:
+  //!check for 'in' object: ghostOffset, ghostNormOffset and ghostFace data elements
+  int dirs = 4;
+  for(int i = 0;i < dirs; i++)
+  {
+    dslashParam.ghostDim[i] = commDimPartitioned(i); // determines whether to use regular or ghost indexing at boundary
+    dslashParam.ghostOffset[i] = Npad*(in->ghostOffset[i] + in->stride);
+    dslashParam.ghostNormOffset[i] = in->ghostNormOffset[i] + in->stride;
+    dslashParam.commDim[i] = (!commOverride[i]) ? 0 : commDimPartitioned(i); // switch off comms if override = 0
+    //printf("%d ghostDim = %d commDim = %d\n", i, dslashParam.ghostDim[i], dslashParam.commDim[i]);
+  }
+//END NEW
+
   void *gauge0, *gauge1;
   bindGaugeTex(gauge, parity, &gauge0, &gauge1);
 
   if (in->precision != gauge.precision)
     errorQuda("Mixing gauge and spinor precision not supported");
 
-  void *xv = x ? x->v : 0;
-  void *xn = x ? x->norm : 0;
+  void *xv = (x ? x->v : 0);
+  void *xn = (x ? x->norm : 0);
 
   DslashCuda *dslash = 0;
   size_t regSize = sizeof(float);
+
 
   if (in->precision == QUDA_DOUBLE_PRECISION) {
 #if (__CUDA_ARCH__ >= 130)
@@ -774,7 +777,7 @@ void domainWallDslashCuda(cudaColorSpinorField *out, const FullGauge gauge,
 
 
 template <typename spinorFloat, typename fatGaugeFloat, typename longGaugeFloat>
-void staggeredDslashCuda(spinorFloat *out, float *outNorm, const fatGaugeFloat *fatGauge0, const fatGaugeFloat *fatGauge1, 
+  void staggeredDslashCuda(spinorFloat *out, float *outNorm, const fatGaugeFloat *fatGauge0, const fatGaugeFloat *fatGauge1, 
 			   const longGaugeFloat* longGauge0, const longGaugeFloat* longGauge1, 
 			   const QudaReconstructType reconstruct, const spinorFloat *in, const float *inNorm,
 			   const int parity, const int dagger, const spinorFloat *x, const float *xNorm, 
@@ -796,9 +799,6 @@ void staggeredDslashCuda(spinorFloat *out, float *outNorm, const fatGaugeFloat *
   dslashParam.tOffset =  0;
   dslashParam.threads = volume;
 #ifdef MULTI_GPU
-  // wait for any previous outstanding dslashes to finish
-  cudaStreamWaitEvent(0, dslashEnd, 0);
-
   // Gather from source spinor
   for(int dir = 0; dir <4; dir++){
     if (!dslashParam.commDim[dir]) continue;
@@ -818,30 +818,22 @@ void staggeredDslashCuda(spinorFloat *out, float *outNorm, const fatGaugeFloat *
     face->exchangeFacesComms(i);
     // Wait for comms to finish, and scatter into the end zone
     face->exchangeFacesWait(*inSpinor, dagger,i);    
-
-    // Record the end of the scattering
-    cudaEventRecord(scatterEvent[2*i], streams[2*i]);
-    cudaEventRecord(scatterEvent[2*i+1], streams[2*i+1]);
   }
 
   for(int i=0 ;i < 4;i++){
     if(!dslashParam.commDim[i]) continue;
 
     shared_bytes = blockDim[i+1].x*6*regSize;
-
-    //cudaStreamSynchronize(streams[2*i]);
-    //cudaStreamSynchronize(streams[2*i + 1]);
+    
+    cudaStreamSynchronize(streams[2*i]);
+    cudaStreamSynchronize(streams[2*i + 1]);
     dslashParam.kernel_type = static_cast<KernelType>(i);
     dslashParam.tOffset =  dims[i]-6;
     dslashParam.threads = 6*Vsh[i];
-    cudaStreamWaitEvent(streams[Nstream-1], scatterEvent[2*i], 0);
-    cudaStreamWaitEvent(streams[Nstream-1], scatterEvent[2*i+1], 0);
     STAGGERED_DSLASH(exteriorGridDim[i], blockDim[i+1], shared_bytes, streams[Nstream-1], dslashParam,
 		     out, outNorm, fatGauge0, fatGauge1, longGauge0, longGauge1, in, inNorm, x, xNorm, a); CUERR;
   }
-
-  cudaEventRecord(dslashEnd, streams[Nstream-1]);
-  //cudaStreamSynchronize(streams[Nstream-1]);
+  cudaStreamSynchronize(streams[Nstream-1]);
 
 #endif
 }

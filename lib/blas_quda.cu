@@ -1054,6 +1054,7 @@ __global__ void xpyHKernel(short2 *yH, float *yN, int stride, int length) {
 void xpyCuda(cudaColorSpinorField &x, cudaColorSpinorField &y) {
   checkSpinor(x,y);
   setBlock(3, x.length, x.precision);
+blasGrid.x = 16384; blasBlock.x = 128;
   if (x.precision == QUDA_DOUBLE_PRECISION) {
     xpyKernel<<<blasGrid, blasBlock>>>((double*)x.v, (double*)y.v, x.length);
   } else if (x.precision == QUDA_SINGLE_PRECISION) {
@@ -1136,6 +1137,7 @@ __global__ void axpyHKernel(float a, short2 *yH, float *yN, int stride, int leng
 void axpyCuda(const double &a, cudaColorSpinorField &x, cudaColorSpinorField &y) {
   checkSpinor(x,y);
   setBlock(4, x.length, x.precision);
+blasGrid.x = 16384; blasBlock.x = 128;  
   if (x.precision == QUDA_DOUBLE_PRECISION) {
     axpyKernel<<<blasGrid, blasBlock>>>(a, (double*)x.v, (double*)y.v, x.length);
   } else if (x.precision == QUDA_SINGLE_PRECISION) {
@@ -1166,6 +1168,7 @@ void axpyCuda(const double &a, cudaColorSpinorField &x, cudaColorSpinorField &y)
   }
   blas_quda_bytes += 3*x.real_length*x.precision;
   blas_quda_flops += 2*x.real_length;
+
 
   if (!blasTuning) checkCudaError();
 }
@@ -1216,6 +1219,7 @@ __global__ void xpayHKernel(float a, short2 *yH, float *yN, int stride, int leng
 void xpayCuda(const cudaColorSpinorField &x, const double &a, cudaColorSpinorField &y) {
   checkSpinor(x,y);
   setBlock(5, x.length, x.precision);
+blasGrid.x = 16384; blasBlock.x = 128;
   if (x.precision == QUDA_DOUBLE_PRECISION) {
     xpayKernel<<<blasGrid, blasBlock>>>((double*)x.v, a, (double*)y.v, x.length);
   } else if (x.precision == QUDA_SINGLE_PRECISION) {

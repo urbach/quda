@@ -7,6 +7,8 @@
 
 #include <face_quda.h>
 
+//A.S. : 1) added Ls member in DiracParam class ; 2) added class constructor in DiracWilson class
+
 // Params for Dirac operator
 class DiracParam {
 
@@ -15,6 +17,7 @@ class DiracParam {
   double kappa;
   double mass;
   double m5; // used by domain wall only
+  int Ls;    // NEW: used by domain wall only
   MatPCType matpcType;
   DagType dagger;
   FullGauge *gauge;
@@ -126,6 +129,11 @@ class DiracWilson : public Dirac {
  public:
   DiracWilson(const DiracParam &param);
   DiracWilson(const DiracWilson &dirac);
+  
+//BEGIN NEW
+  DiracWilson(const DiracParam &param, const int nDims);//to correctly adjust face for DW
+//END NEW
+  
   virtual ~DiracWilson();
   DiracWilson& operator=(const DiracWilson &dirac);
 
@@ -246,6 +254,7 @@ class DiracDomainWall : public DiracWilson {
  public:
   DiracDomainWall(const DiracParam &param);
   DiracDomainWall(const DiracDomainWall &dirac);
+  
   virtual ~DiracDomainWall();
   DiracDomainWall& operator=(const DiracDomainWall &dirac);
 

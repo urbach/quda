@@ -5,6 +5,8 @@
 
 #define QUDA_VERSION 000302 // version 0.3.2
 
+//A.S. : added test interface routine testCG()
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -126,6 +128,9 @@ extern "C" {
   void freeCloverQuda(void);
 
   void invertQuda(void *h_x, void *h_b, QudaInvertParam *param);
+//TEST VERSION ONLY:  
+  void testCG(void *hp_x, void *hp_b, QudaInvertParam *param);  
+
   void invertMultiShiftQuda(void **_hp_x, void *_hp_b, QudaInvertParam *param,
 			    double* offsets, int num_offsets,
 			    double* residue_sq);
