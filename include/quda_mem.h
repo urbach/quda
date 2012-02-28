@@ -24,7 +24,15 @@
 #ifdef USE_QMEM
 
 #warning "Using QMEM wrappers"
+#include <qdp_init.h>
 #include <qdp_mem.h>
+#include <qdp_devicestats.h>
+#include <qdp_cuda.h>
+#include <qdp_singleton.h>
+#include <qdp_cache.h>
+#include <qdp_pool_allocator.h>
+#include <qdp_dynamic_allocator.h>
+#include <qdp_allocators.h>
 #define cudaMalloc(dst, size) QDP_allocate(dst, size , __FILE__ , __LINE__ )
 #define cudaFree(dst) QDP_free(dst)
 

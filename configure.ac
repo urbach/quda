@@ -169,12 +169,32 @@ AC_ARG_ENABLE(qmem,
   [ build_qmem="no" ]
 )
 
-dnl Specify QDP++ Location
 AC_ARG_WITH(qdp,
   AC_HELP_STRING([--with-qdp=QDPDIR], [ Specify QDP++ installation directory ]),
   [ qdp_home=${withval} ],
   [ qdp_home="" ]
 )
+
+if test "X${qdp_home}X" = "XX" ; then
+  AC_PATH_PROG(QDPXX_CONFIG, [qdp++-config], [])
+else
+  AC_PATH_PROG(QDPXX_CONFIG, [qdp++-config], [], [${qdp_home}/bin:${PATH}])
+fi
+
+if test "X${QDPXX_CONFIG}X" = "XX" ; then
+  AC_MSG_ERROR([QDP++ configuration program qdp++-config not found.])
+fi
+
+dnl AC_MSG_NOTICE([Found QDP++ configuration program ${QDPXX_CONFIG}])
+dnl AC_SUBST(CXX, "`${QDPXX_CONFIG} --cxx`")
+dnl AC_MSG_NOTICE([QDP++ compiler: ${CXX}])
+AC_SUBST(QDPXX_CXXFLAGS, "`${QDPXX_CONFIG} --cxxflags`")
+AC_MSG_NOTICE([QDP++ compile flags: ${QDPXX_CXXFLAGS}])
+AC_SUBST(QDPXX_LDFLAGS,  "`${QDPXX_CONFIG} --ldflags`")
+AC_MSG_NOTICE([QDP++ linking flags: ${QDPXX_LDFLAGS}])
+AC_SUBST(QDPXX_LIBS,     "`${QDPXX_CONFIG} --libs`")
+AC_MSG_NOTICE([QDP++ libraries flags: ${QDPXX_LIBS}])
+
 
 
 AC_ARG_ENABLE(fermi-double-tex,
