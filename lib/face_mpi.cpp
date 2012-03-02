@@ -177,6 +177,25 @@ FaceBuffer::~FaceBuffer()
   }
 }
 
+double sumData(void* data, int len, QudaPrecision prec)
+{
+        double sum = 0;
+
+        for(int i=0;i < len; i++){
+                double value;
+                if (prec == QUDA_DOUBLE_PRECISION){
+                        value = ((double*)data)[i];
+                }else{
+                        value = ((float*)data)[i];
+                }
+                sum += value*value;
+        }
+
+        reduceDouble(sum);
+
+        return sum;
+}
+
 void FaceBuffer::pack(cudaColorSpinorField &in, int parity, int dagger, int dim, cudaStream_t *stream_p)
 {
   if(!commDimPartitioned(dim)) return;
@@ -192,10 +211,29 @@ void FaceBuffer::gather(cudaColorSpinorField &in, int dagger, int dir)
   int dim = dir/2;
   if(!commDimPartitioned(dim)) return;
 
+  int n = 3*in.GhostFace()[dim];
+
   if (dir%2==0){ // backwards send
     in.sendGhost(back_nbr_spinor_sendbuf[dim], dim, QUDA_BACKWARDS, dagger, &stream[2*dim + sendBackStrmIdx]);
+
+     {
+        cudaThreadSynchronize();
+        double sum =  sumData(back_nbr_spinor_sendbuf[dim], n, in.Precision());
+        printf("rank=%d: gathering with dir=%d, sumData=%f, ghostFace[dim]=%d\n", comm_rank(), dir, sum, in.GhostFace()[dim]);
+     }
+
+
   } else { // forwards send
     in.sendGhost(fwd_nbr_spinor_sendbuf[dim], dim, QUDA_FORWARDS, dagger, &stream[2*dim + sendFwdStrmIdx]); 
+
+     {
+        cudaThreadSynchronize();
+        double sum =  sumData(fwd_nbr_spinor_sendbuf[dim], n, in.Precision());
+        printf("rank=%d: gathering with dir=%d, sumData=%f, ghostFace[dim]=%d\n", comm_rank(), dir, sum, in.GhostFace()[dim]);
+     }
+
+
+
   }
 }
 
@@ -254,24 +292,6 @@ int FaceBuffer::commsQuery(int dir) {
   return 0;
 }
 
-double sumData(void* data, int len, QudaPrecision prec)
-{
-	double sum = 0;
-
-	for(int i=0;i < len; i++){
-		double value;
-		if (prec == QUDA_DOUBLE_PRECISION){
-			value = ((double*)data)[i];
-		}else{
-			value = ((float*)data)[i];
-		}
-		sum += value*value;
-	}
-
-	reduceDouble(sum);
-
-	return sum;
-}
 
 void FaceBuffer::scatter(cudaColorSpinorField &out, int dagger, int dir) {
   int dim = dir / 2;
