@@ -510,8 +510,12 @@ comm_recv_with_tag(void* buf, int len, int src, int tag, void* _request)
   return (unsigned long)request;
 }
 
-int comm_query(void* request) 
+int comm_query(void* _request) 
 {
+
+  MPI_Request* request = (MPI_Request*)_request;
+  if(*request == ((MPI_Request)0)) return 0;
+
   MPI_Status status;
   int query;
   int rc = MPI_Test( (MPI_Request*)request, &query, &status);

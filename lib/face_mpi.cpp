@@ -280,7 +280,8 @@ int FaceBuffer::commsQuery(int dir) {
         printf("rank=%d: commQuery with dir=%d, sumData=%f\n", comm_rank(), dir, sum);
      }
 
-
+      *(MPI_Request*)recv_request1[dim] = (MPI_Request)0;
+      *(MPI_Request*)send_request1[dim] = (MPI_Request)0;
       return 1;
     }
   } else {
@@ -293,6 +294,8 @@ int FaceBuffer::commsQuery(int dir) {
         double sum =  sumData(pageable_back_nbr_spinor[dim], n, tmpprec);
         printf("rank=%d: commQuery with dir=%d, sumData=%f\n", comm_rank(), dir, sum);
      }
+      *(MPI_Request*)recv_request2[dim] = (MPI_Request)0;
+      *(MPI_Request*)send_request2[dim] = (MPI_Request)0;
 
 
       return 1;
