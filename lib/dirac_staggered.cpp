@@ -235,6 +235,8 @@ double spinorSum(const cudaColorSpinorField* spinor)
 
 
         free(p);
+
+ 	reduceDouble(sum);
         return sum;
 
 }

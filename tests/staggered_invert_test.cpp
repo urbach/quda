@@ -106,6 +106,8 @@ double gaugeSum(cudaGaugeField* gauge)
 	
 
 	free(p);	
+
+	reduceDouble(sum);
 	return sum;
 
 }
@@ -382,7 +384,7 @@ invert_test(void)
 
 #define NUM_OFFSETS 7
         
-    double masses[NUM_OFFSETS] ={5.05, 1.23, 2.64, 2.33, 2.70, 2.77, 2.81};
+    double masses[NUM_OFFSETS] ={1.23, 5.05,  2.64, 2.33, 2.70, 2.77, 2.81};
     double offsets[NUM_OFFSETS];	
     int num_offsets =NUM_OFFSETS;
     void* outArray[NUM_OFFSETS];
@@ -480,7 +482,7 @@ invert_test(void)
 	printfQuda("\nfatsum=%f, longsum=%f\n", fatsum, longsum);
       }
  
-
+      initDslash = 0;	
       dirac->MdagM(cudaOutField, cudaSolutionField);
       delete dirac;
 
