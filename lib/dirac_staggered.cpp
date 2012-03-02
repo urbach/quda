@@ -273,6 +273,7 @@ void DiracStaggeredPC::MdagM(cudaColorSpinorField &out, const cudaColorSpinorFie
   double t2 = normCuda(*tmp1); double tsum=spinorSum(tmp1);
   double out2 = normCuda(out); double outsum=spinorSum(&out);
   printfQuda("in2=%f, t2=%f, out2=%f, insum=%f, tsum=%f, outsum=%f\n", in2, t2, out2, insum, tsum, outsum);
+  printfQuda("inSpinor info\n"); in.printInfo(); 
 }
   deleteTmp(&tmp1, reset);
 }

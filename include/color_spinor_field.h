@@ -192,6 +192,14 @@ class ColorSpinorField {
   ColorSpinorField *even;
   ColorSpinorField *odd;
 
+public:
+  void printInfo() const { 
+    printfQuda("nColor=%d, nSpin=%d, nDim=%d, x=%d %d %d %d, volume=%d, pad=%d, stride=%d, real_length=%d, length=%d, ghostFace=%d %d %d %d,"
+		"ghostOffset=%d %d %d %d, ghost_length=%d, total_length=%d, bytes=%d, fieldLocation=%d, siteSubSet=%d, siteOrder=%d, fieldOrder=%d",
+		nColor, nSpin, nDim, x[0], x[1], x[2], x[3], volume, pad, stride, real_length, length, ghostFace[0], ghostFace[1], ghostFace[2], ghostFace[3],
+	        ghostOffset[0], ghostOffset[1], ghostOffset[2], ghostOffset[3], ghost_length, total_length, (int)bytes, (int)fieldLocation, siteSubset, siteOrder, fieldOrder);
+}
+
   void createGhostZone();
 
   // resets the above attributes based on contents of param
