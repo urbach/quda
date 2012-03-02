@@ -212,6 +212,34 @@ void DiracStaggeredPC::M(cudaColorSpinorField &out, const cudaColorSpinorField &
   errorQuda("DiracStaggeredPC::M() is not implemented\n");
 }
 
+double spinorSum(const cudaColorSpinorField* spinor)
+{
+        double sum =0;
+        int n = spinor->Bytes();
+        void* p = (void*)malloc(n);
+        if( p == NULL){
+                printf("ERROR: malloc failed for p\n");
+                exit(1);
+        }
+
+        cudaMemcpy(p, spinor->V(), n, cudaMemcpyDeviceToHost);
+        for(int i = 0;i < n/spinor->Precision(); i++){
+                double value;
+                if(spinor->Precision() == QUDA_DOUBLE_PRECISION){
+                        value = ((double*)p)[i];
+                }else{
+                        value = ((float*)p)[i];
+                }
+                sum += value*value;
+        }
+
+
+        free(p);
+        return sum;
+
+}
+
+
 void DiracStaggeredPC::MdagM(cudaColorSpinorField &out, const cudaColorSpinorField &in) const
 {
   if (!initDslash){
@@ -232,9 +260,18 @@ void DiracStaggeredPC::MdagM(cudaColorSpinorField &out, const cudaColorSpinorFie
   } else {
     errorQuda("Invalid matpcType(%d) in function\n", matpcType);    
   }
+
+ 
+  zeroCuda(*tmp1);
   Dslash(*tmp1, in, other_parity);  
   DslashXpay(out, *tmp1, parity, in, 4*mass*mass);
-
+  
+ {
+  double in2 = normCuda(in);  double insum=spinorSum(&in);
+  double t2 = normCuda(*tmp1); double tsum=spinorSum(tmp1);
+  double out2 = normCuda(out); double outsum=spinorSum(&out);
+  printfQuda("in2=%f, t2=%f, out2=%f, insum=%f, tsum=%f, outsum=%f\n", in2, t2, out2, insum, tsum, outsum);
+}
   deleteTmp(&tmp1, reset);
 }
 

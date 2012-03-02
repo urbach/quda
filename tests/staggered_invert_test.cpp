@@ -19,6 +19,9 @@
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #define mySpinorSiteSize 6
 
+#include <dirac_quda.h>
+#include <blas_quda.h>
+
 extern void usage(char** argv);
 void *fatlink[4];
 void *longlink[4];  
@@ -75,6 +78,36 @@ void constructSpinorField(Float *res) {
       }
     }
   }
+}
+
+
+extern cudaGaugeField* gaugeFatPrecise;
+extern cudaGaugeField* gaugeLongPrecise;
+double gaugeSum(cudaGaugeField* gauge)
+{
+	double sum =0;
+	int n = gauge->Bytes();
+	void* p = (void*)malloc(n);
+	if( p == NULL){
+		printf("ERROR: malloc failed for p\n");
+		exit(1);
+	}
+	
+	cudaMemcpy(p, gauge->Gauge_p(), n, cudaMemcpyDeviceToHost);
+	for(int i = 0;i < n/gauge->Precision(); i++){
+		double value;
+		if(gauge->Precision() == QUDA_DOUBLE_PRECISION){
+			value = ((double*)p)[i];
+		}else{
+			value = ((float*)p)[i];
+		}
+		sum += value*value;
+	}
+	
+
+	free(p);	
+	return sum;
+
 }
 
 void
@@ -408,8 +441,72 @@ invert_test(void)
       errorQuda("ERROR: invalid spinor parity \n");
       exit(1);
     }
+
+    csParam.create = QUDA_REFERENCE_FIELD_CREATE;
+    csParam.v = in->V();
+    cpuColorSpinorField* sourceColorField = new cpuColorSpinorField(csParam);
+
+
+
     for(int i=0;i < num_offsets;i++){
       printfQuda("%dth solution: mass=%f, ", i, masses[i]);
+
+      csParam.create = QUDA_ZERO_FIELD_CREATE;
+
+      cpuColorSpinorField* diffColorField = new cpuColorSpinorField(csParam);
+
+      csParam.create = QUDA_REFERENCE_FIELD_CREATE;
+      csParam.v = spinorOutArray[i]->V();
+      cpuColorSpinorField* solutionColorField = new cpuColorSpinorField(csParam);
+
+      inv_param.mass = masses[i];
+      ColorSpinorParam cpuParam(solutionColorField->V(), inv_param, gaugeParam.X, true);
+      ColorSpinorParam cudaParam(cpuParam, inv_param);
+      cudaParam.siteSubset = csParam.siteSubset;
+      cudaColorSpinorField cudaSolutionField(*solutionColorField, cudaParam);
+      cudaColorSpinorField cudaSourceField(*sourceColorField, cudaParam);
+
+
+      cudaParam.create = QUDA_NULL_FIELD_CREATE;
+      cudaColorSpinorField cudaOutField(cudaSolutionField, cudaParam);
+      DiracParam diracParam;
+
+      setDiracParam(diracParam, &inv_param, true);
+
+      Dirac *dirac = Dirac::create(diracParam);
+      {
+	double fatsum= gaugeSum(gaugeFatPrecise);
+	double longsum= gaugeSum(gaugeLongPrecise);
+	printfQuda("\nfatsum=%f, longsum=%f\n", fatsum, longsum);
+      }
+ 
+
+      dirac->MdagM(cudaOutField, cudaSolutionField);
+      delete dirac;
+
+      mxpyCuda(cudaSourceField, cudaOutField);
+      cpuParam.v = diffColorField->V();
+      cpuColorSpinorField hOut(cpuParam);
+      cudaOutField.saveCPUSpinorField(hOut);
+
+      
+
+      double solution_nrm2 = norm_2(solutionColorField->V(), len*mySpinorSiteSize, inv_param.cpu_prec);
+      printfQuda("Solution norm squared = %lf\n", solution_nrm2);
+      {
+	double cuda_sol2 = normCuda(cudaSolutionField);
+	double cuda_src2 = normCuda(cudaSourceField);
+	printfQuda("cuda_sol2=%f, cuda_src2=%f\n", cuda_sol2, cuda_src2);
+
+      }
+     
+
+      double nrm2 = norm_2(diffColorField->V(), len*mySpinorSiteSize, inv_param.cpu_prec);
+
+      delete solutionColorField;
+      delete diffColorField;
+
+/*
 #ifdef MULTI_GPU
       matdagmat_mg4dir(ref, fatlink, longlink, ghost_fatlink, ghost_longlink, 
 		       spinorOutArray[i], masses[i], 0, inv_param.cpu_prec, 
@@ -419,6 +516,7 @@ invert_test(void)
 #endif
       mxpy(in->V(), ref->V(), len*mySpinorSiteSize, inv_param.cpu_prec);
       double nrm2 = norm_2(ref->V(), len*mySpinorSiteSize, inv_param.cpu_prec);
+*/ 
       double src2 = norm_2(in->V(), len*mySpinorSiteSize, inv_param.cpu_prec);
       
       printfQuda("relative residual, requested = %g, actual = %g\n", inv_param.tol, sqrt(nrm2/src2));

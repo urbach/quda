@@ -141,10 +141,10 @@ Dirac* Dirac::create(const DiracParam &param)
     if (param.verbose >= QUDA_VERBOSE) printfQuda("Creating a DiracDomainWallPC operator\n");
     return new DiracDomainWallPC(param);
   } else if (param.type == QUDA_ASQTAD_DIRAC) {
-    if (param.verbose >= QUDA_VERBOSE) printfQuda("Creating a DiracStaggered operator\n");
+    if (param.verbose >= QUDA_VERBOSE) {}
     return new DiracStaggered(param);
   } else if (param.type == QUDA_ASQTADPC_DIRAC) {
-    if (param.verbose >= QUDA_VERBOSE) printfQuda("Creating a DiracStaggeredPC operator\n");
+    if (param.verbose >= QUDA_VERBOSE){}
     return new DiracStaggeredPC(param);    
   } else if (param.type == QUDA_TWISTED_MASS_DIRAC) {
     if (param.verbose >= QUDA_VERBOSE) printfQuda("Creating a DiracTwistedMass operator\n");

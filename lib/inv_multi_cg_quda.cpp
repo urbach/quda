@@ -216,7 +216,8 @@ void MultiShiftCG::operator()(cudaColorSpinorField **x, cudaColorSpinorField &b)
   }    
   if (invParam.verbosity >= QUDA_VERBOSE){
     printfQuda("MultiShift CG: Converged after %d iterations\n", k);
-    printfQuda(" shift=0 resid_rel=%e\n", sqrt(true_res/b2));
+    double sol_norm=normCuda(*x[0]);
+    printfQuda(" shift=0 resid_rel=%e, solution_norm=%f\n", sqrt(true_res/b2), sol_norm);
     for(int i=1; i < num_offset; i++) { 
       mat(*r, *x[i]); 
       if (invParam.dslash_type != QUDA_ASQTAD_DSLASH){
@@ -225,7 +226,8 @@ void MultiShiftCG::operator()(cudaColorSpinorField **x, cudaColorSpinorField &b)
          axpyCuda(offset[i]-offset[0],*x[i], *r); // Offset it.
       }
       true_res = xmyNormCuda(b, *r);
-      printfQuda(" shift=%d resid_rel=%e\n",i, sqrt(true_res/b2));
+      double sol_norm=normCuda(*x[i]);
+      printfQuda(" shift=%d resid_rel=%e, solution_norm=%f\n",i, sqrt(true_res/b2), sol_norm);
     }
   }      
   
