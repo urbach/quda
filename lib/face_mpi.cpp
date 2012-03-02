@@ -206,12 +206,15 @@ void FaceBuffer::pack(cudaColorSpinorField &in, int parity, int dagger, int dim,
   in.packGhost(dim, (QudaParity)parity, dagger, &stream[Nstream-1]);
 }
 
+int n;
+QudaPrecision tmpprec;
 void FaceBuffer::gather(cudaColorSpinorField &in, int dagger, int dir)
 {
   int dim = dir/2;
   if(!commDimPartitioned(dim)) return;
 
-  int n = 3*in.GhostFace()[dim];
+  n = 3*in.GhostFace()[dim];
+  tmpprec = in.Precision();
 
   if (dir%2==0){ // backwards send
     in.sendGhost(back_nbr_spinor_sendbuf[dim], dim, QUDA_BACKWARDS, dagger, &stream[2*dim + sendBackStrmIdx]);
@@ -255,6 +258,12 @@ void FaceBuffer::commsStart(int dir) {
 	   back_nbr_spinor_sendbuf[dim], nbytes[dim]);
 #endif
     comm_send_with_tag(pageable_back_nbr_spinor_sendbuf[dim], nbytes[dim], back_nbr[dim], downtags[dim], send_request1[dim]);
+     {
+        double sum =  sumData(pageable_back_nbr_spinor_sendbuf[dim], n, tmpprec);
+        printf("rank=%d: commStart with dir=%d, sumData=%f\n", comm_rank(), dir, sum);
+     }
+
+
   } else {
 
     comm_recv_with_tag(pageable_back_nbr_spinor[dim], nbytes[dim], back_nbr[dim], uptags[dim], recv_request2[dim]);
@@ -263,6 +272,12 @@ void FaceBuffer::commsStart(int dir) {
 	   fwd_nbr_spinor_sendbuf[dim], nbytes[dim]);
 #endif
     comm_send_with_tag(pageable_fwd_nbr_spinor_sendbuf[dim], nbytes[dim], fwd_nbr[dim], uptags[dim], send_request2[dim]);
+     {
+        double sum =  sumData(pageable_fwd_nbr_spinor_sendbuf[dim], n, tmpprec);
+        printf("rank=%d: commStart with dir=%d, sumData=%f\n", comm_rank(), dir, sum);
+     }
+
+
   }
 }
 
@@ -303,13 +318,13 @@ void FaceBuffer::scatter(cudaColorSpinorField &out, int dagger, int dir) {
     out.unpackGhost(fwd_nbr_spinor[dim], dim, QUDA_FORWARDS,  dagger, &stream[2*dim + recFwdStrmIdx]); CUERR;
      {
 	double sum =  sumData(fwd_nbr_spinor[dim], n, out.Precision());
-        printfQuda("unpacking with dir=%d, sumData=%f, ghostFace[dim]=%d\n", dir, sum, out.GhostFace()[dim]);
+        printfQuda("unpacking with dir=%d, sumData=%f, ghostFace[dim]=%d, nbytes[dim]=%d\n", dir, sum, out.GhostFace()[dim], nbytes[dim]);
      }
   } else {
     out.unpackGhost(back_nbr_spinor[dim], dim, QUDA_BACKWARDS,  dagger, &stream[2*dim + recBackStrmIdx]); CUERR;
     {
 	double sum = sumData(back_nbr_spinor[dim], n, out.Precision());	
-       printfQuda("unpacking with dir=%d, sumData=%f, ghostFace[dim]=%d\n", dir, sum, out.GhostFace()[dim]);
+       printfQuda("unpacking with dir=%d, sumData=%f, ghostFace[dim]=%d, nbytes[dim]=%d\n", dir, sum, out.GhostFace()[dim], nbytes[dim]);
      }
   } 
 
