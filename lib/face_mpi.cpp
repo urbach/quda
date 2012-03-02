@@ -218,25 +218,8 @@ void FaceBuffer::gather(cudaColorSpinorField &in, int dagger, int dir)
 
   if (dir%2==0){ // backwards send
     in.sendGhost(back_nbr_spinor_sendbuf[dim], dim, QUDA_BACKWARDS, dagger, &stream[2*dim + sendBackStrmIdx]);
-
-     {
-        cudaThreadSynchronize();
-        double sum =  sumData(back_nbr_spinor_sendbuf[dim], n, in.Precision());
-        printf("rank=%d: gathering with dir=%d, sumData=%f, ghostFace[dim]=%d\n", comm_rank(), dir, sum, in.GhostFace()[dim]);
-     }
-
-
   } else { // forwards send
     in.sendGhost(fwd_nbr_spinor_sendbuf[dim], dim, QUDA_FORWARDS, dagger, &stream[2*dim + sendFwdStrmIdx]); 
-
-     {
-        cudaThreadSynchronize();
-        double sum =  sumData(fwd_nbr_spinor_sendbuf[dim], n, in.Precision());
-        printf("rank=%d: gathering with dir=%d, sumData=%f, ghostFace[dim]=%d\n", comm_rank(), dir, sum, in.GhostFace()[dim]);
-     }
-
-
-
   }
 }
 
@@ -292,6 +275,12 @@ int FaceBuffer::commsQuery(int dir) {
 #ifndef GPU_DIRECT
       memcpy(fwd_nbr_spinor[dim], pageable_fwd_nbr_spinor[dim], nbytes[dim]);
 #endif
+     {
+        double sum =  sumData(pageable_fwd_nbr_spinor[dim], n, tmpprec);
+        printf("rank=%d: commQuery with dir=%d, sumData=%f\n", comm_rank(), dir, sum);
+     }
+
+
       return 1;
     }
   } else {
@@ -300,6 +289,12 @@ int FaceBuffer::commsQuery(int dir) {
 #ifndef GPU_DIRECT
       memcpy(back_nbr_spinor[dim], pageable_back_nbr_spinor[dim], nbytes[dim]);
 #endif
+     {
+        double sum =  sumData(pageable_back_nbr_spinor[dim], n, tmpprec);
+        printf("rank=%d: commQuery with dir=%d, sumData=%f\n", comm_rank(), dir, sum);
+     }
+
+
       return 1;
     }
   }
