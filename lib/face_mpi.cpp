@@ -254,17 +254,45 @@ int FaceBuffer::commsQuery(int dir) {
   return 0;
 }
 
+double sumData(void* data, int len, QudaPrecision prec)
+{
+	double sum = 0;
+
+	for(int i=0;i < len; i++){
+		double value;
+		if (prec == QUDA_DOUBLE_PRECISION){
+			value = ((double*)data)[i];
+		}else{
+			value = ((float*)data)[i];
+		}
+		sum += value*value;
+	}
+
+	reduceDouble(sum);
+
+	return sum;
+}
+
 void FaceBuffer::scatter(cudaColorSpinorField &out, int dagger, int dir) {
   int dim = dir / 2;
   if(!commDimPartitioned(dim)) return;
 
+
+  int n = 3*out.GhostFace()[dim];
   if (dir%2 == 0) {
     out.unpackGhost(fwd_nbr_spinor[dim], dim, QUDA_FORWARDS,  dagger, &stream[2*dim + recFwdStrmIdx]); CUERR;
+     {
+	double sum =  sumData(fwd_nbr_spinor[dim], n, out.Precision());
+        printfQuda("unpacking with dir=%d, sumData=%f, ghostFace[dim]=%d\n", dir, sum, out.GhostFace()[dim]);
+     }
   } else {
     out.unpackGhost(back_nbr_spinor[dim], dim, QUDA_BACKWARDS,  dagger, &stream[2*dim + recBackStrmIdx]); CUERR;
+    {
+	double sum = sumData(back_nbr_spinor[dim], n, out.Precision());	
+       printfQuda("unpacking with dir=%d, sumData=%f, ghostFace[dim]=%d\n", dir, sum, out.GhostFace()[dim]);
+     }
   } 
 
-  printfQuda("unpacking with dir=%d\n", dir);
 }
 
 void FaceBuffer::exchangeCpuSpinor(cpuColorSpinorField &spinor, int oddBit, int dagger)
