@@ -262,7 +262,9 @@ void FaceBuffer::scatter(cudaColorSpinorField &out, int dagger, int dir) {
     out.unpackGhost(fwd_nbr_spinor[dim], dim, QUDA_FORWARDS,  dagger, &stream[2*dim + recFwdStrmIdx]); CUERR;
   } else {
     out.unpackGhost(back_nbr_spinor[dim], dim, QUDA_BACKWARDS,  dagger, &stream[2*dim + recBackStrmIdx]); CUERR;
-  }
+  } 
+
+  printfQuda("unpacking with dir=%d\n", dir);
 }
 
 void FaceBuffer::exchangeCpuSpinor(cpuColorSpinorField &spinor, int oddBit, int dagger)
