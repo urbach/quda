@@ -243,8 +243,11 @@ void FaceBuffer::commsStart(int dir) {
     comm_send_with_tag(pageable_back_nbr_spinor_sendbuf[dim], nbytes[dim], back_nbr[dim], downtags[dim], send_request1[dim]);
      {
         double sum =  sumData(pageable_back_nbr_spinor_sendbuf[dim], n, tmpprec);
-        printf("rank=%d: commStart with dir=%d, sumData=%f\n", comm_rank(), dir, sum);
+        printf("rank=%d: commStart with wait dir=%d, sumData=%f\n", comm_rank(), dir, sum);
      }
+
+     comm_wait(send_request1[dim]);
+     comm_wait(recv_request1[dim]);
 
 
   } else {
@@ -257,9 +260,11 @@ void FaceBuffer::commsStart(int dir) {
     comm_send_with_tag(pageable_fwd_nbr_spinor_sendbuf[dim], nbytes[dim], fwd_nbr[dim], uptags[dim], send_request2[dim]);
      {
         double sum =  sumData(pageable_fwd_nbr_spinor_sendbuf[dim], n, tmpprec);
-        printf("rank=%d: commStart with dir=%d, sumData=%f\n", comm_rank(), dir, sum);
+        printf("rank=%d: commStart with wait  dir=%d, sumData=%f\n", comm_rank(), dir, sum);
      }
 
+    comm_wait(send_request2[dim]);
+    comm_wait(recv_request2[dim]);
 
   }
 }
@@ -270,8 +275,6 @@ int FaceBuffer::commsQuery(int dir) {
   if(!commDimPartitioned(dim)) return 0;
 
   if(dir%2==0) {
-     comm_wait(recv_request1[dim]);
-     comm_wait(send_request1[dim]);
     if (comm_query(recv_request1[dim]) && 
 	comm_query(send_request1[dim])) {
 #ifndef GPU_DIRECT
@@ -279,7 +282,7 @@ int FaceBuffer::commsQuery(int dir) {
 #endif
      {
         double sum =  sumData(pageable_fwd_nbr_spinor[dim], n, tmpprec);
-        printf("rank=%d: commQuery after wait with dir=%d, sumData=%f\n", comm_rank(), dir, sum);
+        printf("rank=%d: commQuery with dir=%d, sumData=%f\n", comm_rank(), dir, sum);
      }
 
       *(MPI_Request*)recv_request1[dim] = (MPI_Request)0;
@@ -287,10 +290,6 @@ int FaceBuffer::commsQuery(int dir) {
       return 1;
     }
   } else {
-
-     comm_wait(recv_request2[dim]);
-     comm_wait(send_request2[dim]);
-
     if (comm_query(recv_request2[dim]) &&
 	comm_query(send_request2[dim])) {
 #ifndef GPU_DIRECT
@@ -298,7 +297,7 @@ int FaceBuffer::commsQuery(int dir) {
 #endif
      {
         double sum =  sumData(pageable_back_nbr_spinor[dim], n, tmpprec);
-        printf("rank=%d: commQuery after wait with dir=%d, sumData=%f\n", comm_rank(), dir, sum);
+        printf("rank=%d: commQuery with dir=%d, sumData=%f\n", comm_rank(), dir, sum);
      }
       *(MPI_Request*)recv_request2[dim] = (MPI_Request)0;
       *(MPI_Request*)send_request2[dim] = (MPI_Request)0;
