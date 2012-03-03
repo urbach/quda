@@ -265,7 +265,18 @@ void FaceBuffer::commsStart(int dir) {
    {
 	printfQuda("The first value received is %f\n", ((float*)pageable_fwd_nbr_spinor[dim])[0] );
 
-    }
+    } 
+    {
+    float send_buf = 9.999;
+    float recv_buf = 1.0;
+    MPI_Request send_request, recv_request;
+    comm_recv_with_tag(&recv_buf, sizeof(float), fwd_nbr[dim], downtags[dim], &recv_request);
+    comm_send_with_tag(&send_buf, sizeof(float), back_nbr[dim], downtags[dim], &send_request);
+    comm_wait(&send_request);
+    comm_wait(&recv_request);
+    printf("mpi sanity check: recv_buf=%f\n", recv_buf);
+    }  
+ 
 
   } else {
 
@@ -337,16 +348,20 @@ void FaceBuffer::scatter(cudaColorSpinorField &out, int dagger, int dir) {
   int n = 3*out.GhostFace()[dim];
   if (dir%2 == 0) {
     out.unpackGhost(fwd_nbr_spinor[dim], dim, QUDA_FORWARDS,  dagger, &stream[2*dim + recFwdStrmIdx]); CUERR;
+/*
      {
 	double sum =  sumData(fwd_nbr_spinor[dim], n, out.Precision());
         printfQuda("unpacking with dir=%d, sumData=%f, ghostFace[dim]=%d, nbytes[dim]=%d\n", dir, sum, out.GhostFace()[dim], nbytes[dim]);
      }
+*/
   } else {
     out.unpackGhost(back_nbr_spinor[dim], dim, QUDA_BACKWARDS,  dagger, &stream[2*dim + recBackStrmIdx]); CUERR;
+/*
     {
 	double sum = sumData(back_nbr_spinor[dim], n, out.Precision());	
        printfQuda("unpacking with dir=%d, sumData=%f, ghostFace[dim]=%d, nbytes[dim]=%d\n", dir, sum, out.GhostFace()[dim], nbytes[dim]);
      }
+*/
   } 
 
 }

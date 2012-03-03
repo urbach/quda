@@ -451,7 +451,7 @@ invert_test(void)
 
 
     for(int i=0;i < num_offsets;i++){
-      printfQuda("%dth solution: mass=%f, ", i, masses[i]);
+      printfQuda("\n%dth solution: mass=%f, ", i, masses[i]);
 
       csParam.create = QUDA_ZERO_FIELD_CREATE;
 
@@ -476,11 +476,13 @@ invert_test(void)
       setDiracParam(diracParam, &inv_param, true);
 
       Dirac *dirac = Dirac::create(diracParam);
+/*
       {
 	double fatsum= gaugeSum(gaugeFatPrecise);
 	double longsum= gaugeSum(gaugeLongPrecise);
-	printfQuda("\nfatsum=%f, longsum=%f\n", fatsum, longsum);
+	printfQuda("fatsum=%f, longsum=%f\n", fatsum, longsum);
       }
+*/
  
       initDslash = 0;	
       dirac->MdagM(cudaOutField, cudaSolutionField);
