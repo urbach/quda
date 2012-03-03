@@ -245,6 +245,12 @@ void FaceBuffer::commsStart(int dir) {
   int fwd_nbr[4] = {X_FWD_NBR,Y_FWD_NBR,Z_FWD_NBR,T_FWD_NBR};
   int downtags[4] = {XDOWN, YDOWN, ZDOWN, TDOWN};
   int uptags[4] = {XUP, YUP, ZUP, TUP};
+ 
+
+  recv_request1[dim] = (MPI_Request*) malloc(sizeof(MPI_Request));
+  send_request1[dim] = (MPI_Request*) malloc(sizeof(MPI_Request));
+  recv_request2[dim] = (MPI_Request*) malloc(sizeof(MPI_Request));
+  send_request2[dim] = (MPI_Request*) malloc(sizeof(MPI_Request));
 
   if (dir %2 == 0) {
     // Prepost all receives
@@ -269,12 +275,15 @@ void FaceBuffer::commsStart(int dir) {
     {
     float send_buf = 9.999;
     float recv_buf = 1.0;
-    MPI_Request send_request, recv_request;
-    comm_recv_with_tag(&recv_buf, sizeof(float), fwd_nbr[dim], downtags[dim], &recv_request);
-    comm_send_with_tag(&send_buf, sizeof(float), back_nbr[dim], downtags[dim], &send_request);
-    comm_wait(&send_request);
-    comm_wait(&recv_request);
-    printf("mpi sanity check: recv_buf=%f\n", recv_buf);
+    //MPI_Request send_request, recv_request;
+    MPI_Request* recv_request = (MPI_Request*) malloc(sizeof(MPI_Request));
+    MPI_Request* send_request = (MPI_Request*) malloc(sizeof(MPI_Request));
+
+    comm_recv_with_tag(&recv_buf, sizeof(float), fwd_nbr[dim], downtags[dim], recv_request);
+    comm_send_with_tag(&send_buf, sizeof(float), back_nbr[dim], downtags[dim], send_request);
+    comm_wait(send_request);
+    comm_wait(recv_request);
+    printf("mpi sanity check with allocated request: recv_buf=%f\n", recv_buf);
     }  
  
 
