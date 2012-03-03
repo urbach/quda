@@ -14,7 +14,7 @@
 using namespace std;
 
 #if (CUDA_VERSION >=4000)
-#define GPU_DIRECT
+// #define GPU_DIRECT
 #endif
 
 #ifdef DSLASH_PROFILING
