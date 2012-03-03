@@ -257,12 +257,15 @@ void FaceBuffer::commsStart(int dir) {
     comm_send_with_tag(pageable_back_nbr_spinor_sendbuf[dim], nbytes[dim], back_nbr[dim], downtags[dim], send_request1[dim]);
      {
         double sum =  sumData(pageable_back_nbr_spinor_sendbuf[dim], n, tmpprec);
-        printf("rank=%d: commStart with wait dir=%d, sumData=%f\n", comm_rank(), dir, sum);
+        printf("rank=%d: commStart with wait dir=%d, sumData=%f, nbytes[dim]=%d\n", comm_rank(), dir, sum, nbytes[dim]);
      }
 
      comm_wait(send_request1[dim]);
      comm_wait(recv_request1[dim]);
+   {
+	printfQuda("The first value received is %f\n", ((float*)pageable_fwd_nbr_spinor[dim])[0] );
 
+    }
 
   } else {
 
