@@ -272,6 +272,8 @@ void FaceBuffer::commsStart(int dir) {
 	printfQuda("The first value received is %f\n", ((float*)pageable_fwd_nbr_spinor[dim])[0] );
 
     } 
+
+
     {
     float send_buf = 9.999;
     float recv_buf = 99.0;
@@ -279,14 +281,19 @@ void FaceBuffer::commsStart(int dir) {
     MPI_Request* recv_request = (MPI_Request*) malloc(sizeof(MPI_Request));
     MPI_Request* send_request = (MPI_Request*) malloc(sizeof(MPI_Request));
   
+
+    int transfer_size = 4096;
     float* p = (float*)pageable_fwd_nbr_spinor[dim];
-    comm_recv_with_tag(p, sizeof(float)*1024, fwd_nbr[dim], downtags[dim], recv_request);
-    comm_send_with_tag(pageable_back_nbr_spinor_sendbuf[dim], sizeof(float)*1024, back_nbr[dim], downtags[dim], send_request);
+    comm_recv_with_tag(p, sizeof(float)*transfer_size, fwd_nbr[dim], downtags[dim], recv_request);
+    comm_send_with_tag(pageable_back_nbr_spinor_sendbuf[dim], sizeof(float)*transfer_size, back_nbr[dim], downtags[dim], send_request);
     comm_wait(send_request);
     comm_wait(recv_request);
-    printf("rankd=%d, mpi sanity check with identical transfer: recv_buf=%f, n=%d\n", comm_rank(), p[0], n);
+    printf("rankd=%d, mpi sanity check with identical transfer: recv_buf=%f, transfersize=%d, n=%d\n", comm_rank(), p[0], transfer_size, n);
     }  
  
+
+
+
 
   } else {
 
