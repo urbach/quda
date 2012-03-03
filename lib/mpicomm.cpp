@@ -413,7 +413,11 @@ comm_send_with_tag(void* buf, int len, int dst, int tag, void*_request)
     comm_exit(1);
   }
 
-  MPI_Isend(buf, len, MPI_BYTE, dstproc, tag, MPI_COMM_WORLD, request);
+  int rc = MPI_Isend(buf, len, MPI_BYTE, dstproc, tag, MPI_COMM_WORLD, request);
+  if(rc != MPI_SUCCESS){
+        printf("ERROR:  MPI_Irecv failed, file=%s, line=%d\n", __FILE__, __LINE__);
+        exit(1);
+  } 
   return (unsigned long)request;
 }
 
@@ -505,8 +509,13 @@ comm_recv_with_tag(void* buf, int len, int src, int tag, void* _request)
     printf("ERROR: invalid source, line %d, file %s\n", __LINE__, __FILE__);
     comm_exit(1);
   }
-  MPI_Irecv(buf, len, MPI_BYTE, srcproc, tag, MPI_COMM_WORLD, request);
-  
+  int rc = MPI_Irecv(buf, len, MPI_BYTE, srcproc, tag, MPI_COMM_WORLD, request);
+  if(rc != MPI_SUCCESS){
+	printf("ERROR:  MPI_Irecv failed, file=%s, line=%d\n", __FILE__, __LINE__);
+	exit(1);
+  }  
+
+
   return (unsigned long)request;
 }
 

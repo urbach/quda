@@ -283,7 +283,7 @@ void FaceBuffer::commsStart(int dir) {
     comm_send_with_tag(&send_buf, sizeof(float), back_nbr[dim], downtags[dim], send_request);
     comm_wait(send_request);
     comm_wait(recv_request);
-    printf("mpi sanity check with allocated request: recv_buf=%f\n", recv_buf);
+    printf("mpi sanity check with error checking: recv_buf=%f\n", recv_buf);
     }  
  
 
