@@ -280,11 +280,11 @@ void FaceBuffer::commsStart(int dir) {
     MPI_Request* send_request = (MPI_Request*) malloc(sizeof(MPI_Request));
   
     float* p = (float*)pageable_fwd_nbr_spinor[dim];
-    comm_recv_with_tag(p, sizeof(float)*n, fwd_nbr[dim], downtags[dim], recv_request);
-    comm_send_with_tag(pageable_back_nbr_spinor_sendbuf[dim], sizeof(float)*n, back_nbr[dim], downtags[dim], send_request);
+    comm_recv_with_tag(p, sizeof(float)*1024, fwd_nbr[dim], downtags[dim], recv_request);
+    comm_send_with_tag(pageable_back_nbr_spinor_sendbuf[dim], sizeof(float)*1024, back_nbr[dim], downtags[dim], send_request);
     comm_wait(send_request);
     comm_wait(recv_request);
-    printf("mpi sanity check with identical transfer: recv_buf=%f\n", p[0]);
+    printf("rankd=%d, mpi sanity check with identical transfer: recv_buf=%f, n=%d\n", comm_rank(), p[0], n);
     }  
  
 
