@@ -278,12 +278,13 @@ void FaceBuffer::commsStart(int dir) {
     //MPI_Request send_request, recv_request;
     MPI_Request* recv_request = (MPI_Request*) malloc(sizeof(MPI_Request));
     MPI_Request* send_request = (MPI_Request*) malloc(sizeof(MPI_Request));
-
-    comm_recv_with_tag(&recv_buf, sizeof(float), fwd_nbr[dim], downtags[dim], recv_request);
+  
+    float* p = (float*)pageable_fwd_nbr_spinor[dim];
+    comm_recv_with_tag(p, sizeof(float), fwd_nbr[dim], downtags[dim], recv_request);
     comm_send_with_tag(pageable_back_nbr_spinor_sendbuf[dim], sizeof(float), back_nbr[dim], downtags[dim], send_request);
     comm_wait(send_request);
     comm_wait(recv_request);
-    printf("mpi sanity check with error checking: recv_buf=%f\n", recv_buf);
+    printf("mpi sanity check with error checking: recv_buf=%f\n", p[0]);
     }  
  
 
