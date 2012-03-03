@@ -195,6 +195,20 @@ double sumData(void* data, int len, QudaPrecision prec)
 
         return sum;
 }
+void set_float_data(void* data, int len, QudaPrecision prec)
+{
+
+        double value = 1.0 ;
+        for(int i=0;i < len; i++){
+                if (prec == QUDA_DOUBLE_PRECISION){
+                        ((double*)data)[i] = value;
+                }else{
+                        ((float*)data)[i]= value;
+                }
+        }
+
+}
+
 
 void FaceBuffer::pack(cudaColorSpinorField &in, int parity, int dagger, int dim, cudaStream_t *stream_p)
 {
@@ -213,7 +227,7 @@ void FaceBuffer::gather(cudaColorSpinorField &in, int dagger, int dir)
   int dim = dir/2;
   if(!commDimPartitioned(dim)) return;
 
-  n = 3*in.GhostFace()[dim];
+  n = nbytes[dim]/in.Precision();
   tmpprec = in.Precision();
 
   if (dir%2==0){ // backwards send
@@ -234,7 +248,7 @@ void FaceBuffer::commsStart(int dir) {
 
   if (dir %2 == 0) {
     // Prepost all receives
-
+    set_float_data(pageable_fwd_nbr_spinor[dim], n, tmpprec);
     comm_recv_with_tag(pageable_fwd_nbr_spinor[dim], nbytes[dim], fwd_nbr[dim], downtags[dim], recv_request1[dim]);
 #ifndef GPU_DIRECT
     memcpy(pageable_back_nbr_spinor_sendbuf[dim], 
@@ -252,6 +266,7 @@ void FaceBuffer::commsStart(int dir) {
 
   } else {
 
+    set_float_data(pageable_back_nbr_spinor[dim], n, tmpprec);
     comm_recv_with_tag(pageable_back_nbr_spinor[dim], nbytes[dim], back_nbr[dim], uptags[dim], recv_request2[dim]);
 #ifndef GPU_DIRECT
     memcpy(pageable_fwd_nbr_spinor_sendbuf[dim], 
@@ -282,7 +297,7 @@ int FaceBuffer::commsQuery(int dir) {
 #endif
      {
         double sum =  sumData(pageable_fwd_nbr_spinor[dim], n, tmpprec);
-        printf("rank=%d: commQuery with dir=%d, sumData=%f\n", comm_rank(), dir, sum);
+        printf("rank=%d: commQuery with set float data with dir=%d, sumData=%f\n", comm_rank(), dir, sum);
      }
 
       *(MPI_Request*)recv_request1[dim] = (MPI_Request)0;
@@ -297,7 +312,7 @@ int FaceBuffer::commsQuery(int dir) {
 #endif
      {
         double sum =  sumData(pageable_back_nbr_spinor[dim], n, tmpprec);
-        printf("rank=%d: commQuery with dir=%d, sumData=%f\n", comm_rank(), dir, sum);
+        printf("rank=%d: commQuery with set float data dir=%d, sumData=%f\n", comm_rank(), dir, sum);
      }
       *(MPI_Request*)recv_request2[dim] = (MPI_Request)0;
       *(MPI_Request*)send_request2[dim] = (MPI_Request)0;
