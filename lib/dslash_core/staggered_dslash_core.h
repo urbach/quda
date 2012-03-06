@@ -194,9 +194,9 @@
 #define longT22_re (+long22_re)
 #define longT22_im (-long22_im)
 
-#if (CUDA_VERSION >= 4010)
+#if ((CUDA_VERSION >= 4010) && (__COMPUTE_CAPABILITY__ >= 200)) // NVVM compiler
 #define VOLATILE
-#else
+#else // Open64 compiler
 #define VOLATILE volatile
 #endif
 
@@ -1122,13 +1122,13 @@ o02_im = -o02_im + a*accum2.y;
 #ifdef MULTI_GPU
 //if (kernel_type == EXTERIOR_KERNEL_T){
 if (kernel_type != INTERIOR_KERNEL){
-  READ_AND_SUM_SPINOR();
+  READ_AND_SUM_SPINOR(INTERTEX);
  }
 #endif
 
 
 // write spinor field back to device memory
-WRITE_SPINOR();
+WRITE_SPINOR(out);
 
 
 // undefine to prevent warning when precision is changed

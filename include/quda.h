@@ -1,9 +1,14 @@
+
+
 #ifndef _QUDA_H
 #define _QUDA_H
 
 #include <enum_quda.h>
 
-#define QUDA_VERSION 000302 // version 0.3.2
+#define QUDA_VERSION_MAJOR       0
+#define QUDA_VERSION_MINOR       3
+#define QUDA_VERSION_SUBMINOR   3 
+#define QUDA_VERSION ((QUDA_VERSION_MAJOR<<16) | (QUDA_VERSION_MINOR<<8) | QUDA_VERSION_SUBMINOR)
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,6 +38,9 @@ extern "C" {
 
     QudaPrecision cuda_prec_sloppy;
     QudaReconstructType reconstruct_sloppy;
+
+    QudaPrecision cuda_prec_precondition;
+    QudaReconstructType reconstruct_precondition;
 
     QudaGaugeFixed gauge_fix;
 
@@ -81,6 +89,7 @@ extern "C" {
     QudaPrecision cpu_prec;
     QudaPrecision cuda_prec;
     QudaPrecision cuda_prec_sloppy;
+    QudaPrecision cuda_prec_precondition;
 
     QudaDiracFieldOrder dirac_order;
     QudaGammaBasis gamma_basis; // the gamma basis of the input and output cpu fields 
@@ -88,6 +97,7 @@ extern "C" {
     QudaPrecision clover_cpu_prec;
     QudaPrecision clover_cuda_prec;
     QudaPrecision clover_cuda_prec_sloppy;
+    QudaPrecision clover_cuda_prec_precondition;
 
     QudaCloverFieldOrder clover_order;
     QudaUseInitGuess use_init_guess;
@@ -125,7 +135,7 @@ extern "C" {
 
   // Interface functions, found in interface_quda.cpp
   void initQuda(int dev);
-  void qudaSetNumaConfig(char* filename);
+  void disableNumaAffinityQuda(void);
   void loadGaugeQuda(void *h_gauge, QudaGaugeParam *param);
   void freeGaugeQuda(void);
 
@@ -166,7 +176,10 @@ extern "C" {
   // these are temporary additions until we objectify the gauge field
   void set_dim(int *);
   void pack_ghost(void **cpuLink, void **cpuGhost, int nFace, QudaPrecision precision);
-  
+ 
+
+  void setFatLinkPadding(QudaComputeFatMethod method, QudaGaugeParam* param);
+ 
   int computeFatLinkQuda(void* fatlink, void** sitelink, double* act_path_coeff, 
 			 QudaGaugeParam* param, 
 			 QudaComputeFatMethod method);

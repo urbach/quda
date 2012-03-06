@@ -4,11 +4,7 @@
 #include <hisq_force_quda.h>
 #include <hw_quda.h>
 #include <hisq_force_macros.h>
-
 #include<utility>
-
-#define LOAD_ANTI_HERMITIAN LOAD_ANTI_HERMITIAN_DIRECT
-#define LOAD_MATRIX(src, dir, idx, var) LOAD_MATRIX_12_SINGLE(src, dir, idx, var)
 
 
 // Disable texture read for now. Need to revisit this.
@@ -116,6 +112,27 @@ namespace hisq {
       }
 
 
+
+    template<class T>
+      inline __device__
+      void loadAdjointMatrixFromField(const T* const field, int dir, int idx, T* const mat)
+      {
+#define CONJ_INDEX(i,j) j*3 + i
+        mat[CONJ_INDEX(0,0)] = conj(field[idx + dir*Vhx9]);
+        mat[CONJ_INDEX(0,1)] = conj(field[idx + dir*Vhx9 + Vh]);
+        mat[CONJ_INDEX(0,2)] = conj(field[idx + dir*Vhx9 + Vhx2]);
+        mat[CONJ_INDEX(1,0)] = conj(field[idx + dir*Vhx9 + Vhx3]);
+        mat[CONJ_INDEX(1,1)] = conj(field[idx + dir*Vhx9 + Vhx4]);
+        mat[CONJ_INDEX(1,2)] = conj(field[idx + dir*Vhx9 + Vhx5]);
+        mat[CONJ_INDEX(2,0)] = conj(field[idx + dir*Vhx9 + Vhx6]);
+        mat[CONJ_INDEX(2,1)] = conj(field[idx + dir*Vhx9 + Vhx7]);
+        mat[CONJ_INDEX(2,2)] = conj(field[idx + dir*Vhx9 + Vhx8]);
+#undef CONJ_INDEX
+        return;
+      }
+
+
+
     inline __device__
       void loadMatrixFromField(const float4* const field, int dir, int idx, float4* const mat)
       {
@@ -199,6 +216,22 @@ namespace hisq {
         return;
       }
 
+    template<class T>
+    inline __device__
+      void storeMatrixToField(const T* const mat, int idx, T* const field)
+      {
+        field[idx]          = mat[0];
+        field[idx + Vh]     = mat[1];
+        field[idx + Vhx2]   = mat[2];
+        field[idx + Vhx3]   = mat[3];
+        field[idx + Vhx4]   = mat[4];
+        field[idx + Vhx5]   = mat[5];
+        field[idx + Vhx6]   = mat[6];
+        field[idx + Vhx7]   = mat[7];
+        field[idx + Vhx8]   = mat[8];
+
+        return;
+      }
 
      template<class T, class U> 
      inline __device__
@@ -260,19 +293,22 @@ namespace hisq {
       struct ArrayLength
       {
         static const int result=9;
-        static const bool compressed=false;
       };
 
     template<>
       struct ArrayLength<float4>
       {
         static const int result=5;
-        static const bool compressed=true;
       };
-  
+ 
 
 
-    __device__ void reconstructSign(int* const sign, int dir, int i[4]){
+     
+
+    // reconstructSign doesn't do anything right now, 
+    // but it will, soon.
+    __device__ void reconstructSign(int* const sign, int dir, const int i[4]){
+/*
       *sign=1;
       switch(dir){
         case XUP:
@@ -291,12 +327,14 @@ namespace hisq {
           if(i[3] == X4m1) *sign=-1; 
           break;
       }
+*/
+      return;
     }
 
 
 
-    void
-      hisq_force_init_cuda(QudaGaugeParam* param)
+      void
+      hisqForceInitCuda(QudaGaugeParam* param)
       {
         static int hisq_force_init_cuda_flag = 0; 
 
@@ -338,14 +376,11 @@ namespace hisq {
 
         loadMatrixFromField(linkEven, sig, sid, LINK_W);
         reconstructSign(&link_sign, sig, x);	
-        if(ArrayLength<RealB>::compressed){
-          RECONSTRUCT_LINK_12(sig, sid, link_sign, link_W);
-        }
 
         loadMatrixFromField(oprodEven, sig, sid, COLOR_MAT_X);
-        MAT_MUL_MAT(link_W, color_mat_X, color_mat_W);
-   
+
 	typename RealTypeId<RealA>::Type coeff = (oddBit==1) ? -1 : 1;
+        MAT_MUL_MAT(LINK_W, COLOR_MAT_X, COLOR_MAT_W);
 	
 	storeMatrixToMomentumField(COLOR_MAT_W, sig, sid, coeff, forceEven); 
         return;
@@ -447,16 +482,16 @@ namespace hisq {
           loadMatrixFromField(naikOprodEven, sig, point_a, COLOR_MAT_X);
 
 
-          MAT_MUL_MAT(link_Z, color_mat_Z, color_mat_W); // link(d)*link(e)*Naik(c)
-          MAT_MUL_MAT(link_Y, color_mat_W, color_mat_V);
+          MAT_MUL_MAT(LINK_Z, COLOR_MAT_Z, COLOR_MAT_W); // link(d)*link(e)*Naik(c)
+          MAT_MUL_MAT(LINK_Y, COLOR_MAT_W, COLOR_MAT_V);
 
-          MAT_MUL_MAT(link_Y, color_mat_Y, color_mat_W);  // link(d)*Naik(b)*link(b)
-          MAT_MUL_MAT(color_mat_W, link_X, color_mat_U);
-	  SCALAR_MULT_ADD_MATRIX(color_mat_V, color_mat_U, -1, color_mat_V);
+          MAT_MUL_MAT(LINK_Y, COLOR_MAT_Y, COLOR_MAT_W);  // link(d)*Naik(b)*link(b)
+          MAT_MUL_MAT(COLOR_MAT_W, LINK_X, COLOR_MAT_U);
+	  SCALAR_MULT_ADD_MATRIX(COLOR_MAT_V, COLOR_MAT_U, -1, COLOR_MAT_V);
 
-          MAT_MUL_MAT(color_mat_X, link_W, color_mat_W); // Naik(a)*link(a)*link(b)
-          MAT_MUL_MAT(color_mat_W, link_X, color_mat_U);
-          SCALAR_MULT_ADD_MATRIX(color_mat_V, color_mat_U, 1, color_mat_V);
+          MAT_MUL_MAT(COLOR_MAT_X, LINK_W, COLOR_MAT_W); // Naik(a)*link(a)*link(b)
+          MAT_MUL_MAT(COLOR_MAT_W, LINK_X, COLOR_MAT_U);
+          SCALAR_MULT_ADD_MATRIX(COLOR_MAT_V, COLOR_MAT_U, 1, COLOR_MAT_V);
 
           addMatrixToField(COLOR_MAT_V, sig, sid,  coeff, outputEven);
         }
@@ -592,8 +627,6 @@ namespace hisq {
         RealA COLOR_MAT_W[ArrayLength<RealA>::result];
         RealA COLOR_MAT_Y[ArrayLength<RealA>::result];
         RealA COLOR_MAT_X[ArrayLength<RealA>::result];
-        RealA COLOR_MAT_Z[ArrayLength<RealA>::result];
-
 
         //        A________B
         //    mu   |      |
@@ -667,81 +700,64 @@ namespace hisq {
 
 
         // load the link variable connecting a and b 
-        // Store in link_W 
+        // Store in LINK_W 
         if(sig_positive){
           loadMatrixFromField(linkEven, mysig, ab_link_nbr_idx, LINK_W);
         }else{
           loadMatrixFromField(linkOdd, mysig, ab_link_nbr_idx, LINK_W);
         }
-        if(ArrayLength<RealB>::compressed){
-          RECONSTRUCT_LINK_12(mysig, ab_link_nbr_idx, ab_link_sign, link_W);
-        }
 
         // load the link variable connecting b and c 
-        // Store in link_X
+        // Store in LINK_X
         if(mu_positive){
           loadMatrixFromField(linkEven, mymu, bc_link_nbr_idx, LINK_X);
         }else{ 
           loadMatrixFromField(linkOdd, mymu, bc_link_nbr_idx, LINK_X);
         }
-        if(ArrayLength<RealB>::compressed){
-          RECONSTRUCT_LINK_12(mymu, bc_link_nbr_idx, bc_link_sign, link_X);
-        }
-
-
 
 
         if(QprevOdd == NULL){
           if(sig_positive){
             loadMatrixFromField(oprodOdd, sig, point_d, COLOR_MAT_Y);
           }else{
-            loadMatrixFromField(oprodEven, OPP_DIR(sig), point_c, COLOR_MAT_Z);
-            ADJ_MAT(color_mat_Z, color_mat_Y);
+	    loadAdjointMatrixFromField(oprodEven, OPP_DIR(sig), point_c, COLOR_MAT_Y);
           }
         }else{ // QprevOdd != NULL
           loadMatrixFromField(oprodEven, point_c, COLOR_MAT_Y);
         }
        
 
-        MATRIX_PRODUCT(color_mat_W, link_X, color_mat_Y, !mu_positive);
+        MATRIX_PRODUCT(COLOR_MAT_W, LINK_X, COLOR_MAT_Y, !mu_positive);
         if(PmuOdd){
-          WRITE_MATRIX_18_SINGLE(PmuOdd, point_b, COLOR_MAT_W);
+	  storeMatrixToField(COLOR_MAT_W, point_b, PmuOdd);
         }
-
-        MATRIX_PRODUCT(color_mat_Y, link_W, color_mat_W, sig_positive);
-        WRITE_MATRIX_18_SINGLE(P3Even, sid, COLOR_MAT_Y);
+        MATRIX_PRODUCT(COLOR_MAT_Y, LINK_W, COLOR_MAT_W, sig_positive);
+	storeMatrixToField(COLOR_MAT_Y, sid, P3Even);
 
 
         if(mu_positive){
           loadMatrixFromField(linkOdd, mymu, ad_link_nbr_idx, LINK_Y);
-          if(ArrayLength<RealB>::compressed){
-            RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, link_Y);
-          }
         }else{
-          loadMatrixFromField(linkEven, mymu, ad_link_nbr_idx, LINK_X);
-          if(ArrayLength<RealB>::compressed){
-            RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, link_X);
-          }
-          ADJ_MAT(link_X, link_Y);
+          loadAdjointMatrixFromField(linkEven, mymu, ad_link_nbr_idx, LINK_Y);
         }
 
 
         if(QprevOdd == NULL){
           if(sig_positive){
-            MAT_MUL_MAT(color_mat_W, link_Y, color_mat_Y);
+            MAT_MUL_MAT(COLOR_MAT_W, LINK_Y, COLOR_MAT_Y);
           }
           if(QmuEven){
-            ASSIGN_MAT(link_Y, color_mat_X); 
-            WRITE_MATRIX_18_SINGLE(QmuEven, sid, COLOR_MAT_X);
+            ASSIGN_MAT(LINK_Y, COLOR_MAT_X); 
+	    storeMatrixToField(COLOR_MAT_X, sid, QmuEven);
           }
         }else{ 
           loadMatrixFromField(QprevOdd, point_d, COLOR_MAT_Y);
-          MAT_MUL_MAT(color_mat_Y, link_Y, color_mat_X);
+          MAT_MUL_MAT(COLOR_MAT_Y, LINK_Y, COLOR_MAT_X);
           if(QmuEven){
-            WRITE_MATRIX_18_SINGLE(QmuEven, sid, COLOR_MAT_X);
+	    storeMatrixToField(COLOR_MAT_X, sid, QmuEven);
           }
           if(sig_positive){
-            MAT_MUL_MAT(color_mat_W, color_mat_X, color_mat_Y);
+            MAT_MUL_MAT(COLOR_MAT_W, COLOR_MAT_X, COLOR_MAT_Y);
           }	
         }
 
@@ -1013,14 +1029,11 @@ namespace hisq {
         }else{
           loadMatrixFromField(linkEven, mymu, ad_link_nbr_idx, LINK_W);
         }
-        if(ArrayLength<RealB>::compressed){
-          RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, link_W);	
-        }
 
 
         // Should all be inside if (shortPOdd)
         if (shortPOdd){
-          MATRIX_PRODUCT(color_mat_W, link_W, color_mat_Y, mu_positive);
+          MATRIX_PRODUCT(COLOR_MAT_W, LINK_W, COLOR_MAT_Y, mu_positive);
           addMatrixToField(COLOR_MAT_W, point_d, accumu_coeff, shortPOdd);
         }
 
@@ -1030,13 +1043,13 @@ namespace hisq {
         if(oprodOdd){
           loadMatrixFromField(oprodOdd, point_d, COLOR_MAT_X);
           if(mu_positive){
-            MAT_MUL_MAT(color_mat_Y, color_mat_X, color_mat_W);
+            MAT_MUL_MAT(COLOR_MAT_Y, COLOR_MAT_X, COLOR_MAT_W);
 
             // Added by J.F.
             if(!oddBit){ mycoeff = -mycoeff; }
             addMatrixToField(COLOR_MAT_W, mu, point_d, mycoeff, newOprodOdd);
           }else{
-            ADJ_MAT_MUL_ADJ_MAT(color_mat_X, color_mat_Y, color_mat_W);
+            ADJ_MAT_MUL_ADJ_MAT(COLOR_MAT_X, COLOR_MAT_Y, COLOR_MAT_W);
             if(oddBit){ mycoeff = -mycoeff; }
             addMatrixToField(COLOR_MAT_W, OPP_DIR(mu), sid, mycoeff, newOprodEven);
           } 
@@ -1048,7 +1061,7 @@ namespace hisq {
             addMatrixToField(COLOR_MAT_Y, mu, point_d, mycoeff, newOprodOdd);
           }else{
             if(oddBit){ mycoeff = -mycoeff; }
-            ADJ_MAT(color_mat_Y, color_mat_W);
+            ADJ_MAT(COLOR_MAT_Y, COLOR_MAT_W);
             addMatrixToField(COLOR_MAT_W, OPP_DIR(mu), sid, mycoeff, newOprodEven);
           }
         }
@@ -1300,15 +1313,12 @@ namespace hisq {
         }else{
           loadMatrixFromField(linkEven, mymu, ad_link_nbr_idx, LINK_Y);
         }
-        if(ArrayLength<RealB>::compressed){
-          RECONSTRUCT_LINK_12(mymu, ad_link_nbr_idx, ad_link_sign, link_Y);
-        }
 
         if(sig_positive){
           if (mu_positive){
-            MAT_MUL_MAT(color_mat_X, link_Y, color_mat_W);
+            MAT_MUL_MAT(COLOR_MAT_X, LINK_Y, COLOR_MAT_W);
           }else{
-            MAT_MUL_ADJ_MAT(color_mat_X, link_Y, color_mat_W);
+            MAT_MUL_ADJ_MAT(COLOR_MAT_X, LINK_Y, COLOR_MAT_W);
           }
         }
         loadMatrixFromField(oprodEven, point_c, COLOR_MAT_Y);
@@ -1320,12 +1330,9 @@ namespace hisq {
         }else{
           loadMatrixFromField(linkOdd, mymu, bc_link_nbr_idx, LINK_W);
         }
-        if(ArrayLength<RealB>::compressed){
-          RECONSTRUCT_LINK_12(mymu, bc_link_nbr_idx, bc_link_sign, link_W);
-        }
 
 
-        MATRIX_PRODUCT(link_X, link_W, color_mat_Y, !mu_positive);
+        MATRIX_PRODUCT(LINK_X, LINK_W, COLOR_MAT_Y, !mu_positive);
 
         // I can use a pointer to the even and odd link fields 
         // to avoid all the if statements
@@ -1334,17 +1341,12 @@ namespace hisq {
         }else{
           loadMatrixFromField(linkOdd, mysig, ab_link_nbr_idx, LINK_W);
         }
-        if(ArrayLength<RealB>::compressed){
-          RECONSTRUCT_LINK_12(mysig, ab_link_nbr_idx, ab_link_sign, link_W);
-        }
-
-
-        MATRIX_PRODUCT(color_mat_Y, link_W, link_X, sig_positive);
+        MATRIX_PRODUCT(COLOR_MAT_Y, LINK_W, LINK_X, sig_positive);
 
         const typename RealTypeId<RealA>::Type & mycoeff = CoeffSign<sig_positive,oddBit>::result*coeff;
         if (sig_positive)
         {	
-          MAT_MUL_MAT(link_X, color_mat_W, color_mat_Z);
+          MAT_MUL_MAT(LINK_X, COLOR_MAT_W, COLOR_MAT_Z);
           if(oddBit){
             addMatrixToField(COLOR_MAT_Z, sig, sid, -mycoeff, newOprodEven);
           }else{
@@ -1354,14 +1356,14 @@ namespace hisq {
 
         if (mu_positive)
         {
-          MAT_MUL_MAT(color_mat_Y, color_mat_X, color_mat_Z);
+          MAT_MUL_MAT(COLOR_MAT_Y, COLOR_MAT_X, COLOR_MAT_Z);
           if(oddBit){
             addMatrixToField(COLOR_MAT_Z, mu, point_d, mycoeff, newOprodOdd);
           }else{
             addMatrixToField(COLOR_MAT_Z, mu, point_d, -mycoeff, newOprodOdd);
           }
         }else{
-          ADJ_MAT_MUL_ADJ_MAT(color_mat_X, color_mat_Y, color_mat_Z);	
+          ADJ_MAT_MUL_ADJ_MAT(COLOR_MAT_X, COLOR_MAT_Y, COLOR_MAT_Z);	
           if(oddBit){
             addMatrixToField(COLOR_MAT_Z, OPP_DIR(mu), sid, -mycoeff, newOprodEven);
           }else{
@@ -1369,7 +1371,7 @@ namespace hisq {
           }
         }
 
-        MATRIX_PRODUCT(color_mat_W, link_Y, color_mat_Y, mu_positive);
+        MATRIX_PRODUCT(COLOR_MAT_W, LINK_Y, COLOR_MAT_Y, mu_positive);
         addMatrixToField(COLOR_MAT_W, point_d, accumu_coeff, shortPOdd);
         return;
       }
@@ -1694,109 +1696,8 @@ namespace hisq {
         }
 
         return; 
-   }
+   } // do_hisq_staples_force_cuda
 
-
-   template<class RealA>
-     __global__ void
-     do_rewrite_oprod_kernel(RealA* const momMatrix,
-                             const RealA* const Oprod,
-                             int sig)
-     {
-       if(GOES_FORWARDS(sig)){
-         int sid = blockIdx.x*blockDim.x + threadIdx.x;
-         RealA COLOR_MAT_W[ArrayLength<RealA>::result];
-         loadMatrixFromField(Oprod, sig, sid, COLOR_MAT_W);
-         storeMatrixToField(COLOR_MAT_W, sig, sid, momMatrix);
-       }
-       return;
-     }
-
-   // rewrite this function so it multiplies the odd matrices 
-   // by a minus sign -> easy to do
-
-   template<class RealA>
-     static void 
-     rewrite_oprod_kernel(RealA* const momMatrixEven,
-                          RealA* const momMatrixOdd,
-                          const RealA* const oprodEven,
-                          const RealA* const oprodOdd,
-                          int sig, dim3 gridDim, dim3 blockDim)
-     {
-       dim3 halfGridDim(gridDim.x/2, 1, 1);
-   
-       do_rewrite_oprod_kernel<RealA><<<halfGridDim, blockDim>>>(momMatrixEven, oprodEven, sig);
-       do_rewrite_oprod_kernel<RealA><<<halfGridDim, blockDim>>>(momMatrixOdd, oprodOdd, sig);
-       return;
-     }
-
-
-   template<class RealA>
-     void rewriteOprod(cudaGaugeField &newOprod, cudaGaugeField &oprod, QudaGaugeParam* param)
-     {
-       const int volume = param->X[0]*param->X[1]*param->X[2]*param->X[3];
-       dim3 blockDim(BLOCK_DIM,1,1);
-       dim3 gridDim(volume/blockDim.x, 1, 1);
-       for(int sig=0; sig<4; ++sig){
-         rewrite_oprod_kernel<RealA>((RealA*)newOprod.Even_p(), (RealA*)newOprod.Odd_p(),
-                                     (RealA*)oprod.Even_p(), 
-                                     (RealA*)oprod.Odd_p(),
-                                     sig, gridDim, blockDim);  
-       }
-        
-       return;   
-     }
-
-
-   void rewriteOprodCuda(cudaGaugeField &newOprod, cudaGaugeField &oprod, QudaGaugeParam* param)
-   {
-     rewriteOprod<float2>(newOprod, oprod, param);
-     return;     
-   }
-
-
-   template<class RealA>
-   __global__ void 
-   do_rescaleHalfField(RealA* const halfField, typename  RealTypeId<RealA>::Type coeff)
-   {
-     // Note: 
-     // At the moment, this will only work for float2, double2 
-     RealA matrix[ArrayLength<RealA>::result];    
-     int sid = blockIdx.x*blockDim.x + threadIdx.x; 
-     for(int sig=0; sig<4; ++sig){
-       loadMatrixFromField(halfField, sig, sid, matrix);
-       for(int i=0; i<ArrayLength<RealA>::result; ++i){
-        matrix[i].x = coeff*matrix[i].x;
-        matrix[i].y = coeff*matrix[i].y;
-       }
-       storeMatrixToField(matrix, sig, sid, halfField);
-     }
-     
-     return;
-   }
-
-
-
-   template<class RealA>
-    static void rescaleHalfField(RealA* const halfField, const QudaGaugeParam& param, typename RealTypeId<RealA>::Type coeff)
-     {
-        const int volume = param.X[0]*param.X[1]*param.X[2]*param.X[3];
-        dim3 blockDim(BLOCK_DIM,1,1);
-        dim3 gridDim(volume/blockDim.x, 1, 1);
-        dim3 halfGridDim(gridDim.x/2, 1, 1);
-        do_rescaleHalfField<RealA><<<halfGridDim, blockDim>>>(halfField,coeff);
-        return;
-     }
-
-   void rescaleHalfFieldCuda(cudaGaugeField &cudaField, const QudaGaugeParam& param, int oddBit, double coeff)
-   {
-     if(oddBit){
-       rescaleHalfField<float2>((float2*)cudaField.Odd_p(), param, coeff);   
-     }else{
-       rescaleHalfField<float2>((float2*)cudaField.Even_p(), param, coeff);   
-     } 
-     return; 
-   }
 
 #undef Pmu
 #undef Pnumu
@@ -1806,7 +1707,7 @@ namespace hisq {
 #undef Qnumu
 
 
-   void hisq_complete_force_cuda(const QudaGaugeParam &param,
+   void hisqCompleteForceCuda(const QudaGaugeParam &param,
 		   const cudaGaugeField &oprod,
 		   const cudaGaugeField &link,
 		   cudaGaugeField* force)
@@ -1840,7 +1741,7 @@ namespace hisq {
 
 
 
-   void hisq_longlink_force_cuda(double coeff,
+   void hisqLongLinkForceCuda(double coeff,
 		   const QudaGaugeParam &param,
 		   const cudaGaugeField &oldOprod,
 		   const cudaGaugeField &link,
@@ -1877,7 +1778,7 @@ namespace hisq {
 
 
     void
-      hisq_staples_force_cuda(const double path_coeff_array[6],
+      hisqStaplesForceCuda(const double path_coeff_array[6],
                               const QudaGaugeParam &param,
                               const cudaGaugeField &oprod, 
                               const cudaGaugeField &link, 

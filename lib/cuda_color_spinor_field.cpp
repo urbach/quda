@@ -190,6 +190,13 @@ void cudaColorSpinorField::create(const QudaFieldCreate create) {
     if (precision == QUDA_HALF_PRECISION) 
       (dynamic_cast<cudaColorSpinorField*>(odd))->norm = (void*)((unsigned long)norm + norm_bytes/2);
   }
+
+  if (siteSubset != QUDA_FULL_SITE_SUBSET) {
+    zeroPad();
+  } else {
+    (dynamic_cast<cudaColorSpinorField*>(even))->zeroPad();
+    (dynamic_cast<cudaColorSpinorField*>(odd))->zeroPad();
+  }
   
 }
 void cudaColorSpinorField::freeBuffer() {
@@ -232,6 +239,15 @@ cudaColorSpinorField& cudaColorSpinorField::Odd() const {
 void cudaColorSpinorField::zero() {
   cudaMemset(v, 0, bytes);
   if (precision == QUDA_HALF_PRECISION) cudaMemset(norm, 0, norm_bytes);
+}
+
+
+void cudaColorSpinorField::zeroPad() {
+  size_t pad_bytes = (stride - volume) * precision * fieldOrder;
+  int Npad = nColor * nSpin * 2 / fieldOrder;
+  for (int i=0; i<Npad; i++) {
+    if (pad_bytes) cudaMemset((char*)v + (volume + i*stride)*fieldOrder*precision, 0, pad_bytes);      
+  }
 }
 
 void cudaColorSpinorField::copy(const cudaColorSpinorField &src) {
@@ -485,17 +501,31 @@ void cudaColorSpinorField::allocateGhostBuffer(void) {
       if (precision == QUDA_HALF_PRECISION) faceBytes += nFace*ghostFace[i]*sizeof(float);
       
       if (this->initGhostFaceBuffer) { // only free-ed if precision is higher than previous allocation
-	cudaFree(this->fwdGhostFaceBuffer[i]); this->fwdGhostFaceBuffer[i] = NULL;
+	//cudaFree(this->fwdGhostFaceBuffer[i]); 
 	cudaFree(this->backGhostFaceBuffer[i]); this->backGhostFaceBuffer[i] = NULL;
+	this->fwdGhostFaceBuffer[i] = NULL;
       }
-      cudaMalloc((void**)&this->fwdGhostFaceBuffer[i], faceBytes);
-      cudaMalloc((void**)&this->backGhostFaceBuffer[i], faceBytes);
+      //cudaMalloc((void**)&this->fwdGhostFaceBuffer[i], faceBytes);
+      cudaMalloc((void**)&this->backGhostFaceBuffer[i], 2*faceBytes);
+      fwdGhostFaceBuffer[i] = (void*)(((char*)backGhostFaceBuffer[i]) + faceBytes);
     }   
     CUERR;
     
     this->facePrecision = precision;
     this->initGhostFaceBuffer = 1;
   }
+
+  for (int i=0; i<4; i++) {
+    if(!commDimPartitioned(i)){
+      continue;
+    }
+    size_t faceBytes = nFace*ghostFace[i]*Nint*precision;
+    // add extra space for the norms for half precision
+    if (precision == QUDA_HALF_PRECISION) faceBytes += nFace*ghostFace[i]*sizeof(float);
+    fwdGhostFaceBuffer[i] = (void*)(((char*)backGhostFaceBuffer[i]) + faceBytes);
+  }
+
+
 }
 
 void cudaColorSpinorField::freeGhostBuffer(void) {
@@ -505,24 +535,21 @@ void cudaColorSpinorField::freeGhostBuffer(void) {
     if(!commDimPartitioned(i)){
       continue;
     }
-    cudaFree(fwdGhostFaceBuffer[i]); fwdGhostFaceBuffer[i] = NULL;
+    //cudaFree(fwdGhostFaceBuffer[i]); 
     cudaFree(backGhostFaceBuffer[i]); backGhostFaceBuffer[i] = NULL;
+    fwdGhostFaceBuffer[i] = NULL;
   } 
 
   initGhostFaceBuffer = 0;  
 }
 
 // pack the ghost zone into a contiguous buffer for communications
-void cudaColorSpinorField::packGhost(const int dim, const QudaDirection dir,
-				     const QudaParity parity, const int dagger, cudaStream_t *stream) 
+void cudaColorSpinorField::packGhost(const int dim, const QudaParity parity, const int dagger, cudaStream_t *stream) 
 {
-
 #ifdef MULTI_GPU
   if (dim !=3 || kernelPackT) { // use kernels to pack into contiguous buffers then a single cudaMemcpy
-    void* gpu_buf = 
-      (dir == QUDA_BACKWARDS) ? this->backGhostFaceBuffer[dim] : this->fwdGhostFaceBuffer[dim];
-    
-    packFace(gpu_buf, *this, dim, dir, dagger, parity, *stream); 
+    void* gpu_buf = this->backGhostFaceBuffer[dim];
+    packFace(gpu_buf, *this, dim, dagger, parity, *stream); 
   }
 #else
   errorQuda("packGhost not built on single-GPU build");
@@ -625,4 +652,13 @@ void cudaColorSpinorField::unpackGhost(void* ghost_spinor, const int dim,
   }
 
   CUERR;
+}
+
+std::ostream& operator<<(std::ostream &out, const cudaColorSpinorField &a) {
+  out << (const ColorSpinorField)a;
+  out << "v = " << a.v << std::endl;
+  out << "norm = " << a.norm << std::endl;
+  out << "alloc = " << a.alloc << std::endl;
+  out << "init = " << a.init << std::endl;
+  return out;
 }

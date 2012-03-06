@@ -557,48 +557,11 @@ PACKAGE_STRING='quda 0.4'
 PACKAGE_BUGREPORT='mikec@seas.harvard.edu'
 PACKAGE_URL=''
 
-# Factoring default headers for most tests.
-ac_includes_default="\
-#include <stdio.h>
-#ifdef HAVE_SYS_TYPES_H
-# include <sys/types.h>
-#endif
-#ifdef HAVE_SYS_STAT_H
-# include <sys/stat.h>
-#endif
-#ifdef STDC_HEADERS
-# include <stdlib.h>
-# include <stddef.h>
-#else
-# ifdef HAVE_STDLIB_H
-#  include <stdlib.h>
-# endif
-#endif
-#ifdef HAVE_STRING_H
-# if !defined STDC_HEADERS && defined HAVE_MEMORY_H
-#  include <memory.h>
-# endif
-# include <string.h>
-#endif
-#ifdef HAVE_STRINGS_H
-# include <strings.h>
-#endif
-#ifdef HAVE_INTTYPES_H
-# include <inttypes.h>
-#endif
-#ifdef HAVE_STDINT_H
-# include <stdint.h>
-#endif
-#ifdef HAVE_UNISTD_H
-# include <unistd.h>
-#endif"
-
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 QDP_INSTALL_PATH
 USE_QMEM
 FERMI_DBLE_TEX
-HAVE_NUMA
 QIO_HOME
 QMP_HOME
 MPI_HOME
@@ -612,6 +575,7 @@ BUILD_MULTI_GPU
 BUILD_HISQ_FORCE
 BUILD_FERMION_FORCE
 BUILD_GAUGE_FORCE
+BUILD_HISQLINK
 BUILD_FATLINK
 BUILD_TWISTED_MASS_DIRAC
 BUILD_STAGGERED_DIRAC
@@ -628,6 +592,7 @@ QUDA_OS
 GPU_ARCH
 CPU_ARCH
 CUDA_INSTALL_PATH
+<<<<<<< HEAD
 QDPXX_LIBS
 QDPXX_LDFLAGS
 QDPXX_CXXFLAGS
@@ -635,6 +600,8 @@ QDPXX_CONFIG
 EGREP
 GREP
 CPP
+=======
+>>>>>>> master
 ac_ct_CXX
 CXXFLAGS
 CXX
@@ -703,6 +670,7 @@ enable_domain_wall_dirac
 enable_staggered_dirac
 enable_twisted_mass_dirac
 enable_staggered_fatlink
+enable_hisq_fatlink
 enable_gauge_force
 enable_staggered_force
 enable_hisq_force
@@ -725,8 +693,7 @@ LIBS
 CPPFLAGS
 CXX
 CXXFLAGS
-CCC
-CPP'
+CCC'
 
 
 # Initialize some variables set by options.
@@ -1360,6 +1327,7 @@ Optional Features:
                           Build Twisted Mass Dirac Op (default=enabled)
   --enable-staggered-fatlink
                           Build Staggered Fat Link Code (default=disabled)
+  --enable-hisq-fatlink   Build Hisq Fat Link Code (default=disabled)
   --enable-gauge-force    Build 1 loop Symanzik gauge force (default=disabled)
   --enable-staggered-force
                           Build Staggered Force Term (default=disabled)
@@ -1391,7 +1359,6 @@ Some influential environment variables:
               you have headers in a nonstandard directory <include dir>
   CXX         C++ compiler command
   CXXFLAGS    C++ compiler flags
-  CPP         C preprocessor
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -2959,6 +2926,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+<<<<<<< HEAD
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -3364,6 +3332,8 @@ fi
 
 
 
+=======
+>>>>>>> master
 # Check whether --with-cuda was given.
 if test "${with_cuda+set}" = set; then :
   withval=$with_cuda;  cuda_home=${withval}
@@ -3514,6 +3484,15 @@ if test "${enable_staggered_fatlink+set}" = set; then :
   enableval=$enable_staggered_fatlink;  build_staggered_fatlink=${enableval}
 else
    build_staggered_fatlink="no"
+
+fi
+
+
+# Check whether --enable-hisq-fatlink was given.
+if test "${enable_hisq_fatlink+set}" = set; then
+  enableval=$enable_hisq_fatlink;  build_hisq_fatlink=${enableval}
+else
+   build_hisq_fatlink="no"
 
 fi
 
@@ -3818,6 +3797,15 @@ yes|no);;
   ;;
 esac
 
+case ${build_hisq_fatlink} in
+yes|no);;
+*)
+  { { $as_echo "$as_me:$LINENO: error:  invalid value for --enable-hisq-fatlink " >&5
+$as_echo "$as_me: error:  invalid value for --enable-hisq-fatlink " >&2;}
+   { (exit 1); exit 1; }; }
+  ;;
+esac
+
 case ${build_gauge_force} in
 yes|no);;
 *)
@@ -3832,6 +3820,14 @@ yes|no);;
   ;;
 esac
 
+case ${build_hisq_force} in
+yes|no);;
+*)
+  { { $as_echo "$as_me:$LINENO: error:  invalid value for --enable-hisq-force " >&5
+$as_echo "$as_me: error:  invalid value for --enable-hisq-force " >&2;}
+   { (exit 1); exit 1; }; }
+  ;;
+esac
 
 case ${multi_gpu} in
 yes|no);;
@@ -3988,7 +3984,16 @@ $as_echo "$as_me: Setting BUILD_FATLINK = ${build_staggered_fatlink}  " >&6;}
 BUILD_FATLINK=${build_staggered_fatlink}
 
 
+<<<<<<< HEAD
 { $as_echo "$as_me:${as_lineno-$LINENO}: Setting BUILD_GAUGE_FORCE = ${build_gauge_force}  " >&5
+=======
+{ $as_echo "$as_me:$LINENO: Setting BUILD_HISQLINK = ${build_hisq_fatlink}  " >&5
+$as_echo "$as_me: Setting BUILD_HISQLINK = ${build_hisq_fatlink}  " >&6;}
+BUILD_HISQLINK=${build_hisq_fatlink}
+
+
+{ $as_echo "$as_me:$LINENO: Setting BUILD_GAUGE_FORCE = ${build_gauge_force}  " >&5
+>>>>>>> master
 $as_echo "$as_me: Setting BUILD_GAUGE_FORCE = ${build_gauge_force}  " >&6;}
 BUILD_GAUGE_FORCE=${build_gauge_force}
 
@@ -4053,12 +4058,16 @@ $as_echo "$as_me: Setting QIO_HOME=${qio_home}" >&6;}
 QIO_HOME=${qio_home}
 
 
+<<<<<<< HEAD
 { $as_echo "$as_me:${as_lineno-$LINENO}: Setting HAVE_NUMA=${ac_cv_header_numa_h}" >&5
 $as_echo "$as_me: Setting HAVE_NUMA=${ac_cv_header_numa_h}" >&6;}
 HAVE_NUMA=${ac_cv_header_numa_h}
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: Setting FERMI_DBLE_TEX= ${fermi_double_tex}" >&5
+=======
+{ $as_echo "$as_me:$LINENO: Setting FERMI_DBLE_TEX= ${fermi_double_tex}" >&5
+>>>>>>> master
 $as_echo "$as_me: Setting FERMI_DBLE_TEX= ${fermi_double_tex}" >&6;}
 FERMI_DBLE_TEX=${fermi_double_tex}
 

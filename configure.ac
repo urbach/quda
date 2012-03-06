@@ -3,8 +3,6 @@ AC_INIT([quda],[0.4],[mikec@seas.harvard.edu])
 AC_PROG_CC(gcc cc)
 AC_PROG_CXX(g++ CC cxx)
 
-AC_CHECK_HEADER([numa.h])
-
 dnl Specify CUDA Location
 AC_ARG_WITH(cuda,
   AC_HELP_STRING([--with-cuda=CUDADIR], [ Specify CUDA installation directory ]),
@@ -109,6 +107,12 @@ AC_ARG_ENABLE(staggered-fatlink,
   AC_HELP_STRING([--enable-staggered-fatlink], [ Build Staggered Fat Link Code (default=disabled) ]),
   [ build_staggered_fatlink=${enableval} ], 
   [ build_staggered_fatlink="no" ]
+)
+
+AC_ARG_ENABLE(hisq-fatlink,
+  AC_HELP_STRING([--enable-hisq-fatlink], [ Build Hisq Fat Link Code (default=disabled) ]),
+  [ build_hisq_fatlink=${enableval} ], 
+  [ build_hisq_fatlink="no" ]
 )
 
 AC_ARG_ENABLE(gauge-force,
@@ -310,6 +314,14 @@ yes|no);;
   ;;
 esac
 
+dnl Build Hisq fatlink
+case ${build_hisq_fatlink} in
+yes|no);;
+*) 
+  AC_MSG_ERROR([ invalid value for --enable-hisq-fatlink ])
+  ;;
+esac
+
 dnl Build Gauge Force
 case ${build_gauge_force} in
 yes|no);;
@@ -326,6 +338,13 @@ yes|no);;
   ;;
 esac
 
+dnl Build Hisq force
+case ${build_hisq_force} in
+yes|no);;
+*) 
+  AC_MSG_ERROR([ invalid value for --enable-hisq-force ])
+  ;;
+esac
 
 dnl Multi GPU
 case ${multi_gpu} in
@@ -458,6 +477,9 @@ AC_SUBST( BUILD_TWISTED_MASS_DIRAC, [${build_twm_dirac}])
 AC_MSG_NOTICE([Setting BUILD_FATLINK = ${build_staggered_fatlink} ] )
 AC_SUBST( BUILD_FATLINK, [${build_staggered_fatlink}])
 
+AC_MSG_NOTICE([Setting BUILD_HISQLINK = ${build_hisq_fatlink} ] )
+AC_SUBST( BUILD_HISQLINK, [${build_hisq_fatlink}])
+
 AC_MSG_NOTICE([Setting BUILD_GAUGE_FORCE = ${build_gauge_force} ] )
 AC_SUBST( BUILD_GAUGE_FORCE, [${build_gauge_force}])
 
@@ -496,9 +518,6 @@ AC_SUBST( QMP_HOME, [${qmp_home}] )
 
 AC_MSG_NOTICE([Setting QIO_HOME=${qio_home}])
 AC_SUBST( QIO_HOME, [${qio_home}] )
-
-AC_MSG_NOTICE([Setting HAVE_NUMA=${ac_cv_header_numa_h}])
-AC_SUBST( HAVE_NUMA, [${ac_cv_header_numa_h}] )
 
 AC_MSG_NOTICE([Setting FERMI_DBLE_TEX= ${fermi_double_tex}])
 AC_SUBST( FERMI_DBLE_TEX, [${fermi_double_tex}])

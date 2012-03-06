@@ -9,32 +9,35 @@
 #include "svd_quda.h"
 #include <hisq_links_quda.h>
 
-#define HISQ_UNITARIZE_PI 3.14159265358979323846
-#define HISQ_UNITARIZE_PI23 HISQ_UNITARIZE_PI*2.0/3.0
-
+#ifndef FL_UNITARIZE_PI
+#define FL_UNITARIZE_PI 3.14159265358979323846
+#endif
+#ifndef FL_UNITARIZE_PI23
+#define FL_UNITARIZE_PI23 FL_UNITARIZE_PI*2.0/3.0
+#endif 
+ 
 __constant__ int INPUT_PADDING=0;
 __constant__ int OUTPUT_PADDING=0;
 __constant__ int DEV_MAX_ITER = 20;
 
 static int HOST_MAX_ITER = 20;
 
-__constant__ double DEV_HISQ_UNITARIZE_EPS = 1e-6;
-__constant__ double DEV_MAX_DET_ERROR = 1e-9;
-__constant__ bool DEV_REUNIT_ALLOW_SVD = true;
-__constant__ bool DEV_REUNIT_SVD_ONLY = false;
-__constant__ double DEV_REUNIT_SVD_REL_ERROR = 1e-6;
-__constant__ double DEV_REUNIT_SVD_ABS_ERROR = 1e-6;
+__constant__ double DEV_FL_MAX_ERROR;
+__constant__ double DEV_FL_UNITARIZE_EPS;
+__constant__ bool   DEV_FL_REUNIT_ALLOW_SVD;
+__constant__ bool   DEV_FL_REUNIT_SVD_ONLY;
+__constant__ double DEV_FL_REUNIT_SVD_REL_ERROR;
+__constant__ double DEV_FL_REUNIT_SVD_ABS_ERROR;
+__constant__ bool   DEV_FL_CHECK_UNITARIZATION;
 
-
-static double HOST_HISQ_UNITARIZE_EPS;
-static double HOST_MAX_DET_ERROR;
-static bool   HOST_REUNIT_ALLOW_SVD;
-static bool   HOST_REUNIT_SVD_ONLY;
-static double HOST_REUNIT_SVD_REL_ERROR;
-static double HOST_REUNIT_SVD_ABS_ERROR;
-
+static double HOST_FL_MAX_ERROR;
+static double HOST_FL_UNITARIZE_EPS;
+static bool   HOST_FL_REUNIT_ALLOW_SVD;
+static bool   HOST_FL_REUNIT_SVD_ONLY;
+static double HOST_FL_REUNIT_SVD_REL_ERROR;
+static double HOST_FL_REUNIT_SVD_ABS_ERROR;
+static bool   HOST_FL_CHECK_UNITARIZATION;
 namespace hisq{
-
 
   void setUnitarizeLinksPadding(int input_padding, int output_padding)
   {
@@ -64,7 +67,6 @@ namespace hisq{
 
 
 
-
 template<class Cmplx>
 __device__ __host__
 bool isUnitarizedLinkConsistent(const Matrix<Cmplx,3>& initial_matrix,
@@ -72,9 +74,7 @@ bool isUnitarizedLinkConsistent(const Matrix<Cmplx,3>& initial_matrix,
 			        double max_error)	
 {
   Matrix<Cmplx,3> temporary; 
-  //temporary = conj(initial_matrix)*unitary_matrix*unitary_matrix - initial_matrix;
   temporary = conj(initial_matrix)*unitary_matrix;
-
   temporary = temporary*temporary - conj(initial_matrix)*initial_matrix;
    
   for(int i=0; i<3; ++i){
@@ -89,28 +89,31 @@ bool isUnitarizedLinkConsistent(const Matrix<Cmplx,3>& initial_matrix,
 
 
 
- void setUnitarizeLinksConstants(double unitarize_eps, double max_det_error, 
+ void setUnitarizeLinksConstants(double unitarize_eps, double max_error, 
 				 bool allow_svd, bool svd_only,
-				 double svd_rel_error, double svd_abs_error)
+				 double svd_rel_error, double svd_abs_error, bool check_unitarization)
       {
 
 	// not_set is only initialised once
 	static bool not_set=true;
 		
 	if(not_set){
-          cudaMemcpyToSymbol("DEV_HISQ_UNITARIZE_EPS", &unitarize_eps, sizeof(double));
-          cudaMemcpyToSymbol("DEV_MAX_DET_ERROR", &max_det_error, sizeof(double));
-	  cudaMemcpyToSymbol("DEV_REUNIT_ALLOW_SVD", &allow_svd, sizeof(bool));
-          cudaMemcpyToSymbol("DEV_REUNIT_SVD_ONLY", &svd_only, sizeof(bool));
-	  cudaMemcpyToSymbol("DEV_REUNIT_SVD_REL_ERROR", &svd_rel_error, sizeof(double));
-          cudaMemcpyToSymbol("DEV_REUNIT_SVD_ABS_ERROR", &svd_abs_error, sizeof(double));
-	
-	  HOST_HISQ_UNITARIZE_EPS = unitarize_eps;
-          HOST_MAX_DET_ERROR = max_det_error;     
-	  HOST_REUNIT_ALLOW_SVD = allow_svd;
-          HOST_REUNIT_SVD_ONLY = svd_only;
-	  HOST_REUNIT_SVD_REL_ERROR = svd_rel_error;
-          HOST_REUNIT_SVD_ABS_ERROR = svd_abs_error;
+          cudaMemcpyToSymbol("DEV_FL_UNITARIZE_EPS", &unitarize_eps, sizeof(double));
+	  cudaMemcpyToSymbol("DEV_FL_REUNIT_ALLOW_SVD", &allow_svd, sizeof(bool));
+          cudaMemcpyToSymbol("DEV_FL_REUNIT_SVD_ONLY", &svd_only, sizeof(bool));
+	  cudaMemcpyToSymbol("DEV_FL_REUNIT_SVD_REL_ERROR", &svd_rel_error, sizeof(double));
+          cudaMemcpyToSymbol("DEV_FL_REUNIT_SVD_ABS_ERROR", &svd_abs_error, sizeof(double));
+          cudaMemcpyToSymbol("DEV_FL_MAX_ERROR", &max_error, sizeof(double));
+	  cudaMemcpyToSymbol("DEV_FL_CHECK_UNITARIZATION", &check_unitarization, sizeof(bool));
+	  
+
+	  HOST_FL_UNITARIZE_EPS = unitarize_eps;
+	  HOST_FL_REUNIT_ALLOW_SVD = allow_svd;
+          HOST_FL_REUNIT_SVD_ONLY = svd_only;
+	  HOST_FL_REUNIT_SVD_REL_ERROR = svd_rel_error;
+          HOST_FL_REUNIT_SVD_ABS_ERROR = svd_abs_error;
+          HOST_FL_MAX_ERROR = max_error;     
+          HOST_FL_CHECK_UNITARIZATION = check_unitarization;
 
           not_set = false;
 	}
@@ -145,7 +148,8 @@ bool isUnitarizedLinkConsistent(const Matrix<Cmplx,3>& initial_matrix,
     inline bool checkRelativeError(Real a, Real b, Real epsilon)
     {
       if( fabs((a-b)/b)  < epsilon ) return true;
-			return false;
+      printf("Relative error = %g\n", fabs((a-b)/b));
+      return false;
     }
     
 
@@ -159,14 +163,10 @@ bool isUnitarizedLinkConsistent(const Matrix<Cmplx,3>& initial_matrix,
 
         	Matrix<Cmplx,3> qsq, tempq;
 
+
        		typename RealTypeId<Cmplx>::Type c[3];
         	typename RealTypeId<Cmplx>::Type g[3];
 
-#ifdef __CUDA_ARCH__
-#define REUNIT_SVD_ONLY DEV_REUNIT_SVD_ONLY
-#else
-#define REUNIT_SVD_ONLY HOST_REUNIT_SVD_ONLY
-#endif
 		qsq = q*q;
 		tempq = qsq*q;
 
@@ -177,45 +177,49 @@ bool isUnitarizedLinkConsistent(const Matrix<Cmplx,3>& initial_matrix,
 		g[0] = g[1] = g[2] = c[0]/3.;
 		typename RealTypeId<Cmplx>::Type r,s,theta;
 		s = c[1]/3. - c[0]*c[0]/18;
-		r = c[2]/2. - (c[0]/3.)*(c[1] - c[0]*c[0]/9.);
 
 #ifdef __CUDA_ARCH__
-#define HISQ_UNITARIZE_EPS DEV_HISQ_UNITARIZE_EPS
+#define FL_UNITARIZE_EPS DEV_FL_UNITARIZE_EPS
 #else
-#define HISQ_UNITARIZE_EPS HOST_HISQ_UNITARIZE_EPS
+#define FL_UNITARIZE_EPS HOST_FL_UNITARIZE_EPS
 #endif
 
 
 #ifdef __CUDA_ARCH__
-#define REUNIT_SVD_REL_ERROR DEV_REUNIT_SVD_REL_ERROR
-#define REUNIT_SVD_ABS_ERROR DEV_REUNIT_SVD_ABS_ERROR
+#define FL_REUNIT_SVD_REL_ERROR DEV_FL_REUNIT_SVD_REL_ERROR
+#define FL_REUNIT_SVD_ABS_ERROR DEV_FL_REUNIT_SVD_ABS_ERROR
 #else // cpu
-#define REUNIT_SVD_REL_ERROR HOST_REUNIT_SVD_REL_ERROR
-#define REUNIT_SVD_ABS_ERROR HOST_REUNIT_SVD_ABS_ERROR
+#define FL_REUNIT_SVD_REL_ERROR HOST_FL_REUNIT_SVD_REL_ERROR
+#define FL_REUNIT_SVD_ABS_ERROR HOST_FL_REUNIT_SVD_ABS_ERROR
 #endif
 
 
-		typename RealTypeId<Cmplx>::Type cosTheta = r/sqrt(s*s*s);
-		if(fabs(s) < HISQ_UNITARIZE_EPS){
-			cosTheta = 1.;
-			s = 0.0; 
+		typename RealTypeId<Cmplx>::Type cosTheta; 
+		if(fabs(s) >= FL_UNITARIZE_EPS){
+		  r = c[2]/2. - (c[0]/3.)*(c[1] - c[0]*c[0]/9.);
+		  cosTheta = r/sqrt(s*s*s);
+		  if(fabs(cosTheta) >= 1.0){
+		    if( r > 0 ){ 
+			theta = 0.0;
+		    }else{
+			theta = FL_UNITARIZE_PI;
+		    }
+		  }else{ 
+			theta = acos(cosTheta);
+		  }
+		  g[0] = c[0]/3 + 2*sqrt(s)*cos( theta/3 );
+		  g[1] = c[0]/3 + 2*sqrt(s)*cos( theta/3 + FL_UNITARIZE_PI23 );
+ 		  g[2] = c[0]/3 + 2*sqrt(s)*cos( theta/3 + 2*FL_UNITARIZE_PI23 );
 		}
-		if(fabs(cosTheta)>1.0){ r>0 ? theta=0.0 : theta=HISQ_UNITARIZE_PI/3.0; }
-		else{ theta = acos(cosTheta)/3.0; }
-		s = 2.0*sqrt(s);
-		for(int i=0; i<3; ++i){
-			g[i] += s*cos(theta + (i-1)*HISQ_UNITARIZE_PI23);
-		}
-
                 
 		// Check the eigenvalues, if the determinant does not match the product of the eigenvalues
                 // return false. Then call SVD instead.
                 typename RealTypeId<Cmplx>::Type det = getDeterminant(q).x;
-		if( fabs(det) >= REUNIT_SVD_ABS_ERROR){  
-		  if( checkRelativeError(g[0]*g[1]*g[2],det,REUNIT_SVD_REL_ERROR) == false ) return false;
-		}else{
-		  return false;
+	        if( fabs(det) < FL_REUNIT_SVD_ABS_ERROR ){ 
+			return false;
 		}
+		if( checkRelativeError(g[0]*g[1]*g[2],det,FL_REUNIT_SVD_REL_ERROR) == false ) return false;
+
 
         	// At this point we have finished with the c's 
         	// use these to store sqrt(g)
@@ -251,36 +255,28 @@ bool isUnitarizedLinkConsistent(const Matrix<Cmplx,3>& initial_matrix,
   {
     Matrix<Cmplx,3> u;
 #ifdef __CUDA_ARCH__
-#define REUNIT_SVD_ONLY DEV_REUNIT_SVD_ONLY
+#define FL_REUNIT_SVD_ONLY  DEV_FL_REUNIT_SVD_ONLY
+#define FL_REUNIT_ALLOW_SVD DEV_FL_REUNIT_ALLOW_SVD
 #else
-#define REUNIT_SVD_ONLY HOST_REUNIT_SVD_ONLY
+#define FL_REUNIT_SVD_ONLY  HOST_FL_REUNIT_SVD_ONLY
+#define FL_REUNIT_ALLOW_SVD HOST_FL_REUNIT_ALLOW_SVD
 #endif
-    if( !REUNIT_SVD_ONLY ){
+    if( !FL_REUNIT_SVD_ONLY ){
       if( reciprocalRoot<Cmplx>(conj(in)*in,&u) ){
 	*result = in*u;
 	return true;
       }
     }
 
+   // If we've got this far, then the Caley-Hamilton unitarization 
+   // has failed. If SVD is not allowed, the unitarization has failed.
+   if( !FL_REUNIT_ALLOW_SVD ) return false;
+
     Matrix<Cmplx,3> v;
     typename RealTypeId<Cmplx>::Type singular_values[3];
     computeSVD<Cmplx>(in, u, v, singular_values); // should pass pointers to u, v I guess
     *result = u*conj(v);
-#ifdef __CUDA_ARCH__
-#define MAX_DET_ERROR DEV_MAX_DET_ERROR
-#else
-#define MAX_DET_ERROR HOST_MAX_DET_ERROR
-#endif
-    // Finally, check that the absolute value of the determinant does not 
-    // differ significantly from one.
-    // We could be more rigorous by explicitly checking the unitarity of the 
-    // matrix, or, even more stringently, by verifying that W = V/sqrt(V^{dagger} V).
-    const Cmplx det = getDeterminant(*result);
-    if( cabs(det)-1.0 > MAX_DET_ERROR){ 
-      return false;
-    }
     return true;
-#undef MAX_DET_ERROR
   } // unitarizeMILC
     
 
@@ -294,7 +290,12 @@ bool isUnitarizedLinkConsistent(const Matrix<Cmplx,3>& initial_matrix,
 
 	*result = u*conj(v);
 
-	if(isUnitary(*result,0.0000001)==false)
+#ifdef __CUDA_ARCH__ 
+#define FL_MAX_ERROR  DEV_FL_MAX_ERROR
+#else 
+#define FL_MAX_ERROR  HOST_FL_MAX_ERROR
+#endif
+	if(isUnitary(*result,FL_MAX_ERROR)==false)
 	{
 #if (!defined(__CUDA_ARCH__) || (__COMPUTE_CAPABILITY__>=200))
           printf("ERROR: Unitarized link is not consistent with incoming link\n");
@@ -303,7 +304,7 @@ bool isUnitarizedLinkConsistent(const Matrix<Cmplx,3>& initial_matrix,
 	}
 	return true;
    }
-
+#undef FL_MAX_ERROR
 
 
    template<class Cmplx>
@@ -363,17 +364,27 @@ bool isUnitarizedLinkConsistent(const Matrix<Cmplx,3>& initial_matrix,
     // Unitarization is always done in double precision
     Matrix<double2,3> v, result;
     for(int dir=0; dir<4; ++dir){
-      loadLinkVariableFromArray(inlink, dir, mem_idx, Vh+INPUT_PADDING, &v); 
-       if( !unitarizeLinkMILC(v, &result) ){
-#if __CUDA_ARCH__
-	atomicAdd(num_failures, 1);
-#else 
-	(*num_failures)++;
+       loadLinkVariableFromArray(inlink, dir, mem_idx, Vh+INPUT_PADDING, &v); 
+       unitarizeLinkMILC(v, &result);
+#ifdef __CUDA_ARCH__
+#define FL_MAX_ERROR DEV_FL_MAX_ERROR
+#define FL_CHECK_UNITARIZATION DEV_FL_CHECK_UNITARIZATION
+#else
+#define FL_MAX_ERROR HOST_FL_MAX_ERROR
+#define FL_CHECK_UNITARIZATION HOST_FL_CHECK_UNITARIZATION
 #endif
+     if(FL_CHECK_UNITARIZATION){
+        if(isUnitary(result,FL_MAX_ERROR) == false)
+        {
+#ifdef __CUDA_ARCH__
+	  atomicAdd(num_failures, 1);
+#else 
+	  (*num_failures)++;
+#endif
+        }
       }
       writeLinkVariableToArray(result, dir, mem_idx, Vh+OUTPUT_PADDING, outlink); 
     }
-    
     return;
   }
 
@@ -421,9 +432,36 @@ bool isUnitarizedLinkConsistent(const Matrix<Cmplx,3>& initial_matrix,
 	    copyLinkToArray(((double*)(outfield->Gauge_p()) + (i*4 + dir)*18), outlink); 
 	  } // precision?
 	} // dir
-    }  // return
+    }  // loop over volume
     return;
   }
+
+  // CPU function which checks that the gauge field is unitary
+  bool isUnitary(const QudaGaugeParam& param, cpuGaugeField& field, double max_error)
+  {
+    Matrix<double2,3> link, identity;
+
+    for(int i=0; i<field.Volume(); ++i){
+       for(int dir=0; dir<4; ++dir){
+         if(param.cpu_prec == QUDA_SINGLE_PRECISION){
+	    copyArrayToLink(&link, ((float*)(field.Gauge_p()) + (i*4 + dir)*18)); // order of arguments?
+	 }else if(param.cpu_prec == QUDA_DOUBLE_PRECISION){     
+	    copyArrayToLink(&link, ((double*)(field.Gauge_p()) + (i*4 + dir)*18)); // order of arguments?
+	 }else{
+	  errorQuda("Unsupported precision\n");
+	 }
+	 if(isUnitary(link,max_error) == false){ 
+            printf("Unitarity failure\n");
+	    printf("site index = %d,\t direction = %d\n", i, dir);
+	    printLink(link);
+            identity = conj(link)*link;
+	    printLink(identity);
+            return false;
+	 }
+       } // dir
+    } // i	  
+    return true;
+  } // is unitary
 
 
 

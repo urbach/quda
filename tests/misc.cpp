@@ -674,6 +674,19 @@ get_prec_str(QudaPrecision prec)
 
 
 const char* 
+get_unitarization_str(bool svd_only)
+{
+  const char* ret;
+ 
+  if(svd_only){
+    ret = "SVD";
+  }else{
+    ret = "Cayley-Hamilton/SVD";
+  }
+  return ret;
+}
+
+const char* 
 get_gauge_order_str(QudaGaugeFieldOrder order)
 {
   const char* ret;
@@ -753,14 +766,6 @@ get_test_type(int t)
     return ret;
 }
 
-void
-quda_set_verbose(int v)
-{
-    verbose = v;
-}
-
-
-
 QudaDslashType
 get_dslash_type(char* s)
 {
@@ -814,3 +819,18 @@ get_dslash_type_str(QudaDslashType type)
   return ret;
     
 }
+
+const char* 
+get_quda_ver_str()
+{
+  static char vstr[32];
+  int major_num = QUDA_VERSION_MAJOR;
+  int minor_num = QUDA_VERSION_MINOR;
+  int ext_num = QUDA_VERSION_SUBMINOR;
+  sprintf(vstr, "%1d.%1d.%1d", 
+	  major_num,
+	  minor_num,
+	  ext_num);
+  return vstr;
+}
+

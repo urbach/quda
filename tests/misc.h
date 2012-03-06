@@ -18,15 +18,13 @@ extern "C" {
     const char* get_gauge_order_str(QudaGaugeFieldOrder order);
     const char* get_recon_str(QudaReconstructType recon);
     const char* get_test_type(int t);
-    void quda_set_verbose(int );
+    const char* get_unitarization_str(bool svd_only);
     QudaDslashType get_dslash_type(char* s);
     const char* get_dslash_type_str(QudaDslashType type);
-
+  const char* get_quda_ver_str();
 #ifdef __cplusplus
 }
 #endif
-
-extern int verbose;
 
 #define XUP 0
 #define YUP 1

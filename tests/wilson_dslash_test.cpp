@@ -22,18 +22,10 @@
 // What test are we doing (0 = dslash, 1 = MatPC, 2 = Mat)
 const int test_type = 0;
 
-// Dirac operator type
-extern QudaDslashType dslash_type;
-//const QudaDslashType dslash_type = QUDA_WILSON_DSLASH;
-//const QudaDslashType dslash_type = QUDA_CLOVER_WILSON_DSLASH;
-//const QudaDslashType dslash_type = QUDA_TWISTED_MASS_DSLASH;
-
 const QudaParity parity = QUDA_EVEN_PARITY; // even or odd?
 const int transfer = 0; // include transfer time in the benchmark?
 
 const int loops = 100;
-
-extern bool tune;
 
 QudaPrecision cpu_prec = QUDA_DOUBLE_PRECISION;
 QudaPrecision cuda_prec;
@@ -47,6 +39,11 @@ cudaColorSpinorField *cudaSpinor, *cudaSpinorOut, *tmp1=0, *tmp2=0;
 void *hostGauge[4], *hostClover, *hostCloverInv;
 
 Dirac *dirac;
+
+// Dirac operator type
+extern QudaDslashType dslash_type;
+
+extern bool tune;
 
 extern int device;
 extern int xdim;
@@ -63,7 +60,6 @@ extern char latfile[];
 
 void init(int argc, char **argv) {
 
-  //qudaSetNumaConfig("/usr/local/gpu_numa_config.txt");
 
   kernelPackT = false; // Set true for kernel T face packing
   cuda_prec= prec;
