@@ -1,27 +1,23 @@
 // -*- c++ -*-
 
 //
-// QMEM -- support
+// QDP-JIT -- support
+// ------------------
 //
-// This installs a thin layer of a CUDA backend that QUDA
-// silently uses in case of configuring the package with
-// QMEM support. It installs C macros for device memory
-// allocation and deallocation routines and redirects those 
-// calls to the device memory pool manager which is part of 
-// QDP++ where previously cached lattice objects are spilled
-// automatically as needed.
+// This installs C macros for
 //
-// This enables QUDA and QDP++ being able to share the same
-// device memory pool and thus avoids the need to temporarily
-// suspend QDP++ using GPUs. As a sideeffect this speeds up
-// QUDA residual calculation and solution reconstruction as
-// these parts are implemented using QDP++.
+// cudaMalloc(dst, size)
+// cudaFree(dst)
+//
+// which call qdp-jit device memory routines.
 //
 
 #ifndef QUDA_MEM
 #define QUDA_MEM
 
 #ifdef USE_QMEM
+
+#ifndef __CUDACC__
 
 #warning "Using QMEM wrappers"
 #include <qdp_init.h>
@@ -33,6 +29,7 @@
 #include <qdp_pool_allocator.h>
 #include <qdp_dynamic_allocator.h>
 #include <qdp_allocators.h>
+
 #define cudaMalloc(dst, size) QDP_allocate(dst, size , __FILE__ , __LINE__ )
 #define cudaFree(dst) QDP_free(dst)
 
@@ -48,6 +45,8 @@ inline void QDP_free(void *dst)
 {
   QDP::Allocator::theQDPDeviceAllocator::Instance().free( dst );
 }
+
+#endif // __CUDACC__
 
 #endif // USE_QMEM
 #endif // QUDA_MEM
