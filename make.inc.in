@@ -42,10 +42,6 @@ OVERLAP_COMMS = @OVERLAP_COMMS@  # set to 'yes' to overlap comms and compute
 # Do we have qio support?
 BUILD_QIO = @BUILD_QIO@ # set to 'yes' to build QIO code for binary i/o
 
-# Do we compile the numa support
-#HAVE_NUMA = @HAVE_NUMA@
-HAVE_NUMA = no
-
 USE_QMEM = @USE_QMEM@         # build QMEM support?
 
 FECC = @FECC@ 	      # Front end CC
@@ -207,10 +203,10 @@ ifeq ($(strip $(FERMI_DBLE_TEX)), no)
   COPT += -DFERMI_NO_DBLE_TEX
 endif
 
-ifeq ($(strip $(HAVE_NUMA)), yes)
-  COPT += -DHAVE_NUMA
-  LIB += -lnuma
-endif
+### Next conditional is necessary.
+### QDPXX_CXXFLAGS contains "-O3".
+### We must make sure its not given
+### twice to nvcc. It would complain.
 
 ifeq ($(strip $(USE_QMEM)), yes)
   NVCCOPT += -DUSE_QMEM
