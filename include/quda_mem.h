@@ -19,9 +19,10 @@
 
 #ifndef __CUDACC__
 
-#warning "Using QMEM wrappers"
+#warning "Using QDP-JIT macros"
+
 #include <qdp_init.h>
-#include <qdp_mem.h>
+#include <qdp_debugmacro.h>
 #include <qdp_devicestats.h>
 #include <qdp_cuda.h>
 #include <qdp_singleton.h>
