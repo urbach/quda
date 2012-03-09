@@ -79,6 +79,9 @@ ifeq ($(strip $(BUILD_MULTI_GPU)), yes)
   NVCCOPT += -DMULTI_GPU
 endif
 
+COPT += -DDSLASH_TUNING_3D
+NVCCOPT += -DDSLASH_TUNING_3D
+
 RUN =
 CC  = $(FECC)
 CXX = $(FECXX)
