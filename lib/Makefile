@@ -60,7 +60,7 @@ $(QUDA): $(QUDA_OBJS) ../make.inc
 	ar cru $@ $(QUDA_OBJS)
 	${MERGE_NUMA_LIB}
 gen:
-	$(PYTHON) generate/dslash_cuda_gen.py --shared $(DSLASH_SHARED_FLOATS)
+	$(PYTHON) generate/dslash_cuda_gen.py --arch $(GPU_ARCH:sm_%=%0)
 
 clean:
 	-rm -f *.o $(QUDA)

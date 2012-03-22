@@ -1,6 +1,7 @@
 // input spinor
 #ifdef SPINOR_DOUBLE
 #define spinorFloat double
+#define READ_SPINOR_SHARED READ_SPINOR_SHARED_DOUBLE2
 #define i00_re I0.x
 #define i00_im I0.y
 #define i01_re I1.x
@@ -25,9 +26,9 @@
 #define i31_im I10.y
 #define i32_re I11.x
 #define i32_im I11.y
-
 #else
 #define spinorFloat float
+#define READ_SPINOR_SHARED READ_SPINOR_SHARED_FLOAT4
 #define i00_re I0.x
 #define i00_im I0.y
 #define i01_re I0.z
