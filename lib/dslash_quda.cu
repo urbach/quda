@@ -9,7 +9,7 @@
 // these control the Wilson-type actions
 //#define DIRECT_ACCESS_LINK
 //#define DIRECT_ACCESS_WILSON_SPINOR
-#define DIRECT_ACCESS_WILSON_ACCUM
+//#define DIRECT_ACCESS_WILSON_ACCUM
 //#define DIRECT_ACCESS_WILSON_INTER
 //#define DIRECT_ACCESS_WILSON_PACK_SPINOR
 
