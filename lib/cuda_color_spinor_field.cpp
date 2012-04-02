@@ -509,12 +509,16 @@ void cudaColorSpinorField::packGhost(void *ghost_spinor, const int dim, const Qu
     if (nSpin == 1) { // use different packing kernels for staggered and Wilson
       collectGhostSpinor(this->v, this->norm, gpu_buf, dim, dir, parity, this, stream); CUERR;
     } 
-//BEGIN NEW    
+//BEGIN NEW
+#ifdef GPU_DOMAIN_WALL_DIRAC    
     else if(this->nDim == 5){/// DW dslash:
       packFaceDW(gpu_buf, *this, dim, dir, dagger, parity, *stream); CUERR;
     }else{
       packFaceWilson(gpu_buf, *this, dim, dir, dagger, parity, *stream); CUERR;
     }
+#else
+     packFaceWilson(gpu_buf, *this, dim, dir, dagger, parity, *stream); CUERR;
+#endif
 //END NEW    
     CUDAMEMCPY(ghost_spinor, gpu_buf, bytes, cudaMemcpyDeviceToHost, *stream); CUERR;
 

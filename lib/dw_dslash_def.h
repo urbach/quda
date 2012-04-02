@@ -332,9 +332,9 @@ __global__ void	DD_FUNC(DD_NAME_F, DD_RECON_F, DD_DAG_F, DD_XPAY_F)
 
 #ifdef GPU_DOMAIN_WALL_DIRAC
 #if DD_DAG
-#include "dw_mgpu_dslash_dagger_core.h"
+#include "dw_dslash_dagger_core.h"
 #else
-#include "dw_mgpu_dslash_core.h"
+#include "dw_dslash_core.h"
 #endif
 #endif
 

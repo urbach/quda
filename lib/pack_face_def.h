@@ -716,7 +716,7 @@ void packFaceAsqtad(Float2 *faces, float *facesNorm, const Float2 *in, const flo
 
 //BEGIN NEW
 
-#if (defined GPU_DOMAIN_WALL_DIRAC) && (defined GPU_WILSON_DIRAC)
+#ifdef GPU_DOMAIN_WALL_DIRAC
 template <int dim, int dagger, typename FloatN>
 __global__ void packFaceDWKernel(FloatN *out, float *outNorm, const FloatN *in, const float *inNorm, const int face_num, const int parity)
 {
@@ -759,7 +759,7 @@ void packFaceDW(FloatN *faces, float *facesNorm, const FloatN *in, const float *
 
 void packFaceDW(void *ghost_buf, cudaColorSpinorField &in, const int dim, const QudaDirection dir, const int dagger, 
 		    const int parity, const cudaStream_t &stream) {
-
+#ifdef GPU_WILSON_DIRAC
   dim3 blockDim(64, 1, 1); // TODO: make this a parameter for auto-tuning
   dim3 gridDim( (in.ghostFace[dim]+blockDim.x-1) / blockDim.x, 1, 1);
 
@@ -784,13 +784,11 @@ void packFaceDW(void *ghost_buf, cudaColorSpinorField &in, const int dim, const 
   CUERR;
 
   //printfQuda("Completed face packing\n", dim, dir, ghostFace[dir]);
-}
-
 #else
-  errorQuda("DW face parking kernels are not built. Check that both GPU_WILSON_DIRAC and GPU_DOMAIN_WALL_DIRAC are set.");
-#endif //GPU_DOMAIN_WALL_DIRAC
-
-
+  errorQuda("DW face parking kernels are not built. Check that both GPU_WILSON_DIRAC and GPU_DOMAIN_WALL_DIRAC compiler flags are set.");
+#endif //GPU_WILSON_DIRAC
+}
+#endif //GPU_DOMAIN_WALL
 #endif // MULTI_GPU
 
 //END NEW
