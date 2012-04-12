@@ -62,17 +62,6 @@ typedef struct { dsu3_vector h[2]; } dhalf_wilson_vector;
 
 
 template<typename su3_matrix>
-su3_matrix* get_su3_matrix(int gauge_order, su3_matrix* p, int idx, int dir)
-{
-  if(gauge_order == QUDA_MILC_GAUGE_ORDER){
-    return (p + 4*idx + dir);
-  }else{ //QDP format
-    su3_matrix* data = ((su3_matrix**)p)[dir];
-    return data + idx;
-  }
-}
-
-template<typename su3_matrix>
 static void  
 su3_adjoint( su3_matrix *a, su3_matrix *b )
 {
@@ -82,18 +71,6 @@ su3_adjoint( su3_matrix *a, su3_matrix *b )
 	}
 }
 
-template<typename su3_matrix>
-static void  
-adjoint_su3_matrix( su3_matrix *a)
-{
-  su3_matrix b;
-  int i,j;
-  for(i=0;i<3;i++)for(j=0;j<3;j++){
-      CONJG( a->e[j][i], b.e[i][j] );
-    }
-
-  *a = b;
-}
 
 template<typename su3_matrix, typename anti_hermitmat>
 static void
@@ -168,18 +145,7 @@ scalar_mult_add_su3_matrix(su3_matrix *a,su3_matrix *b, Float s, su3_matrix *c)
 	}
     }    
 }
-template <typename su3_matrix, typename Float>
-static void
-scale_su3_matrix(su3_matrix *a,  Float s)
-{
-  int i,j;
-  for(i=0;i<3;i++){
-    for(j=0;j<3;j++){	    
-      a->e[i][j].real = a->e[i][j].real * s;
-      a->e[i][j].imag = a->e[i][j].imag * s;
-    }
-  }    
-}
+
 
 template<typename su3_matrix, typename su3_vector>
 static void
@@ -313,14 +279,8 @@ matrix_mult_na(su3_matrix* a, su3_matrix* b, su3_matrix* c){
   return;
 }
 
-template<typename su3_matrix>
-static void
-matrix_mult_aa(su3_matrix* a, su3_matrix* b, su3_matrix* c){
-  
-  su3_matrix a_adjoint;
-  su3_adjoint(a, &a_adjoint);
-  matrix_mult_na(&a_adjoint, b, c);
-}
+
+
 
 template <typename su3_matrix, typename anti_hermitmat, typename Float>
 static void
@@ -430,7 +390,7 @@ forward_shifted_outer_prod(half_wilson_vector *src, su3_matrix* dest, int dir)
 
 template <typename half_wilson_vector, typename su3_matrix>
 static void
-computeLinkOrderedOuterProduct(half_wilson_vector *src, su3_matrix* dest, int gauge_order)
+computeLinkOrderedOuterProduct(half_wilson_vector *src, su3_matrix* dest)
 {
   int dx[4];
   for(int i=0; i<V; ++i){
@@ -439,8 +399,7 @@ computeLinkOrderedOuterProduct(half_wilson_vector *src, su3_matrix* dest, int ga
       dx[dir] = 1;
       int nbr_idx = neighborIndexFullLattice(i, dx[3], dx[2], dx[1], dx[0]);
       half_wilson_vector* hw = src + nbr_idx;
-      su3_matrix* p = get_su3_matrix(gauge_order, dest, i, dir);
-      su3_projector( &(hw->h[0]), &src[i].h[0], p);
+      su3_projector( &(hw->h[0]), &src[i].h[0], &dest[i*4 + dir]);
     } // dir
   } // i
   return;
@@ -449,7 +408,7 @@ computeLinkOrderedOuterProduct(half_wilson_vector *src, su3_matrix* dest, int ga
 
 template <typename half_wilson_vector, typename su3_matrix>
 static void
-computeLinkOrderedOuterProduct(half_wilson_vector *src, su3_matrix* dest, size_t nhops, int gauge_order)
+computeLinkOrderedOuterProduct(half_wilson_vector *src, su3_matrix* dest, size_t nhops)
 {
   int dx[4];
   for(int i=0; i<V; ++i){
@@ -458,8 +417,7 @@ computeLinkOrderedOuterProduct(half_wilson_vector *src, su3_matrix* dest, size_t
       dx[dir] = nhops;
       int nbr_idx = neighborIndexFullLattice(i, dx[3], dx[2], dx[1], dx[0]);
       half_wilson_vector* hw = src + nbr_idx;
-      su3_matrix* p = get_su3_matrix(gauge_order, dest, i, dir);
-      su3_projector( &(hw->h[0]), &src[i].h[0], p);
+      su3_projector( &(hw->h[0]), &src[i].h[0], &dest[i*4 + dir]);
     } // dir
   } // i
   return;
@@ -468,22 +426,22 @@ computeLinkOrderedOuterProduct(half_wilson_vector *src, su3_matrix* dest, size_t
 
 
 
-void computeLinkOrderedOuterProduct(void *src, void *dst, QudaPrecision precision, int gauge_order)
+void computeLinkOrderedOuterProduct(void *src, void *dst, QudaPrecision precision)
 {
   if(precision == QUDA_SINGLE_PRECISION){
-    computeLinkOrderedOuterProduct((fhalf_wilson_vector*)src,(fsu3_matrix*)dst, gauge_order);
+    computeLinkOrderedOuterProduct((fhalf_wilson_vector*)src,(fsu3_matrix*)dst);
   }else{
-    computeLinkOrderedOuterProduct((dhalf_wilson_vector*)src,(dsu3_matrix*)dst, gauge_order);
+    computeLinkOrderedOuterProduct((dhalf_wilson_vector*)src,(dsu3_matrix*)dst);
   }
   return;
 }
 
-void computeLinkOrderedOuterProduct(void *src, void *dst, QudaPrecision precision, size_t nhops, int gauge_order)
+void computeLinkOrderedOuterProduct(void *src, void *dst, QudaPrecision precision, size_t nhops)
 {
   if(precision == QUDA_SINGLE_PRECISION){
-    computeLinkOrderedOuterProduct((fhalf_wilson_vector*)src,(fsu3_matrix*)dst, nhops, gauge_order);
+    computeLinkOrderedOuterProduct((fhalf_wilson_vector*)src,(fsu3_matrix*)dst, nhops);
   }else{
-    computeLinkOrderedOuterProduct((dhalf_wilson_vector*)src,(dsu3_matrix*)dst, nhops, gauge_order);
+    computeLinkOrderedOuterProduct((dhalf_wilson_vector*)src,(dsu3_matrix*)dst, nhops);
   }
   return;
 }
@@ -793,9 +751,6 @@ void do_color_matrix_hisq_force_reference(Real eps, Real weight,
   set_identity(id,1);
 
   printf("Calling modified hisq\n");
-  return;
-
-
   for(sig=0; sig < 8; sig++){
     // One-link term - don't have the savings here that we get when working with the 
     // half-wilson vectors
@@ -804,8 +759,6 @@ void do_color_matrix_hisq_force_reference(Real eps, Real weight,
       add_force_to_momentum(Pmu, id, sig, OneLink, mom); // I could optimise functions which 
       // involve id
     }
-
-
 
     for(mu = 0; mu < 8; mu++){
       if ( (mu == sig) || (mu == OPP_DIR(sig))){
@@ -844,7 +797,7 @@ void do_color_matrix_hisq_force_reference(Real eps, Real weight,
         //     |        |
         //    /|\      \|/
         //     |        |
-        //      \	 \
+        //      \        \
         //	 \        \
 
         u_shift_mat(Pmu, Pnumu, OPP_DIR(nu), sitelink);
@@ -1176,6 +1129,3 @@ void color_matrix_hisq_force_reference(float eps, float weight,
 			  (fsu3_matrix*)sitelink, (fanti_hermitmat*)mom);
   return;
 }
-
-
-

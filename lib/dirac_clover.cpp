@@ -3,18 +3,15 @@
 #include <blas_quda.h>
 
 DiracClover::DiracClover(const DiracParam &param)
-  : DiracWilson(param), clover(*(param.clover))
-{
-  initCloverConstants(clover);
-}
+  : DiracWilson(param), clover(*(param.clover)) { }
 
 DiracClover::DiracClover(const DiracClover &dirac) 
-  : DiracWilson(dirac), clover(dirac.clover)
-{
-  initCloverConstants(clover);
-}
+  : DiracWilson(dirac), clover(dirac.clover) { }
 
-DiracClover::~DiracClover() { }
+DiracClover::~DiracClover()
+{
+
+}
 
 DiracClover& DiracClover::operator=(const DiracClover &dirac)
 {
@@ -38,7 +35,8 @@ void DiracClover::checkParitySpinor(const cudaColorSpinorField &out, const cudaC
 // Public method to apply the clover term only
 void DiracClover::Clover(cudaColorSpinorField &out, const cudaColorSpinorField &in, const QudaParity parity) const
 {
-  initSpinorConstants(in);
+  if (!initDslash) initDslashConstants(gauge, in.Stride());
+  if (!initClover) initCloverConstants(clover.Stride());
   checkParitySpinor(in, out);
 
   // regular clover term
@@ -123,7 +121,8 @@ DiracCloverPC& DiracCloverPC::operator=(const DiracCloverPC &dirac)
 void DiracCloverPC::CloverInv(cudaColorSpinorField &out, const cudaColorSpinorField &in, 
 			      const QudaParity parity) const
 {
-  initSpinorConstants(in);
+  if (!initDslash) initDslashConstants(gauge, in.Stride());
+  if (!initClover) initCloverConstants(clover.Stride());
   checkParitySpinor(in, out);
 
   // needs to be cloverinv
@@ -141,7 +140,8 @@ void DiracCloverPC::CloverInv(cudaColorSpinorField &out, const cudaColorSpinorFi
 void DiracCloverPC::Dslash(cudaColorSpinorField &out, const cudaColorSpinorField &in, 
 			   const QudaParity parity) const
 {
-  initSpinorConstants(in);
+  if (!initDslash) initDslashConstants(gauge, in.Stride());
+  if (!initClover) initCloverConstants(clover.Stride());
   checkParitySpinor(in, out);
   checkSpinorAlias(in, out);
 
@@ -160,7 +160,8 @@ void DiracCloverPC::DslashXpay(cudaColorSpinorField &out, const cudaColorSpinorF
 			       const QudaParity parity, const cudaColorSpinorField &x,
 			       const double &k) const
 {
-  initSpinorConstants(in);
+  if (!initDslash) initDslashConstants(gauge, in.Stride());
+  if (!initClover) initCloverConstants(clover.Stride());
   checkParitySpinor(in, out);
   checkSpinorAlias(in, out);
 

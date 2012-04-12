@@ -146,7 +146,7 @@ unitarize_link_test()
   cudaGaugeField *cudaFatLink = new cudaGaugeField(gParam);
   cudaGaugeField *cudaULink   = new cudaGaugeField(gParam);  
 
-  initLatticeConstants(*cudaFatLink);
+  initCommonConstants(*cudaFatLink);
 
   void* fatlink = (void*)malloc(4*V*gaugeSiteSize*gSize);
   if(fatlink == NULL){
@@ -204,7 +204,7 @@ unitarize_link_test()
 
   gettimeofday(&t0,NULL);
   hisq::unitarizeLinksCuda(qudaGaugeParam,*cudaFatLink, cudaULink, num_failures_dev);
-  cudaDeviceSynchronize();
+  cudaThreadSynchronize();
   gettimeofday(&t1,NULL);
 
   int num_failures=0;

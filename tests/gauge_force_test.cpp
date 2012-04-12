@@ -16,6 +16,7 @@
 #endif
 
 #define GPU_DIRECT
+extern void initCommonConstants(const LatticeField &lat);
 
 extern int device;
 

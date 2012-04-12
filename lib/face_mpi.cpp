@@ -13,15 +13,34 @@
 
 using namespace std;
 
+#ifdef DSLASH_PROFILING
+  void printDslashProfile();
+#define CUDA_EVENT_RECORD(a,b) cudaEventRecord(a,b)
+#else
+#define CUDA_EVENT_RECORD(a,b)
+#define DSLASH_TIME_PROFILE()
+#endif
+
 cudaStream_t *stream;
 
 bool globalReduce = true;
 
 FaceBuffer::FaceBuffer(const int *X, const int nDim, const int Ninternal, 
-		       const int nFace, const QudaPrecision precision) : 
+		       const int nFace, const QudaPrecision precision, const int Ls) : 
   Ninternal(Ninternal), precision(precision), nDim(nDim), nFace(nFace)
 {
-  setupDims(X);
+//temporal hack for DW operator  
+//BEGIN NEW
+  int Y[nDim];
+  Y[0] = X[0];
+  Y[1] = X[1];
+  Y[2] = X[2];
+  Y[3] = X[3];
+  if(nDim == 5) Y[nDim-1] = Ls;
+  setupDims(Y);
+//END NEW
+  
+  //setupDims(X);
 
   // set these both = 0 `for no overlap of qmp and cudamemcpyasync
   // sendBackStrmIdx = 0, and sendFwdStrmIdx = 1 for overlap
@@ -342,12 +361,15 @@ int commDimPartitioned(int dir){ return comm_dim_partitioned(dir);}
 
 void commDimPartitionedSet(int dir) { comm_dim_partitioned_set(dir);}
 
+void commBarrier() { comm_barrier(); }
+
+
 
 /**************************************************************
  * Staple exchange routine
  * used in fat link computation
  ***************************************************************/
-#if defined(GPU_FATLINK)||defined(GPU_GAUGE_FORCE)|| defined(GPU_FERMION_FORCE) || defined(GPU_HISQ_FORCE)
+#if defined(GPU_FATLINK)||defined(GPU_GAUGE_FORCE)|| defined(GPU_FERMION_FORCE)
 
 #define gaugeSiteSize 18
 

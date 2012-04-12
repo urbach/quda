@@ -59,7 +59,7 @@ class FaceBuffer {
   void setupDims(const int *X);
  public:
   FaceBuffer(const int *X, const int nDim, const int Ninternal,
-	     const int nFace, const QudaPrecision precision);
+	     const int nFace, const QudaPrecision precision, const int Ls = 1);
   FaceBuffer(const FaceBuffer &);
   virtual ~FaceBuffer();
 
@@ -130,7 +130,7 @@ class FaceBuffer {
   
  public:
   FaceBuffer(const int *X, const int nDim, const int Ninternal,
-	     const int nFace, const QudaPrecision precision);
+	     const int nFace, const QudaPrecision precision, const int Ls = 1);
   FaceBuffer(const FaceBuffer &);
   virtual ~FaceBuffer();
 
@@ -181,17 +181,11 @@ extern "C" {
   void reduceDouble(double &);
   void reduceDoubleArray(double *, const int len);
 
-#ifdef MULTI_GPU
   int commDim(int);
   int commCoords(int);
   int commDimPartitioned(int dir);
   void commDimPartitionedSet(int dir);
-#else
-  static inline int commDim(int dir) { return 1; }
-  static inline int commCoords(int dir) { return 0; }
-  static inline int commDimPartitioned(int dir) { return 0; }
-  static inline void commDimPartitionedSet(int dir) { }
-#endif
+  void commBarrier();
 
 #ifdef __cplusplus
 }

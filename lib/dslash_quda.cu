@@ -100,8 +100,8 @@ float dslashTime;
 #define DSLASH_TIME_PROFILE()
 #endif
 
-static FaceBuffer *face;
-static cudaColorSpinorField *inSpinor;
+FaceBuffer *face;
+cudaColorSpinorField *inSpinor;
 
 // For tuneLaunch() to uniquely identify a suitable set of launch parameters, we need copies of a few of
 // the constants set by initDslashConstants().
@@ -197,81 +197,9 @@ void initCache() {
 
 }
 
-
 void setFace(const FaceBuffer &Face) {
   face = (FaceBuffer*)&Face; // nasty
 }
-
-
-void createDslashEvents()
-{
- #ifndef DSLASH_PROFILING
-  // add cudaEventDisableTiming for lower sync overhead
-  for (int i=0; i<Nstream; i++) {
-    cudaEventCreate(&packEnd[i], cudaEventDisableTiming);
-    cudaEventCreate(&gatherStart[i], cudaEventDisableTiming);
-    cudaEventCreate(&gatherEnd[i], cudaEventDisableTiming);
-    cudaEventCreateWithFlags(&scatterStart[i], cudaEventDisableTiming);
-    cudaEventCreateWithFlags(&scatterEnd[i], cudaEventDisableTiming);
-  }
-#else
-  cudaEventCreate(&dslashStart);
-  cudaEventCreate(&dslashEnd);
-  for (int i=0; i<Nstream; i++) {
-    cudaEventCreate(&packStart[i]);
-    cudaEventCreate(&packEnd[i]);
-
-    cudaEventCreate(&gatherStart[i]);
-    cudaEventCreate(&gatherEnd[i]);
-
-    cudaEventCreate(&scatterStart[i]);
-    cudaEventCreate(&scatterEnd[i]);
-
-    cudaEventCreate(&kernelStart[i]);
-    cudaEventCreate(&kernelEnd[i]);
-
-    kernelTime[i][0] = 0.0;
-    kernelTime[i][1] = 0.0;
-
-    gatherTime[i][0] = 0.0;
-    gatherTime[i][1] = 0.0;
-
-    commsTime[i][0] = 0.0;
-    commsTime[i][1] = 0.0;
-
-    scatterTime[i][0] = 0.0;
-    scatterTime[i][1] = 0.0;
-  }
-#endif
-
-  checkCudaError();
-}
-
-
-void destroyDslashEvents()
-{
-  for (int i=0; i<Nstream; i++) {
-    cudaEventDestroy(packEnd[i]);
-    cudaEventDestroy(gatherStart[i]);
-    cudaEventDestroy(gatherEnd[i]);
-    cudaEventDestroy(scatterStart[i]);
-    cudaEventDestroy(scatterEnd[i]);
-  }
-
-#ifdef DSLASH_PROFILING
-  cudaEventDestroy(dslashStart);
-  cudaEventDestroy(dslashEnd);
-
-  for (int i=0; i<Nstream; i++) {
-    cudaEventDestroy(packStart[i]);
-    cudaEventDestroy(kernelStart[i]);
-    cudaEventDestroy(kernelEnd[i]);
-  }
-#endif
-
-  checkCudaError();
-}
-
 
 #define MORE_GENERIC_DSLASH(FUNC, DAG, X, kernel_type, gridDim, blockDim, shared, stream, param,  ...)            \
   if (x==0) {                                                                                                     \
@@ -1074,7 +1002,7 @@ int commsCompleted[Nstream];
 int commDimTotal;
 
 /**
- * Initialize the arrays used for the dynamic scheduling.
+   Initialize the arrays used for the dynamic scheduling.
  */
 void initDslashCommsPattern() {
   for (int i=0; i<Nstream-1; i++) {
@@ -1344,6 +1272,7 @@ void cloverDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &gauge, co
 
 }
 
+//!NEW:added Multi-GPU stuff 
 void twistedMassDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &gauge, 
 			   const cudaColorSpinorField *in, const int parity, const int dagger, 
 			   const cudaColorSpinorField *x, const double &kappa, const double &mu, 
@@ -1407,18 +1336,27 @@ void twistedMassDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &gaug
 
 void domainWallDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &gauge, 
 			  const cudaColorSpinorField *in, const int parity, const int dagger, 
-			  const cudaColorSpinorField *x, const double &m_f, const double &k2)
+			  const cudaColorSpinorField *x, const double &m_f, const double &k2, const int *commOverride)
 {
   inSpinor = (cudaColorSpinorField*)in; // EVIL
-
-#ifdef MULTI_GPU
-  errorQuda("Multi-GPU domain wall not implemented\n");
-#endif
 
   dslashParam.parity = parity;
   dslashParam.threads = in->Volume();
 
 #ifdef GPU_DOMAIN_WALL_DIRAC
+//BEGIN NEW
+  kernelPackT = true; 
+  //currently splitting in space-time is impelemented:
+  int dirs = 4;
+  int Npad = (in->Ncolor()*in->Nspin()*2)/in->FieldOrder(); // SPINOR_HOP in old code
+  for(int i = 0;i < dirs; i++){
+    dslashParam.ghostDim[i] = commDimPartitioned(i); // determines whether to use regular or ghost indexing at boundary
+    dslashParam.ghostOffset[i] = Npad*(in->GhostOffset(i) + in->Stride());
+    dslashParam.ghostNormOffset[i] = in->GhostNormOffset(i) + in->Stride();
+    dslashParam.commDim[i] = (!commOverride[i]) ? 0 : commDimPartitioned(i); // switch off comms if override = 0
+  }  
+//END NEW
+
   void *gauge0, *gauge1;
   bindGaugeTex(gauge, parity, &gauge0, &gauge1);
 
@@ -1801,4 +1739,3 @@ void twistGamma5Cuda(cudaColorSpinorField *out, const cudaColorSpinorField *in,
 #include "hisq_paths_force_quda.cu"
 #include "unitarize_force_quda.cu"
 #endif
-

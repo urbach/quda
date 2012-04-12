@@ -8,7 +8,6 @@
 #include <domain_wall_dslash_reference.h>
 #include <blas_reference.h>
 
-#include <gauge_field.h>
 #include <color_spinor_field.h>
 #include <face_quda.h>
 
@@ -23,7 +22,6 @@ int V5h;
 int Vs_t;
 int Vsh_x, Vsh_y, Vsh_z, Vsh_t;
 int faceVolume[4];
-
 
 void setDims(int *X, const int L5) 
 {
@@ -312,6 +310,7 @@ Float *spinorNeighbor_5d_mgpu(int i, int dir, int oddBit, Float *spinorField, Fl
   int X2= Z[1];
   int X3= Z[2];
   int X4= Z[3];
+  
   switch (dir) {
   case 0://+X
     {
@@ -381,6 +380,8 @@ Float *spinorNeighbor_5d_mgpu(int i, int dir, int oddBit, Float *spinorField, Fl
       if ( (x4 + nb) >= Z[3])
       {
         int offset = (x4+nb - Z[3])*Vsh_t;//?
+//if(mpi_rank == 1)
+//printf("\n+T neighbour: %d , %g\n", Y, fwd_nbr_spinor[3][(offset+j)*mySpinorSiteSize] );
         return &fwd_nbr_spinor[3][(offset+j)*mySpinorSiteSize];
       }
       break;
@@ -391,6 +392,8 @@ Float *spinorNeighbor_5d_mgpu(int i, int dir, int oddBit, Float *spinorField, Fl
       int x4 = x4_5d_mgpu(i, oddBit);
       if ( (x4 - nb) < 0){
         int offset = ( x4 - nb +nFace)*Vsh_t;//?
+//if(mpi_rank == 1)
+//printf("\n-T neighbour: %d,  %g\n", Y, back_nbr_spinor[3][(offset+j)*mySpinorSiteSize] );
         return &back_nbr_spinor[3][(offset+j)*mySpinorSiteSize];
       }
       break;
@@ -599,6 +602,7 @@ void dslashReference_4d_sgpu(sFloat *res, gFloat **gaugeFull, sFloat *spinorFiel
         // Even though we're doing the 4d part of the dslash, we need
         // to use a 5d neighbor function, to get the offsets right.
         sFloat *spinor = spinorNeighbor_5d(sp_idx, dir, oddBit, spinorField);
+      
         sFloat projectedSpinor[4*3*2], gaugedSpinor[4*3*2];
         int projIdx = 2*(dir/2)+(dir+daggerBit)%2;
         multiplySpinorByDiracProjector(projectedSpinor, projIdx, spinor);
@@ -626,7 +630,6 @@ void dslashReference_4d_sgpu(sFloat *res, gFloat **gaugeFull, sFloat *spinorFiel
 template <typename sFloat, typename gFloat>
 void dslashReference_4d_mgpu(sFloat *res, gFloat **gaugeFull, gFloat **ghostGauge, sFloat *spinorField, sFloat **fwdSpinor, sFloat **backSpinor, int oddBit, int daggerBit) 
 {
-  
   int mySpinorSiteSize = 24;		    
   for (int i=0; i<V5h*mySpinorSiteSize; i++) res[i] = 0.0;
   
@@ -655,8 +658,8 @@ void dslashReference_4d_mgpu(sFloat *res, gFloat **gaugeFull, gFloat **ghostGaug
         else oddBit_gge= (oddBit+1) % 2;
 	
 	gFloat *gauge = gaugeLink_mgpu(i, dir, oddBit_gge, gaugeEven, gaugeOdd, ghostGaugeEven, ghostGaugeOdd, 1, 1);//this is unchanged from MPi version
-	sFloat *spinor = spinorNeighbor_5d_mgpu(sp_idx, dir, oddBit, spinorField, fwdSpinor, backSpinor, 1, 1);
-	
+	sFloat *spinor = spinorNeighbor_5d_mgpu(sp_idx, dir, oddBit_gge, spinorField, fwdSpinor, backSpinor, 1, 1);
+      
 	sFloat projectedSpinor[mySpinorSiteSize], gaugedSpinor[mySpinorSiteSize];
 	int projIdx = 2*(dir/2)+(dir+daggerBit)%2;
 	multiplySpinorByDiracProjector(projectedSpinor, projIdx, spinor);
@@ -740,7 +743,7 @@ void dslash(void *res, void **gaugeFull, void *spinorField,
 //BEGIN NEW
 // this actually applies the preconditioned dslash, e.g., D_ee^{-1} D_eo or D_oo^{-1} D_oe
 void dw_dslash
-(void *out, void **gauge, void *in, int oddBit, int daggerBit, QudaPrecision precision, QudaGaugeParam &gauge_param, double mferm, const int nodes) 
+(void *out, void **gauge, void *in, int oddBit, int daggerBit, QudaPrecision precision, double mferm, const int nodes) 
 {
   int mySpinorSiteSize = 24;
 //#ifndef MULTI_GPU
@@ -758,26 +761,19 @@ void dw_dslash
 //#else
   else
   {
-//    void *ghostGauge[4], *sendGauge[4];
-//    for (int d=0; d<4; d++) {
-//      ghostGauge[d] = malloc(faceVolume[d]*gaugeSiteSize*precision);
-//      sendGauge[d] = malloc(faceVolume[d]*gaugeSiteSize*precision);
-//    }
+    void *ghostGauge[4], *sendGauge[4];
+    for (int d=0; d<4; d++) {
+      ghostGauge[d] = malloc(faceVolume[d]*gaugeSiteSize*precision);
+      sendGauge[d] = malloc(faceVolume[d]*gaugeSiteSize*precision);
+    }
 
-//    { // Exchange gauge matrices at boundary
-//      set_dim(Z);///?
-//      pack_ghost(gauge, sendGauge, 1, precision);
-//      int nFace = 1;
-//      FaceBuffer faceBuf(Z, 4, gaugeSiteSize, nFace, precision);
-//      faceBuf.exchangeCpuLink(ghostGauge, sendGauge);
-//    }
-    
-//BEGINOFNEW    
-    GaugeFieldParam gauge_field_param(gauge, gauge_param);
-    cpuGaugeField cpu(gauge_field_param);
-    cpu.exchangeGhost();
-    void **ghostGauge = (void**)cpu.Ghost();    
-//ENDOFNEW    
+    { // Exchange gauge matrices at boundary
+      set_dim(Z);///?
+      pack_ghost(gauge, sendGauge, 1, precision);
+      int nFace = 1;
+      FaceBuffer faceBuf(Z, 4, gaugeSiteSize, nFace, precision);
+      faceBuf.exchangeCpuLink(ghostGauge, sendGauge);
+    }
   
     // Get spinor ghost fields
     // First wrap the input spinor into a ColorSpinorField
@@ -823,6 +819,11 @@ void dw_dslash
 		    (float**)fwd_nbr_spinor, (float**)back_nbr_spinor, oddBit, daggerBit);
       dslashReference_5th((float*)out, (float*)in, oddBit, daggerBit, (float)mferm);		    
     }
+
+    for (int d=0; d<4; d++) {
+      free(ghostGauge[d]);
+      free(sendGauge[d]);
+    }
   }
 //#endif
 
@@ -831,43 +832,87 @@ void dw_dslash
 //END NEW
 
 
+/*
+template <typename sFloat, typename gFloat>
+void Mat(sFloat *out, gFloat **gauge, sFloat *in, sFloat kappa, sFloat mferm) {
+  sFloat *inEven = in;
+  sFloat *inOdd  = in + V5h*spinorSiteSize;
+  sFloat *outEven = out;
+  sFloat *outOdd = out + V5h*spinorSiteSize;
+  
+  // full dslash operator
+  dslashReference_4d(outOdd, gauge, inEven, 1, 0);
+  dslashReference_5th(outOdd, inEven, 1, 0, mferm);
+  dslashReference_4d(outEven, gauge, inOdd, 0, 0);
+  dslashReference_5th(outEven, inOdd, 0, 0, mferm);
+  
+  // lastly apply the kappa term
+  xpay(in, -kappa, out, V5*spinorSiteSize);
+}
 
-void dw_mat(void *out, void **gauge, void *in, double kappa, int dagger_bit, QudaPrecision precision, QudaGaugeParam &gauge_param, double mferm, const int nodes) {
+template <typename sFloat, typename gFloat>
+void MatDag(sFloat *out, gFloat **gauge, sFloat *in, sFloat kappa, sFloat mferm) {
+  sFloat *inEven = in;
+  sFloat *inOdd  = in + V5h*spinorSiteSize;
+  sFloat *outEven = out;
+  sFloat *outOdd = out + V5h*spinorSiteSize;
+  
+  // full dslash operator
+  dslashReference_4d(outOdd, gauge, inEven, 1, 1);
+  dslashReference_5th(outOdd, inEven, 1, 1, mferm);
+  dslashReference_4d(outEven, gauge, inOdd, 0, 1);
+  dslashReference_5th(outEven, inOdd, 0, 1, mferm);
+  
+  // lastly apply the kappa term
+  xpay(in, -kappa, out, V5*spinorSiteSize);
+}
+*/
+void mat(void *out, void **gauge, void *in, double kappa, int dagger_bit, 
+	 QudaPrecision sPrecision, QudaPrecision gPrecision, double mferm) {
+/*
+  if (!dagger_bit) {
+    if (sPrecision == QUDA_DOUBLE_PRECISION)
+      if (gPrecision == QUDA_DOUBLE_PRECISION) Mat((double*)out, (double**)gauge, (double*)in, (double)kappa,
+                      (double)mferm);
+      else Mat((double*)out, (float**)gauge, (double*)in, (double)kappa, (double)mferm);
+    else
+      if (gPrecision == QUDA_DOUBLE_PRECISION) Mat((float*)out, (double**)gauge, (float*)in, (float)kappa,
+                      (float)mferm);
+      else Mat((float*)out, (float**)gauge, (float*)in, (float)kappa, (float)mferm);
+  } else {
+    if (sPrecision == QUDA_DOUBLE_PRECISION)
+      if (gPrecision == QUDA_DOUBLE_PRECISION) MatDag((double*)out, (double**)gauge, (double*)in, (double)kappa,
+                      (double)mferm);
+      else MatDag((float*)out, (double**)gauge, (float*)in, (float)kappa, (float)mferm);
+    else
+      if (gPrecision == QUDA_DOUBLE_PRECISION) MatDag((float*)out, (double**)gauge, (float*)in, (float)kappa,
+                      (float)mferm);
+      else MatDag((float*)out, (float**)gauge, (float*)in, (float)kappa, (float)mferm);
+  }
+*/
+}
+
+void dw_mat(void *out, void **gauge, void *in, double kappa, int dagger_bit, QudaPrecision precision, double mferm, const int nodes) {
 
   void *inEven = in;
   void *inOdd  = (char*)in + V5h*spinorSiteSize*precision;
   void *outEven = out;
   void *outOdd = (char*)out + V5h*spinorSiteSize*precision;
 
-  dw_dslash(outOdd, gauge, inEven, 1, dagger_bit, precision, gauge_param, mferm, nodes);
-  dw_dslash(outEven, gauge, inOdd, 0, dagger_bit, precision, gauge_param, mferm, nodes);
+  dw_dslash(outOdd, gauge, inEven, 1, dagger_bit, precision, mferm, nodes);
+  dw_dslash(outEven, gauge, inOdd, 0, dagger_bit, precision, mferm, nodes);
 
   // lastly apply the kappa term
   if (precision == QUDA_DOUBLE_PRECISION) xpay((double*)in, -kappa, (double*)out, V5*spinorSiteSize);
   else xpay((float*)in, -(float)kappa, (float*)out, V5*spinorSiteSize);
 }
 
-void dw_matdagmat(void *out, void **gauge, void *in, double kappa, int dagger_bit, QudaPrecision precision, QudaGaugeParam &gauge_param, double mferm, const int nodes) {
+void dw_matdagmat(void *out, void **gauge, void *in, double kappa, int dagger_bit, QudaPrecision precision, double mferm, const int nodes) {
 
   void *tmp = malloc(V5*spinorSiteSize*sizeof(precision));  
-  dw_mat(tmp, gauge, in, kappa, dagger_bit, precision, gauge_param, mferm, nodes);
+  dw_mat(tmp, gauge, in, kappa, dagger_bit, precision, mferm, nodes);
   dagger_bit = (dagger_bit == 1) ? 0 : 1;
-  dw_mat(out, gauge, tmp, kappa, dagger_bit, precision, gauge_param, mferm, nodes);
-  
-  free(tmp);
-}
-
-void dw_matpc(void *out, void **gauge, void *in, double kappa, int dagger_bit, QudaMatPCType matpc_type, QudaPrecision precision, double mferm, const int nodes) {
-
-  void *tmp = malloc(V5*spinorSiteSize*sizeof(precision));  
-  
-  if(matpc_type == QUDA_MATPC_EVEN_EVEN)
-  {
-
-  }
-  else
-  {
-  }
+  dw_mat(out, gauge, tmp, kappa, dagger_bit, precision, mferm, nodes);
   
   free(tmp);
 }

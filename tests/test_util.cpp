@@ -251,7 +251,7 @@ static int compareFloats(Float *a, Float *b, int len, double epsilon) {
   for (int i = 0; i < len; i++) {
     double diff = fabs(a[i] - b[i]);
     if (diff > epsilon) {
-      printfQuda("ERROR: i=%d, a[%d]=%f, b[%d]=%f\n", i, i, a[i], i, b[i]);
+      printfQuda("error: i=%d, a[%d]=%f, b[%d]=%f\n", i, i, a[i], i, b[i]);
       return 0;
     }
   }
@@ -494,14 +494,10 @@ static void applyGaugeFieldScaling(Float **gauge, int Vh, QudaGaugeParam *param)
   }
     
   // only apply T-boundary at edge nodes
-#ifdef MULTI_GPU
-  bool last_node_in_t = (commCoords(3) == commDim(3)-1) ? true : false;
-#else
-  bool last_node_in_t = true;
-#endif
+  bool Ntm1 = (commCoords(3) == commDim(3)-1) ? true : false;
 
   // Apply boundary conditions to temporal links
-  if (param->t_boundary == QUDA_ANTI_PERIODIC_T && last_node_in_t) {
+  if (param->t_boundary == QUDA_ANTI_PERIODIC_T && Ntm1) {
     for (int j = (Z[0]/2)*Z[1]*Z[2]*(Z[3]-1); j < Vh; j++) {
       for (int i = 0; i < gaugeSiteSize; i++) {
 	gauge[3][j*gaugeSiteSize+i] *= -1.0;
@@ -513,7 +509,7 @@ static void applyGaugeFieldScaling(Float **gauge, int Vh, QudaGaugeParam *param)
   if (param->gauge_fix) {
     // set all gauge links (except for the last Z[0]*Z[1]*Z[2]/2) to the identity,
     // to simulate fixing to the temporal gauge.
-    int iMax = ( last_node_in_t ? (Z[0]/2)*Z[1]*Z[2]*(Z[3]-1) : Vh );
+    int iMax = ( Ntm1 ? (Z[0]/2)*Z[1]*Z[2]*(Z[3]-1) : Vh );
     int dir = 3; // time direction only
     Float *even = gauge[dir];
     Float *odd  = gauge[dir]+Vh*gaugeSiteSize;
@@ -941,13 +937,6 @@ createSiteLinkCPU(void** link,  QudaPrecision precision, int phase)
     constructUnitaryGaugeField((float**)link);
   }
 
-  // only apply temporal boundary condition if I'm the last node in T
-#ifdef MULTI_GPU
-  bool last_node_in_t = (commCoords(3) == commDim(3)-1) ? true : false;
-#else
-  bool last_node_in_t = true;
-#endif
-
   if(phase){
 	
     for(int i=0;i < V;i++){
@@ -991,7 +980,7 @@ createSiteLinkCPU(void** link,  QudaPrecision precision, int phase)
 	  break;
 		
 	case TUP:
-	  if (last_node_in_t && i4 == (X4-1)){
+	  if ((commCoords(3) == commDim(3) -1) && i4 == (X4-1) ){
 	    coeff *= -1;
 	  }
 	  break;
@@ -1000,7 +989,7 @@ createSiteLinkCPU(void** link,  QudaPrecision precision, int phase)
 	  printf("ERROR: wrong dir(%d)\n", dir);
 	  exit(1);
 	}
-	
+	    
 	if (precision == QUDA_DOUBLE_PRECISION){
 	  //double* mylink = (double*)link;
 	  //mylink = mylink + (4*i + dir)*gaugeSiteSize;
@@ -1246,10 +1235,10 @@ int compare_mom(Float *momA, Float *momB, int len) {
     }
   }
 
-  for (int i=0; i<momSiteSize; i++) printfQuda("%d fails = %d\n", i, iter[i]);
+  for (int i=0; i<momSiteSize; i++) printf("%d fails = %d\n", i, iter[i]);
   
   for (int f=0; f<fail_check; f++) {
-    printfQuda("%e Failures: %d / %d  = %e\n", pow(10.0,-(f+1)), fail[f], len*momSiteSize, fail[f] / (double)(len*6));
+    printf("%e Failures: %d / %d  = %e\n", pow(10.0,-(f+1)), fail[f], len*momSiteSize, fail[f] / (double)(len*6));
   }
   
   return accuracy_level;
@@ -1261,34 +1250,34 @@ printMomElement(void *mom, int X, QudaPrecision precision)
   if (precision == QUDA_DOUBLE_PRECISION){
     double* thismom = ((double*)mom)+ X*momSiteSize;
     printVector(thismom);
-    printfQuda("(%9f,%9f) (%9f,%9f)\n", thismom[6], thismom[7], thismom[8], thismom[9]);
+    printf("(%9f,%9f) (%9f,%9f)\n", thismom[6], thismom[7], thismom[8], thismom[9]);
   }else{
     float* thismom = ((float*)mom)+ X*momSiteSize;
     printVector(thismom);
-    printfQuda("(%9f,%9f) (%9f,%9f)\n", thismom[6], thismom[7], thismom[8], thismom[9]);	
+    printf("(%9f,%9f) (%9f,%9f)\n", thismom[6], thismom[7], thismom[8], thismom[9]);	
   }
 }
 int strong_check_mom(void * momA, void *momB, int len, QudaPrecision prec) 
 {    
-  printfQuda("mom:\n");
+  printf("mom:\n");
   printMomElement(momA, 0, prec); 
-  printfQuda("\n");
+  printf("\n");
   printMomElement(momA, 1, prec); 
-  printfQuda("\n");
+  printf("\n");
   printMomElement(momA, 2, prec); 
-  printfQuda("\n");
+  printf("\n");
   printMomElement(momA, 3, prec); 
-  printfQuda("...\n");
+  printf("...\n");
   
-  printfQuda("\nreference mom:\n");
+  printf("\nreference mom:\n");
   printMomElement(momB, 0, prec); 
-  printfQuda("\n");
+  printf("\n");
   printMomElement(momB, 1, prec); 
-  printfQuda("\n");
+  printf("\n");
   printMomElement(momB, 2, prec); 
-  printfQuda("\n");
+  printf("\n");
   printMomElement(momB, 3, prec); 
-  printfQuda("\n");
+  printf("\n");
   
   int ret;
   if (prec == QUDA_DOUBLE_PRECISION){
@@ -1329,8 +1318,6 @@ int gridsize_from_cmdline[4]={1,1,1,1};
 QudaDslashType dslash_type = QUDA_WILSON_DSLASH;
 char latfile[256] = "";
 bool tune = true;
-int niter = 10;
-int test_type = 0;
 
 void __attribute__((weak)) usage_extra(char** argv){};
 
@@ -1360,9 +1347,7 @@ void usage(char** argv )
   printf("    --dslash_type <type>                      # Set the dslash type, the following values are valid\n"
 	 "                                                  wilson/clover/twisted_mass/asqtad/domain_wall\n");
   printf("    --load-gauge file                         # Load gauge field \"file\" for the test (requires QIO)\n");
-  printf("    --niter <n>                               # The number of iterations to perform (default 10)\n");
   printf("    --tune <true/false>                       # Whether to autotune or not (default true)\n");     
-  printf("    --test                                    # Test method (different for each test)\n");
   printf("    --help                                    # Print out this message\n"); 
   usage_extra(argv); 
 #ifdef MULTI_GPU
@@ -1396,11 +1381,11 @@ int process_command_line_option(int argc, char** argv, int* idx)
       usage(argv);
     }
 #ifdef MULTI_GPU
-    printf("WARNING: Ignoring --device argument since this is a multi-GPU build.\n");
+    printf("Warning: Ignoring --device argument since this is a multi-GPU build.\n");
 #else
     device = atoi(argv[i+1]);
     if (device < 0 || device > 16){
-      printf("ERROR: Invalid CUDA device number (%d)\n", device);
+      printf("Error: Invalid CUDA device number (%d)\n", device);
       usage(argv);
     }
 #endif
@@ -1511,7 +1496,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
     }	    
     int sdim =  atoi(argv[i+1]);
     if (sdim < 0 || sdim > 128){
-      printfQuda("ERROR: invalid S dimension\n");
+      printfQuda("Error: invalid S dimension\n");
     }
     xdim=ydim=zdim=sdim;
     i++;
@@ -1528,17 +1513,13 @@ int process_command_line_option(int argc, char** argv, int* idx)
   if( strcmp(argv[i], "--partition") == 0){
     if (i+1 >= argc){
       usage(argv);
-    }
-#ifdef MULTI_GPU
+    }     
     int value  =  atoi(argv[i+1]);
     for(int j=0; j < 4;j++){
       if (value &  (1 << j)){
 	commDimPartitionedSet(j);
       }
     }
-#else
-    printfQuda("WARNING: Ignoring --partition option since this is a single-GPU build.\n");
-#endif
     i++;
     ret = 0;
     goto out;
@@ -1561,7 +1542,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
     }else if (strcmp(argv[i+1], "false") == 0){
       tune = false;
     }else{
-      fprintf(stderr, "ERROR: invalid tuning type\n");	
+      fprintf(stderr, "Error: invalid tuning type\n");	
       exit(1);
     }
 
@@ -1576,7 +1557,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
     }     
     int xsize =  atoi(argv[i+1]);
     if (xsize <= 0 ){
-      errorQuda("ERROR: invalid X grid size");
+      errorQuda("Error: invalid X grid size");
     }
     gridsize_from_cmdline[0] = xsize;
     i++;
@@ -1590,7 +1571,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
     }     
     int ysize =  atoi(argv[i+1]);
     if (ysize <= 0 ){
-      errorQuda("ERROR: invalid Y grid size");
+      errorQuda("Error: invalid Y grid size");
     }
     gridsize_from_cmdline[1] = ysize;
     i++;
@@ -1604,7 +1585,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
     }     
     int zsize =  atoi(argv[i+1]);
     if (zsize <= 0 ){
-      errorQuda("ERROR: invalid Z grid size");
+      errorQuda("Error: invalid Z grid size");
     }
     gridsize_from_cmdline[2] = zsize;
     i++;
@@ -1618,7 +1599,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
     }     
     int tsize =  atoi(argv[i+1]);
     if (tsize <= 0 ){
-      errorQuda("ERROR: invalid T grid size");
+      errorQuda("Error: invalid T grid size");
     }
     gridsize_from_cmdline[3] = tsize;
     i++;
@@ -1646,30 +1627,6 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
   
-  if( strcmp(argv[i], "--test") == 0){
-    if (i+1 >= argc){
-      usage(argv);
-    }	    
-    test_type = atoi(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;	    
-  }
-    
-  if( strcmp(argv[i], "--niter") == 0){
-    if (i+1 >= argc){
-      usage(argv);
-    }
-    niter= atoi(argv[i+1]);
-    if (niter < 1 || niter > 1e6){
-      printf("ERROR: invalid number of iterations (%d)\n", niter);
-      usage(argv);
-    }
-    i++;
-    ret = 0;
-    goto out;
-  }
-
   if( strcmp(argv[i], "--version") == 0){
     printf("This program is linked with QUDA library, version %s,", 
 	   get_quda_ver_str());

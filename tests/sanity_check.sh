@@ -129,19 +129,16 @@ function complete_hisq_force_check {
     precs="double single"
     recons="18 12"
     partitions="0 8 12 14 15"
-    gauge_orders="qdp"
 
     $prog --version |grep single >& /dev/null
     if [ "$?" == "0" ]; then
         partitions="0" #single GPU version
-	gauge_orders="qdp milc"
     fi
 
-    for gauge_order in $gauge_orders; do
     for prec in $precs; do
         for recon in $recons; do
                 for partition in $partitions; do
-                  cmd="$prog --sdim 8 --tdim 16 --prec $prec --recon $recon  --partition $partition --gauge-order $gauge_order --verify"
+                  cmd="$prog --sdim 8 --tdim 16 --prec $prec --recon $recon  --partition $partition --verify"
                   echo -ne  $cmd  "\t"..."\t"
                   echo "----------------------------------------------------------" >>$OUTFILE
                   echo $cmd >> $OUTFILE
@@ -149,7 +146,6 @@ function complete_hisq_force_check {
                   echo "OK"
                 done
         done
-    done
     done
 
 }
@@ -239,7 +235,7 @@ for action in $*; do
 	complete_invert_check;;
     gf )
 	complete_gauge_force_check ;;
-    hf )
+    hisq )
 	complete_hisq_force_check ;;
     all )
 	basic_sanity_check
