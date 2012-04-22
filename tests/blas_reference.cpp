@@ -1,21 +1,4 @@
 #include <blas_reference.h>
-#include <stdio.h>
-#ifdef MPI_COMMS
-#include <comm_quda.h>
-#elif QMP_COMMS
-#include <qmp.h>
-#endif
-
-template <typename Float>
-inline void aXpY(Float a, Float *x, Float *y, int len)
-{
-  for(int i=0; i < len; i++){ y[i] += a*x[i]; }
-}
-
-void axpy(double a, void *x, void *y, int len, QudaPrecision precision) { 
-  if( precision == QUDA_DOUBLE_PRECISION ) aXpY(a, (double *)x, (double *)y, len);
-  else aXpY((float)a, (float *)x, (float *)y, len);
-}
 
 // performs the operation x[i] *= a
 template <typename Float>
@@ -45,11 +28,6 @@ template <typename Float>
 inline double norm2(Float *v, int len) {
   double sum=0.0;
   for (int i=0; i<len; i++) sum += v[i]*v[i];
-#ifdef MPI_COMMS
-  comm_allreduce(&sum);
-#elif QMP_COMMS
-  QMP_sum_double(&sum);
-#endif
   return sum;
 }
 

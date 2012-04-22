@@ -15,16 +15,21 @@ extern "C" {
     QudaReconstructType get_recon(char* s);
     QudaPrecision   get_prec(char* s);
     const char* get_prec_str(QudaPrecision prec);
-    const char* get_gauge_order_str(QudaGaugeFieldOrder order);
     const char* get_recon_str(QudaReconstructType recon);
     const char* get_test_type(int t);
-    const char* get_unitarization_str(bool svd_only);
-    QudaDslashType get_dslash_type(char* s);
-    const char* get_dslash_type_str(QudaDslashType type);
-  const char* get_quda_ver_str();
+    void quda_set_verbose(int );
 #ifdef __cplusplus
 }
 #endif
+
+extern int verbose;
+
+#define PRINTF(fmt,...) do{                                             \
+	if (verbose){							\
+	    printf("GPU:"fmt, ##__VA_ARGS__);				\
+	}								\
+    } while(0) 
+
 
 #define XUP 0
 #define YUP 1

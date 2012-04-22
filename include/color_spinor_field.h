@@ -76,9 +76,14 @@ class ColorSpinorParam {
       siteSubset = QUDA_PARITY_SITE_SUBSET;
     }
 
+//!NEW:
     if (inv_param.dslash_type == QUDA_DOMAIN_WALL_DSLASH) {
       nDim++;
       x[4] = inv_param.Ls;
+    }
+    else if(inv_param.dslash_type == QUDA_NDEGTWISTED_MASS_DSLASH){
+      nDim++;
+      x[4] = 2;//for two flavors
     }
 
     if (inv_param.dirac_order == QUDA_CPS_WILSON_DIRAC_ORDER) {
@@ -211,7 +216,8 @@ class ColorSpinorField {
   QudaPrecision Precision() const { return precision; }
   int Ncolor() const { return nColor; } 
   int Nspin() const { return nSpin; } 
-  int TwistFlavor() const { return twistFlavor; } 
+//!NEW:changed return type
+  QudaTwistFlavorType TwistFlavor() const { return twistFlavor; } 
   int Ndim() const { return nDim; }
   const int* X() const { return x; }
   int X(int d) const { return x[d]; }

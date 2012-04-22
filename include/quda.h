@@ -100,6 +100,8 @@ extern "C" {
     int Ls;       /**< Extent of the 5th dimension (for domain wall) */
 
     double mu;    /**< Twisted mass parameter */
+//!NEW
+    double epsilon;
     QudaTwistFlavorType twist_flavor;  /**< Twisted mass flavor */
 
     double tol;

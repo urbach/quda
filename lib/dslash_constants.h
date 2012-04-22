@@ -51,6 +51,7 @@ __constant__ int Vh;
 __constant__ int Vs;
 __constant__ int Vsh;
 __constant__ int sp_stride;
+__constant__ int fl_stride;//!NEW
 __constant__ int ga_stride;
 __constant__ int cl_stride;
 __constant__ int ghostFace[QUDA_MAX_DIM];
@@ -289,7 +290,14 @@ void initDslashConstants(const cudaGaugeField &gauge, const int sp_stride)
 {
   initCommonConstants(gauge);
 
-  cudaMemcpyToSymbol("sp_stride", &sp_stride, sizeof(int));  
+  cudaMemcpyToSymbol("sp_stride", &sp_stride, sizeof(int));
+
+//!NEW
+#ifdef GPU_NDEG_TWISTED_MASS_DIRAC
+  const int fl_stride = sp_stride / 2;  
+  cudaMemcpyToSymbol("fl_stride", &fl_stride, sizeof(int));    
+#endif
+  
   
   int ga_stride = gauge.Stride();
   cudaMemcpyToSymbol("ga_stride", &ga_stride, sizeof(int));  

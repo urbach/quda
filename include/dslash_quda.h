@@ -66,15 +66,14 @@ void staggeredDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &fatGau
 			 const cudaColorSpinorField *x, const double &k, 
 			 const int *commDim);
 
+//!NEW BEGIN TM
 // twisted mass Dslash  
-void twistedMassDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &gauge, const cudaColorSpinorField *in,
-			   const int parity, const int dagger, const cudaColorSpinorField *x, 
-			   const double &kappa, const double &mu, const double &a, const int *commDim);
+void twistedMassDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &gauge, const cudaColorSpinorField *in, const int parity, const int dagger, const cudaColorSpinorField *x, const double &kappa, const double &mu, const double &epsilon, const int *commDim);
 
 // solo twist term
 void twistGamma5Cuda(cudaColorSpinorField *out, const cudaColorSpinorField *in,
-		     const int dagger, const double &kappa, const double &mu,
-		     const QudaTwistGamma5Type);
+		     const int dagger, const double &kappa, const double &mu, const double &epsilon, const QudaTwistGamma5Type);
+//!NEW END TM
 
 // face packing routines
 void packFace(void *ghost_buf, cudaColorSpinorField &in, const int dim, const int dagger, 

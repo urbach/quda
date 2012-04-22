@@ -145,6 +145,9 @@ void ColorSpinorField::create(int Ndim, const int *X, int Nc, int Ns, QudaTwistF
     x[d] = X[d];
     volume *= x[d];
   }
+//!NEW
+  if(twistFlavor == QUDA_TWIST_DUPLET && x[4] != 2) errorQuda("Must be two flavors for non-degenerate twisted mass spinor (while provided with %d number of components)\n", x[4]);//for two flavors
+
   pad = Pad;
   if (siteSubset == QUDA_FULL_SITE_SUBSET) {
     stride = volume/2 + pad; // padding is based on half volume
@@ -195,6 +198,9 @@ void ColorSpinorField::reset(const ColorSpinorParam &param) {
     if (param.x[0] != 0) x[d] = param.x[d];
     volume *= x[d];
   }
+
+//!NEW
+  if(twistFlavor == QUDA_TWIST_DUPLET && x[4] != 2) errorQuda("Must be two flavors for non-degenerate twisted mass spinor (provided with %d)\n", x[4]);
   
   if (param.pad != 0) pad = param.pad;
 

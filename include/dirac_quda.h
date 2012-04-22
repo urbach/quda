@@ -25,7 +25,11 @@ class DiracParam {
   cudaGaugeField *longGauge; // used by staggered only
   cudaCloverField *clover;
   
-  double mu; // used by twisted mass only
+  double mu;      //1st tm parameter (used by twisted mass only)
+//!NEW
+  double epsilon; //2nd tm parameter (used by twisted mass only)
+  int    Nf;      //number of flavors (used by twisted mass only)
+
 
   cudaColorSpinorField *tmp1;
   cudaColorSpinorField *tmp2; // used only by Clover and TM
@@ -34,9 +38,10 @@ class DiracParam {
 
   int commDim[QUDA_MAX_DIM]; // whether to do comms or not
 
+//!NEW
   DiracParam() 
     : type(QUDA_INVALID_DIRAC), kappa(0.0), m5(0.0), matpcType(QUDA_MATPC_INVALID),
-    dagger(QUDA_DAG_INVALID), gauge(0), clover(0), mu(0.0), 
+    dagger(QUDA_DAG_INVALID), gauge(0), clover(0), mu(0.0), epsilon(0.0), Nf(1),
     tmp1(0), tmp2(0), verbose(QUDA_SILENT)
   {
 
@@ -268,6 +273,10 @@ class DiracTwistedMass : public DiracWilson {
 
  protected:
   double mu;
+//!NEW
+  double epsilon;
+  int    Nf;//Do we need this?
+
   void twistedApply(cudaColorSpinorField &out, const cudaColorSpinorField &in, 
 		    const QudaTwistGamma5Type twistType) const;
 

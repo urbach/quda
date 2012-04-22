@@ -9,9 +9,11 @@
 #include <test_util.h>
 
 
-extern int verbose;
+
+int verbose;
 
 #define stSpinorSiteSize 6
+
 template<typename Float>
 void display_spinor_internal(Float* spinor)
 {
@@ -244,9 +246,9 @@ int site_link_sanity_check_internal_12(Float* link, int dir, int ga_idx, QudaGau
            }
        }
        if (dir == TUP){
-	 if ((commCoords(3) == commDim(3) -1) && i4 == (X4-1) ){
-	   coeff *= -1;
-	 } 
+           if (i4 == (X4 -1)){
+               coeff *= -1;
+           } 
        }       
    }
  
@@ -261,7 +263,7 @@ int site_link_sanity_check_internal_12(Float* link, int dir, int ga_idx, QudaGau
 	double diff =  refc[i] -  c[i];
 	double absdiff = diff > 0? diff: (-diff);
 	if (absdiff  > delta){
-	    printf("ERROR: sanity check failed for site link\n");
+	    printf("ERROR: sanity check failed for link\n");
 	    display_link_internal(link);
 	    printf("refc = (%.10f,%.10f) (%.10f,%.10f) (%.10f,%.10f)\n", 
 		   refc[0], refc[1], refc[2], refc[3], refc[4], refc[5]);
@@ -670,48 +672,8 @@ get_prec_str(QudaPrecision prec)
     
     
     return ret;
+
 }
-
-
-const char* 
-get_unitarization_str(bool svd_only)
-{
-  const char* ret;
- 
-  if(svd_only){
-    ret = "SVD";
-  }else{
-    ret = "Cayley-Hamilton/SVD";
-  }
-  return ret;
-}
-
-const char* 
-get_gauge_order_str(QudaGaugeFieldOrder order)
-{
-  const char* ret;
-
-  switch(order){
-    case QUDA_QDP_GAUGE_ORDER:
-	ret = "qdp";
-	break;
-
-    case QUDA_MILC_GAUGE_ORDER:
-	ret = "milc";
-	break;
-
-    case QUDA_CPS_WILSON_GAUGE_ORDER:
-	ret = "cps_wilson";
-	break;
-
-    default:
-	ret = "unknown";
-	break;
-  }	
-
-  return ret;
-}
-
 
 const char* 
 get_recon_str(QudaReconstructType recon)
@@ -730,6 +692,7 @@ get_recon_str(QudaReconstructType recon)
     default:
 	ret="unknown";
 	break;
+	
     }
     
     return ret;
@@ -766,71 +729,8 @@ get_test_type(int t)
     return ret;
 }
 
-QudaDslashType
-get_dslash_type(char* s)
+void
+quda_set_verbose(int v)
 {
-  QudaDslashType ret =  QUDA_INVALID_DSLASH;
-  
-  if (strcmp(s, "wilson") == 0){
-    ret = QUDA_WILSON_DSLASH;
-  }else if (strcmp(s, "clover") == 0){
-    ret = QUDA_CLOVER_WILSON_DSLASH;
-  }else if (strcmp(s, "twisted_mass") == 0){
-    ret = QUDA_TWISTED_MASS_DSLASH;
-  }else if (strcmp(s, "asqtad") == 0){
-    ret =  QUDA_ASQTAD_DSLASH;
-  }else if (strcmp(s, "domain_wall") == 0){
-    ret =  QUDA_DOMAIN_WALL_DSLASH;
-  }else{
-    fprintf(stderr, "Error: invalid dslash type\n");	
-    exit(1);
-  }
-  
-  return ret;
+    verbose = v;
 }
-
-const char* 
-get_dslash_type_str(QudaDslashType type)
-{
-  const char* ret;
-  
-  switch( type){	
-  case QUDA_WILSON_DSLASH:
-    ret=  "wilson";
-    break;
-  case QUDA_CLOVER_WILSON_DSLASH:
-    ret= "clover";
-    break;
-  case QUDA_TWISTED_MASS_DSLASH:
-    ret= "twisted_mass";
-    break;
-  case QUDA_ASQTAD_DSLASH:
-    ret = "asqtad";
-    break;
-  case QUDA_DOMAIN_WALL_DSLASH:
-    ret = "domain_wall";
-      break;
-  default:
-    ret = "unknown";	
-    break;
-  }
-  
-  
-  return ret;
-    
-}
-
-const char* 
-get_quda_ver_str()
-{
-  static char vstr[32];
-  int major_num = QUDA_VERSION_MAJOR;
-  int minor_num = QUDA_VERSION_MINOR;
-  int ext_num = QUDA_VERSION_SUBMINOR;
-  sprintf(vstr, "%1d.%1d.%1d", 
-	  major_num,
-	  minor_num,
-	  ext_num);
-  return vstr;
-}
-

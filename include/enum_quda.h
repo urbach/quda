@@ -63,12 +63,14 @@ extern "C" {
   // Types used in QudaInvertParam
   //
 
+//!NEW
   typedef enum QudaDslashType_s {
     QUDA_WILSON_DSLASH,
     QUDA_CLOVER_WILSON_DSLASH,
     QUDA_DOMAIN_WALL_DSLASH,
     QUDA_ASQTAD_DSLASH,
     QUDA_TWISTED_MASS_DSLASH,
+    QUDA_NDEGTWISTED_MASS_DSLASH,
     QUDA_INVALID_DSLASH = QUDA_INVALID_ENUM
   } QudaDslashType;
 
@@ -180,6 +182,7 @@ extern "C" {
   // Types used only internally
   //
 
+//!NEW
   typedef enum QudaDiracType_s {
     QUDA_WILSON_DIRAC,
     QUDA_WILSONPC_DIRAC,
@@ -191,6 +194,8 @@ extern "C" {
     QUDA_ASQTADPC_DIRAC,
     QUDA_TWISTED_MASS_DIRAC,
     QUDA_TWISTED_MASSPC_DIRAC,
+    QUDA_NDEGTWISTED_MASS_DIRAC,
+    QUDA_NDEGTWISTED_MASSPC_DIRAC,    
     QUDA_INVALID_DIRAC = QUDA_INVALID_ENUM
   } QudaDiracType;
 
@@ -246,10 +251,12 @@ extern "C" {
     QUDA_RANDOM_SOURCE,
     QUDA_INVALID_SOURCE = QUDA_INVALID_ENUM
   } QudaSourceType;
-  
+ 
+//!NEW 
   typedef enum QudaTwistFlavorType_s {
     QUDA_TWIST_MINUS = -1,
     QUDA_TWIST_PLUS = +1,
+    QUDA_TWIST_DUPLET = 2,
     QUDA_TWIST_NO  = 0,
     QUDA_TWIST_INVALID = QUDA_INVALID_ENUM
   } QudaTwistFlavorType;  
