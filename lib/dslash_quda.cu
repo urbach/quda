@@ -2047,6 +2047,7 @@ void twistGamma5Cuda(cudaColorSpinorField *out, const cudaColorSpinorField *in,
 #endif
 
 #ifdef GPU_HISQ_FORCE
+#include "outer_product.cu"
 #include "hisq_paths_force_quda.cu"
 #include "unitarize_force_quda.cu"
 #endif

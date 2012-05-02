@@ -48,6 +48,19 @@ namespace quda {
                             cpuGaugeField *cpuNewForce);
 
 
+
+  
+  void computeOuterProdCuda(int oddBit, int forNaik,
+			    const QudaGaugeParam& gaugeParam,
+			    double coeff,
+			    cudaColorSpinorField& thisField,	
+			    cudaColorSpinorField& neighborField,	
+			    cudaGaugeField* oprodField);
+
+  // Not sure if these should be here
+  void createOprodEvents();
+  void destroyOprodEvents();
+
  } // namespace fermion_force
 }  // namespace quda
 
