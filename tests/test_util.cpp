@@ -11,15 +11,101 @@
 #include <face_quda.h>
 #include "misc.h"
 
-#include <comm_quda.h>
+using namespace std;
 
 #define XUP 0
 #define YUP 1
 #define ZUP 2
 #define TUP 3
 
+int Z[4];
+int V;
+int Vh;
+int Vs_x, Vs_y, Vs_z, Vs_t;
+int Vsh_x, Vsh_y, Vsh_z, Vsh_t;
+int faceVolume[4];
+
+//extended volume, +4
+int E1, E1h, E2, E3, E4; 
+int E[4];
+int V_ex, Vh_ex;
+
+int Ls;
+int V5;
+int V5h;
+
+int mySpinorSiteSize;
+
 extern float fat_link_max;
-using namespace std;
+
+
+void setDims(int *X) {
+  V = 1;
+  for (int d=0; d< 4; d++) {
+    V *= X[d];
+    Z[d] = X[d];
+
+    faceVolume[d] = 1;
+    for (int i=0; i<4; i++) {
+      if (i==d) continue;
+      faceVolume[d] *= X[i];
+    }
+  }
+  Vh = V/2;
+
+  Vs_x = X[1]*X[2]*X[3];
+  Vs_y = X[0]*X[2]*X[3];
+  Vs_z = X[0]*X[1]*X[3];
+  Vs_t = X[0]*X[1]*X[2];
+  
+  Vsh_x = Vs_x/2;
+  Vsh_y = Vs_y/2;
+  Vsh_z = Vs_z/2;
+  Vsh_t = Vs_t/2;
+
+
+  E1=X[0]+4; E2=X[1]+4; E3=X[2]+4; E4=X[3]+4;
+  E1h=E1/2;
+  E[0] = E1;
+  E[1] = E2;
+  E[2] = E3;
+  E[3] = E4;
+  V_ex = E1*E2*E3*E4;
+  Vh_ex = V_ex/2;
+
+}
+
+
+void dw_setDims(int *X, const int L5) 
+{
+  V = 1;
+  for (int d=0; d< 4; d++) 
+  {
+    V *= X[d];
+    Z[d] = X[d];
+
+    faceVolume[d] = 1;
+    for (int i=0; i<4; i++) {
+      if (i==d) continue;
+      faceVolume[d] *= X[i];
+    }
+  }
+  Vh = V/2;
+  
+  Ls = L5;
+  V5 = V*Ls;
+  V5h = Vh*Ls;
+
+  Vs_t = Z[0]*Z[1]*Z[2]*Ls;//?
+  Vsh_t = Vs_t/2;  //?
+}
+
+
+void setSpinorSiteSize(int n)
+{
+  mySpinorSiteSize = n;
+}
+
 
 template <typename Float>
 static void printVector(Float *v) {
@@ -1319,19 +1405,19 @@ int device = 0;
 
 QudaReconstructType link_recon = QUDA_RECONSTRUCT_12;
 QudaReconstructType link_recon_sloppy = QUDA_RECONSTRUCT_INVALID;
-QudaPrecision prec = QUDA_DOUBLE_PRECISION;
+QudaPrecision prec = QUDA_SINGLE_PRECISION;
 QudaPrecision  prec_sloppy = QUDA_INVALID_PRECISION;
-int xdim = 16;
-int ydim = 16;
-int zdim = 16;
-int tdim = 16;
+int xdim = 24;
+int ydim = 24;
+int zdim = 24;
+int tdim = 24;
 QudaDagType dagger = QUDA_DAG_NO;
 extern bool kernelPackT;
 int gridsize_from_cmdline[4]={1,1,1,1};
-QudaDslashType dslash_type = QUDA_TWISTED_MASS_DSLASH;
+QudaDslashType dslash_type = QUDA_WILSON_DSLASH;
 char latfile[256] = "";
 bool tune = true;
-int niter = 1;
+int niter = 10;
 int test_type = 0;
 
 void __attribute__((weak)) usage_extra(char** argv){};
@@ -1680,129 +1766,3 @@ int process_command_line_option(int argc, char** argv, int* idx)
   return ret ;
 
 }
-
-
-//!NEW:
-/*
-int read_milc_gauge_field
-(double **gauge, char *filename, QudaGaugeParam *param)
-{
-
-//read gauge fileld config stored in binary file
-
-  FILE *ifs;
-
-  int gx1, gx2, gx3, gx4;
-
-  unsigned int gvol, ixh, iy, mu, idx;//lvol
-  unsigned int iread;
-  double *ftmp=NULL;
- 
-  double *U = (double*)malloc(18*sizeof(double));
-  double *resEvn[4], *resOdd[4];
-
-  //Local sizes:
-  int ln[4] = {param->X[0], param->X[1], param->X[2], param->X[3]};  
-  //Global sizes:
-  int gn[4] = {comm_dim(0)*ln[0], comm_dim(1)*ln[1], comm_dim(2)*ln[2], comm_dim(3)*ln[3]};
-  
-  //local lattice volume:
-  int lvol   = ln[0] * ln[1] * ln[2] * ln[3];
-  int lvolh  = lvol / 2;
- 
-  for(int dir = 0; dir < 4; dir++)
-  {
-    resEvn[dir] = gauge[dir];
-    resOdd[dir] = gauge[dir] + lvolh * 18;
-  } 
-
-  ifs = fopen(filename, "r");
-  if(ifs == NULL) {
-    fprintf(stderr, "[] Error, could not open file %s for reading\n", filename);
-    return(1);
-  }
-
-  gvol = gn[0]*gn[1]*gn[2]*gn[3];
-
-  if(gvol==0) {
-    fprintf(stderr, "[] Error, zero volume\n");
-    return(5);
-  }
- 
-  ftmp = (double*)malloc(gvol*72*sizeof(double));
-  if(ftmp == NULL) {
-    fprintf(stderr, "[] Error, could not alloc ftmp\n");
-    return(6);
-  }
-
-  iread = fread(ftmp, sizeof(double), 72*gvol, ifs);
-  if(iread != 72*gvol) {
-    fprintf(stderr, "[] Error, could not read proper amount of data\n");
-    return(7);
-  }
-  fclose(ifs);
-  
-  // reconstruct gauge field
-  // - assume index formula idx = (((t*LX+x)*LY+y)*LZ+z)*(4*3*2*2) + mu*(3*2*2) + 2*(3*u+c)+r
-  //   with mu=0,1,2,3; u=0,1; c=0,1,2, r=0,1
-
-  int gx4start = comm_coords(3)*ln[3];
-  int gx4end   = gx4start + ln[3];
-  int gx3start = comm_coords(2)*ln[2];
-  int gx3end   = gx3start + ln[2];
-  int gx2start = comm_coords(1)*ln[1];
-  int gx2end   = gx2start + ln[1];
-  int gx1start = comm_coords(0)*ln[0];
-  int gx1end   = gx1start + ln[0];
- 
-  for(mu = 0; mu < 4; mu++)
-  {  
-  	iy  = 0;
-	ixh = 0;
-
-	int lx1 = 0, lx2 = 0, lx3 = 0, lx4 = 0;
-
-	for(gx4 = gx4start; gx4 < gx4end; gx4++) 
-	{   // t
-    	    for(gx3 = gx3start; gx3 < gx3end; gx3++) 
-	    {  // z
-	       for(gx2 = gx2start; gx2 < gx2end; gx2++) 
-      	       {  // y
-		  for(gx1 = gx1start; gx1 < gx1end; gx1++) 
-	          {  // x
-          	     ixh = (lx1 + lx2*ln[0] + lx3*ln[0]*ln[1] + lx4*ln[0]*ln[1]*ln[2]) / 2;
-          	     iy = gx1+gx2*gn[0]+gx3*gn[0]*gn[1]+gx4*gn[0]*gn[1]*gn[2];           
-
-		     int oddBit = (gx1+gx2+gx3+gx4) & 1;
-
-	  	     {
-			idx = 18*iy + gvol*18*mu;
-		        double *links_ptr = ftmp+idx;
-	    		memcpy(U, links_ptr, 18*sizeof(double));
-
-		        if(oddBit)
-                           memcpy(resOdd[mu]+18*ixh, U, 18*sizeof(double));
-                        else
-                           memcpy(resEvn[mu]+18*ixh, U, 18*sizeof(double));
-                     }
-                     ++lx1;
-	          }
-                  lx1 = 0;
-                  ++lx2;
-                }
-      		lx2 = 0;
-      		++lx3;				
-    	     }
-    	     lx3 = 0;
-    	     ++lx4;
-	}
-  }
-  free(ftmp);
-  
-  //apply bc here:
-  
-  applyGaugeFieldScaling<double>((double**)gauge, lvolh, param);
-  
-  return(0);
-}
-*/

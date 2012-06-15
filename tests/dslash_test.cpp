@@ -12,15 +12,20 @@
 #include <blas_quda.h>
 
 #include <test_util.h>
+#include <dslash_util.h>
 #include <wilson_dslash_reference.h>
+#include <domain_wall_dslash_reference.h>
 #include "misc.h"
 
-//#include <gauge_qio.h>
+#include <gauge_qio.h>
 
 #define MAX(a,b) ((a)>(b)?(a):(b))
 
 const QudaParity parity = QUDA_EVEN_PARITY; // even or odd?
 const int transfer = 0; // include transfer time in the benchmark?
+
+const int myLs = 16; // FIXME
+double kappa5;
 
 QudaPrecision cpu_prec = QUDA_DOUBLE_PRECISION;
 QudaPrecision cuda_prec;
@@ -59,9 +64,7 @@ extern char latfile[];
 
 void init(int argc, char **argv) {
 
-
-  kernelPackT = false; // Set true for kernel T face packing
-  cuda_prec= prec;
+  cuda_prec = prec;
 
   gauge_param = newQudaGaugeParam();
   inv_param = newQudaInvertParam();
@@ -70,13 +73,23 @@ void init(int argc, char **argv) {
   gauge_param.X[1] = ydim;
   gauge_param.X[2] = zdim;
   gauge_param.X[3] = tdim;
-  setDims(gauge_param.X);
+
+  if (dslash_type == QUDA_DOMAIN_WALL_DSLASH) {
+    dw_setDims(gauge_param.X, myLs);
+    kernelPackT = true;
+  } else {
+    setDims(gauge_param.X);
+    Ls = 1;
+    kernelPackT = false;
+  }
+
+  setSpinorSiteSize(24);
 
   gauge_param.anisotropy = 1.0;
 
   gauge_param.type = QUDA_WILSON_LINKS;
   gauge_param.gauge_order = QUDA_QDP_GAUGE_ORDER;
-  gauge_param.t_boundary = QUDA_PERIODIC_T;
+  gauge_param.t_boundary = QUDA_ANTI_PERIODIC_T;
 
   gauge_param.cpu_prec = cpu_prec;
   gauge_param.cuda_prec = cuda_prec;
@@ -86,37 +99,45 @@ void init(int argc, char **argv) {
   gauge_param.gauge_fix = QUDA_GAUGE_FIXED_NO;
 
   inv_param.kappa = 0.1;
-
+  
   if (dslash_type == QUDA_TWISTED_MASS_DSLASH) {
     inv_param.mu = 0.1;
     inv_param.epsilon = 0.01;    
     inv_param.twist_flavor = QUDA_TWIST_NONDEG_DOUBLET;
     //inv_param.twist_flavor = QUDA_TWIST_PLUS;    
+  }else if (dslash_type == QUDA_DOMAIN_WALL_DSLASH) {
+    inv_param.mass = 0.01;
+    inv_param.m5 = -1.5;
+    kappa5 = 0.5/(5 + inv_param.m5);
   }
 
+  inv_param.Ls = Ls;
+  
   inv_param.matpc_type = QUDA_MATPC_EVEN_EVEN;
-  //inv_param.matpc_type = QUDA_MATPC_EVEN_EVEN_ASYMMETRIC;  
   inv_param.dagger = dagger;
 
   inv_param.cpu_prec = cpu_prec;
-  if (inv_param.cpu_prec != gauge_param.cpu_prec) 
-    errorQuda("Gauge and spinor cpu precisions must match");
-
+  if (inv_param.cpu_prec != gauge_param.cpu_prec) {
+    errorQuda("Gauge and spinor CPU precisions must match");
+  }
   inv_param.cuda_prec = cuda_prec;
+
+  inv_param.input_location = QUDA_CPU_FIELD_LOCATION;
+  inv_param.output_location = QUDA_CPU_FIELD_LOCATION;
 
 #ifndef MULTI_GPU // free parameter for single GPU
   gauge_param.ga_pad = 0;
 #else // must be this one c/b face for multi gpu
-  int x_face_size = gauge_param.X[1]*gauge_param.X[2]*gauge_param.X[3]/2;
-  int y_face_size = gauge_param.X[0]*gauge_param.X[2]*gauge_param.X[3]/2;
-  int z_face_size = gauge_param.X[0]*gauge_param.X[1]*gauge_param.X[3]/2;
-  int t_face_size = gauge_param.X[0]*gauge_param.X[1]*gauge_param.X[2]/2;
+  int x_face_size = Ls*gauge_param.X[1]*gauge_param.X[2]*gauge_param.X[3]/2;
+  int y_face_size = Ls*gauge_param.X[0]*gauge_param.X[2]*gauge_param.X[3]/2;
+  int z_face_size = Ls*gauge_param.X[0]*gauge_param.X[1]*gauge_param.X[3]/2;
+  int t_face_size = Ls*gauge_param.X[0]*gauge_param.X[1]*gauge_param.X[2]/2;
   int pad_size =MAX(x_face_size, y_face_size);
   pad_size = MAX(pad_size, z_face_size);
   pad_size = MAX(pad_size, t_face_size);
   gauge_param.ga_pad = pad_size;    
 #endif
-  inv_param.sp_pad = 16*16*16;
+  inv_param.sp_pad = 0;
   inv_param.cl_pad = 0;
 
   //inv_param.sp_pad = 24*24*24;
@@ -168,19 +189,24 @@ void init(int argc, char **argv) {
 
   ColorSpinorParam csParam;
   
-  //csParam.fieldLocation = QUDA_CPU_FIELD_LOCATION;
   csParam.nColor = 3;
   csParam.nSpin = 4;
+  if (dslash_type == QUDA_TWISTED_MASS_DSLASH) {
+    csParam.twistFlavor = inv_param.twist_flavor;
+  }
+  csParam.nDim = 4;
+  for (int d=0; d<4; d++) csParam.x[d] = gauge_param.X[d];
+  if (dslash_type == QUDA_DOMAIN_WALL_DSLASH) {
+    csParam.nDim = 5;
+    csParam.x[4] = Ls;
+  }
 //!NEW    
   if (dslash_type == QUDA_TWISTED_MASS_DSLASH) {
     csParam.twistFlavor = inv_param.twist_flavor;
     csParam.nDim = (inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS) ? 4 : 5;
     csParam.x[4] = (inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS) ? 1 : 2;    
   }
-  else
-    csParam.nDim = 4;    
-  
-  for (int d=0; d<4; d++) csParam.x[d] = gauge_param.X[d];
+
   csParam.precision = inv_param.cpu_prec;
   csParam.pad = 0;
   if (test_type < 2 || test_type ==3) {
@@ -191,7 +217,7 @@ void init(int argc, char **argv) {
   }    
   csParam.siteOrder = QUDA_EVEN_ODD_SITE_ORDER;
   csParam.fieldOrder = QUDA_SPACE_SPIN_COLOR_FIELD_ORDER;
-  csParam.gammaBasis = inv_param.gamma_basis; 
+  csParam.gammaBasis = inv_param.gamma_basis;
   csParam.create = QUDA_ZERO_FIELD_CREATE;
 
   //csParam.verbose = QUDA_DEBUG_VERBOSE;
@@ -207,8 +233,8 @@ void init(int argc, char **argv) {
   printfQuda("Randomizing fields... ");
 
   if (strcmp(latfile,"")) {  // load in the command line supplied gauge field
-    //read_gauge_field(latfile, hostGauge, gauge_param.cpu_prec, gauge_param.X, argc, argv);
-    //construct_gauge_field(hostGauge, 2, gauge_param.cpu_prec, &gauge_param);
+    read_gauge_field(latfile, hostGauge, gauge_param.cpu_prec, gauge_param.X, argc, argv);
+    construct_gauge_field(hostGauge, 2, gauge_param.cpu_prec, &gauge_param);
   } else { // else generate a random SU(3) field
     construct_gauge_field(hostGauge, 1, gauge_param.cpu_prec, &gauge_param);
   }
@@ -239,7 +265,6 @@ void init(int argc, char **argv) {
   }
 
   if (!transfer) {
-    //csParam.fieldLocation = QUDA_CUDA_FIELD_LOCATION;
     csParam.gammaBasis = QUDA_UKQCD_GAMMA_BASIS;
     csParam.pad = inv_param.sp_pad;
     csParam.precision = inv_param.cuda_prec;
@@ -335,7 +360,6 @@ double dslashCUDA(int niter) {
       if (transfer) {
 	MatQuda(spinorOut->V(), spinor->V(), &inv_param);
       } else {
-	printf("\nComputing M()\n");
 	dirac->M(*cudaSpinorOut, *cudaSpinor);
       }
       break;
@@ -400,13 +424,12 @@ void dslashRef() {
       printfQuda("Test type not defined\n");
       exit(-1);
     }
-  } else { // twisted mass
-    int flv_offset = (inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS) ? 0 : 12*spinorRef->Volume();
+  } else if (dslash_type == QUDA_TWISTED_MASS_DSLASH) {
+    int flv_offset = (inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS) ? 0 : 12*spinorRef->Volume();    
     switch (test_type) {
     case 0:
       if(inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS)
-	tm_dslash(spinorRef->V(), hostGauge, spinor->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor, 
-		  parity, dagger, inv_param.cpu_prec, gauge_param);
+	tm_dslash(spinorRef->V(), hostGauge, spinor->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor, parity, dagger, inv_param.cpu_prec, gauge_param);
       else
       {
 	void *ref1 = spinorRef->V();
@@ -419,53 +442,59 @@ void dslashRef() {
 	               parity, dagger, inv_param.matpc_type, inv_param.cpu_prec, gauge_param);	
       }
       break;
-    case 1: 
+    case 1:
       if(inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS)      
-        tm_matpc(spinorRef->V(), hostGauge, spinor->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor,
-	         inv_param.matpc_type, dagger, inv_param.cpu_prec, gauge_param);
-      else
-      {
-	void *ref1 = spinorRef->V();
-	void *ref2 = cpu_prec == sizeof(double) ? (void*)((double*)ref1 + flv_offset): (void*)((float*)ref1 + flv_offset);
-    
-	void *flv1 = spinor->V();
-	void *flv2 = cpu_prec == sizeof(double) ? (void*)((double*)flv1 + flv_offset): (void*)((float*)flv1 + flv_offset);
-    
-	tm_ndeg_matpc(ref1, ref2, hostGauge, flv1, flv2, inv_param.kappa, inv_param.mu, inv_param.epsilon, inv_param.matpc_type, dagger, inv_param.cpu_prec, gauge_param);	
-      }	       
+	tm_matpc(spinorRef->V(), hostGauge, spinor->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor, inv_param.matpc_type, dagger, inv_param.cpu_prec, gauge_param);
       break;
     case 2:
-      if(inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS)            
-	tm_mat(spinorRef->V(), hostGauge, spinor->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor,
-	     dagger, inv_param.cpu_prec, gauge_param);
-      else
-      {
-	void *ref1 = spinorRef->V();
-	void *ref2 = cpu_prec == sizeof(double) ? (void*)((double*)ref1 + flv_offset): (void*)((float*)ref1 + flv_offset);
-    
-	void *flv1 = spinor->V();
-	void *flv2 = cpu_prec == sizeof(double) ? (void*)((double*)flv1 + flv_offset): (void*)((float*)flv1 + flv_offset);
-    
-	tm_ndeg_mat(ref1, ref2, hostGauge, flv1, flv2, inv_param.kappa, inv_param.mu, inv_param.epsilon, dagger, inv_param.cpu_prec, gauge_param);	
-      }	       
-	     
+      if(inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS)      
+	tm_mat(spinorRef->V(), hostGauge, spinor->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor, dagger, inv_param.cpu_prec, gauge_param);
       break;
     case 3:    
-      tm_matpc(spinorTmp->V(), hostGauge, spinor->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor,
+      if(inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS){      
+	tm_matpc(spinorTmp->V(), hostGauge, spinor->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor,
 	       inv_param.matpc_type, QUDA_DAG_NO, inv_param.cpu_prec, gauge_param);
-      tm_matpc(spinorRef->V(), hostGauge, spinorTmp->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor,
+	tm_matpc(spinorRef->V(), hostGauge, spinorTmp->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor,
 	       inv_param.matpc_type, QUDA_DAG_YES, inv_param.cpu_prec, gauge_param);
+      }
       break;
     case 4:
-      tm_mat(spinorTmp->V(), hostGauge, spinor->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor,
+      if(inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS){      
+	tm_mat(spinorTmp->V(), hostGauge, spinor->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor,
 	     QUDA_DAG_NO, inv_param.cpu_prec, gauge_param);
-      tm_mat(spinorRef->V(), hostGauge, spinorTmp->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor,
+	tm_mat(spinorRef->V(), hostGauge, spinorTmp->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor,
 	     QUDA_DAG_YES, inv_param.cpu_prec, gauge_param);
+      }
       break;
     default:
       printfQuda("Test type not defined\n");
       exit(-1);
     }
+  } else if (dslash_type == QUDA_DOMAIN_WALL_DSLASH) {
+    switch (test_type) {
+    case 0:
+      dw_dslash(spinorRef->V(), hostGauge, spinor->V(), parity, dagger, gauge_param.cpu_prec, gauge_param, inv_param.mass);
+      break;
+    case 1:    
+      dw_matpc(spinorRef->V(), hostGauge, spinor->V(), kappa5, inv_param.matpc_type, dagger, gauge_param.cpu_prec, gauge_param, inv_param.mass);
+      break;
+    case 2:
+      dw_mat(spinorRef->V(), hostGauge, spinor->V(), kappa5, dagger, gauge_param.cpu_prec, gauge_param, inv_param.mass);
+      break;
+    case 3:    
+      dw_matpc(spinorTmp->V(), hostGauge, spinor->V(), kappa5, inv_param.matpc_type, QUDA_DAG_NO, gauge_param.cpu_prec, gauge_param, inv_param.mass);
+      dw_matpc(spinorRef->V(), hostGauge, spinorTmp->V(), kappa5, inv_param.matpc_type, QUDA_DAG_YES, gauge_param.cpu_prec, gauge_param, inv_param.mass);
+      break;
+    case 4:
+      dw_matdagmat(spinorRef->V(), hostGauge, spinor->V(), kappa5, dagger, gauge_param.cpu_prec, gauge_param, inv_param.mass);
+    break; 
+    default:
+      printf("Test type not supported for domain wall\n");
+      exit(-1);
+    }
+  } else {
+    printfQuda("Unsupported dslash_type\n");
+    exit(-1);
   }
 
   printfQuda("done.\n");
@@ -523,12 +552,11 @@ int main(int argc, char **argv)
 
     if (tune) { // warm-up run
       printfQuda("Tuning...\n");
-      // tune the Dirac Kernel      
       setDslashTuning(QUDA_TUNE_YES, QUDA_VERBOSE);
       dslashCUDA(1);
     }
     printfQuda("Executing %d kernel loops...\n", niter);
-    dirac->Flops();
+    if (!transfer) dirac->Flops();
     double secs = dslashCUDA(niter);
     printfQuda("done.\n\n");
 
@@ -552,7 +580,7 @@ int main(int argc, char **argv)
     }
     printfQuda("GFLOPS = %f\n", 1.0e-9*flops/secs);
     printfQuda("GB/s = %f\n\n", 
-	       Vh*(spinor_floats+gauge_floats)*inv_param.cuda_prec/((secs/niter)*1e+9));
+	       Vh*(Ls*spinor_floats+gauge_floats)*inv_param.cuda_prec/((secs/niter)*1e+9));
     
     if (!transfer) {
       double norm2_cpu = norm2(*spinorRef);

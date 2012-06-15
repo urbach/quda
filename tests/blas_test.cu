@@ -8,8 +8,7 @@
 #include <test_util.h>
 #include <face_quda.h>
 
-// include the next two lines because of nasty globals used in the tests
-#define mySpinorSiteSize 24
+// include because of nasty globals used in the tests
 #include <dslash_util.h>
 
 // Wilson, clover-improved Wilson, and twisted mass are supported.
@@ -66,7 +65,6 @@ void initFields(int prec)
   QudaPrecision low_aux_prec;
 
   ColorSpinorParam param;
-  //param.fieldLocation = QUDA_CPU_FIELD_LOCATION;
   param.nColor = 3;
   // set spin according to the type of dslash
   Nspin = (dslash_type == QUDA_ASQTAD_DSLASH) ? 1 : 4;
@@ -108,7 +106,6 @@ void initFields(int prec)
   param.pad = 0; //LX*LY*LZ/2;
   
   if (param.nSpin == 4) param.gammaBasis = QUDA_UKQCD_GAMMA_BASIS;
-  //param.fieldLocation = QUDA_CUDA_FIELD_LOCATION;
   param.create = QUDA_ZERO_FIELD_CREATE;
 
   switch(prec) {
@@ -613,8 +610,7 @@ double test(int kernel) {
 
 int main(int argc, char** argv)
 {
-  int i;
-  for (i =1;i < argc; i++){
+  for (int i = 1; i < argc; i++){
     if(process_command_line_option(argc, argv, &i) == 0){
       continue;
     } 
@@ -622,6 +618,7 @@ int main(int argc, char** argv)
     usage(argv);
   }
 
+  setSpinorSiteSize(24);
   initCommsQuda(argc, argv, gridsize_from_cmdline, 4);
   display_test_info();
   initQuda(device);
