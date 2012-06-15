@@ -20,7 +20,6 @@ struct FullClover;
 
 class ColorSpinorParam {
  public:
-  QudaFieldLocation fieldLocation; // cpu, cuda etc. 
   int nColor; // Number of colors of the field
   int nSpin; // =1 for staggered, =2 for coarse Dslash, =4 for 4d spinor
   int nDim; // number of spacetime dimensions
@@ -45,29 +44,31 @@ class ColorSpinorParam {
   QudaVerbosity verbose;
 
  ColorSpinorParam()
-   : fieldLocation(QUDA_INVALID_FIELD_LOCATION), nColor(0), nSpin(0), nDim(0), 
-    precision(QUDA_INVALID_PRECISION), pad(0), twistFlavor(QUDA_TWIST_INVALID),
-    siteSubset(QUDA_INVALID_SITE_SUBSET), siteOrder(QUDA_INVALID_SITE_ORDER), 
-    fieldOrder(QUDA_INVALID_FIELD_ORDER), gammaBasis(QUDA_INVALID_GAMMA_BASIS), 
-    create(QUDA_INVALID_FIELD_CREATE), verbose(QUDA_SILENT)
+   : nColor(0), nSpin(0), nDim(0), precision(QUDA_INVALID_PRECISION), pad(0), 
+    twistFlavor(QUDA_TWIST_INVALID), siteSubset(QUDA_INVALID_SITE_SUBSET), 
+    siteOrder(QUDA_INVALID_SITE_ORDER), fieldOrder(QUDA_INVALID_FIELD_ORDER), 
+    gammaBasis(QUDA_INVALID_GAMMA_BASIS), create(QUDA_INVALID_FIELD_CREATE), 
+    verbose(QUDA_SILENT)
     { 
-      for(int d=0; d<QUDA_MAX_DIM; d++) {
-	x[d] = 0; 
-      }
+      for(int d=0; d<QUDA_MAX_DIM; d++) x[d] = 0; 
     }
   
   // used to create cpu params
- ColorSpinorParam(void *V, QudaInvertParam &inv_param, const int *X, const bool pc_solution)
-   : fieldLocation(QUDA_CPU_FIELD_LOCATION), nColor(3), 
-    nSpin(inv_param.dslash_type == QUDA_ASQTAD_DSLASH ? 1 : 4), nDim(4), 
-    precision(inv_param.cpu_prec), pad(0), twistFlavor(inv_param.twist_flavor), 
-    siteSubset(QUDA_INVALID_SITE_SUBSET), siteOrder(QUDA_INVALID_SITE_ORDER), 
+ ColorSpinorParam(void *V, QudaFieldLocation location, QudaInvertParam &inv_param, const int *X, const bool pc_solution)
+   : nColor(3), nSpin(inv_param.dslash_type == QUDA_ASQTAD_DSLASH ? 1 : 4), nDim(4), 
+    pad(0), twistFlavor(inv_param.twist_flavor), siteSubset(QUDA_INVALID_SITE_SUBSET), siteOrder(QUDA_INVALID_SITE_ORDER), 
     fieldOrder(QUDA_INVALID_FIELD_ORDER), gammaBasis(inv_param.gamma_basis), 
     create(QUDA_REFERENCE_FIELD_CREATE), v(V), verbose(inv_param.verbosity)
   { 
 
     if (nDim > QUDA_MAX_DIM) errorQuda("Number of dimensions too great");
     for (int d=0; d<nDim; d++) x[d] = X[d];
+
+    if (location == QUDA_CPU_FIELD_LOCATION) {
+      precision = inv_param.cpu_prec;
+    } else {
+      precision = inv_param.cuda_prec;
+    }
 
     if (!pc_solution) {
       siteSubset = QUDA_FULL_SITE_SUBSET;;
@@ -76,17 +77,21 @@ class ColorSpinorParam {
       siteSubset = QUDA_PARITY_SITE_SUBSET;
     }
 
-//!NEW:
     if (inv_param.dslash_type == QUDA_DOMAIN_WALL_DSLASH) {
       nDim++;
       x[4] = inv_param.Ls;
     }
-    else if(inv_param.dslash_type == QUDA_NDEGTWISTED_MASS_DSLASH){
+//!NDEGTM
+    else if(inv_param.dslash_type == QUDA_TWISTED_MASS_DSLASH && (twistFlavor != QUDA_TWIST_PLUS || twistFlavor != QUDA_TWIST_MINUS)){
       nDim++;
       x[4] = 2;//for two flavors
-    }
+    }    
 
-    if (inv_param.dirac_order == QUDA_CPS_WILSON_DIRAC_ORDER) {
+    if (inv_param.dirac_order == QUDA_INTERNAL_DIRAC_ORDER) {
+      fieldOrder = (precision == QUDA_DOUBLE_PRECISION || nSpin == 1) ? 
+	QUDA_FLOAT2_FIELD_ORDER : QUDA_FLOAT4_FIELD_ORDER; 
+      siteOrder = QUDA_EVEN_ODD_SITE_ORDER;
+    } else if (inv_param.dirac_order == QUDA_CPS_WILSON_DIRAC_ORDER) {
       fieldOrder = QUDA_SPACE_SPIN_COLOR_FIELD_ORDER;
       siteOrder = QUDA_ODD_EVEN_SITE_ORDER;
     } else if (inv_param.dirac_order == QUDA_QDP_DIRAC_ORDER) {
@@ -102,7 +107,7 @@ class ColorSpinorParam {
 
   // used to create cuda param from a cpu param
  ColorSpinorParam(ColorSpinorParam &cpuParam, QudaInvertParam &inv_param) 
-    : fieldLocation(QUDA_CUDA_FIELD_LOCATION), nColor(cpuParam.nColor), nSpin(cpuParam.nSpin), 
+    : nColor(cpuParam.nColor), nSpin(cpuParam.nSpin), 
     nDim(cpuParam.nDim), precision(inv_param.cuda_prec), pad(inv_param.sp_pad),  
     twistFlavor(cpuParam.twistFlavor), siteSubset(cpuParam.siteSubset), 
     siteOrder(QUDA_EVEN_ODD_SITE_ORDER), fieldOrder(QUDA_INVALID_FIELD_ORDER), 
@@ -121,7 +126,6 @@ class ColorSpinorParam {
   }
 
   void print() {
-    printfQuda("fieldLocation = %d\n", fieldLocation);
     printfQuda("nColor = %d\n", nColor);
     printfQuda("nSpin = %d\n", nSpin);
     printfQuda("twistFlavor = %d\n", twistFlavor);
@@ -149,7 +153,7 @@ class ColorSpinorField {
 
  private:
   void create(int nDim, const int *x, int Nc, int Ns, QudaTwistFlavorType Twistflavor, 
-	      QudaPrecision precision, int pad, QudaFieldLocation location, QudaSiteSubset subset, 
+	      QudaPrecision precision, int pad, QudaSiteSubset subset, 
 	      QudaSiteOrder siteOrder, QudaFieldOrder fieldOrder, QudaGammaBasis gammaBasis);
   void destroy();  
 
@@ -187,7 +191,6 @@ class ColorSpinorField {
   size_t bytes; // size in bytes of spinor field
   size_t norm_bytes; // size in bytes of norm field
 
-  QudaFieldLocation fieldLocation;
   QudaSiteSubset siteSubset;
   QudaSiteOrder siteOrder;
   QudaFieldOrder fieldOrder;
@@ -211,26 +214,28 @@ class ColorSpinorField {
 
   virtual ~ColorSpinorField();
 
-  ColorSpinorField& operator=(const ColorSpinorField &);
+  virtual ColorSpinorField& operator=(const ColorSpinorField &);
 
   QudaPrecision Precision() const { return precision; }
   int Ncolor() const { return nColor; } 
   int Nspin() const { return nSpin; } 
-//!NEW:changed return type
-  QudaTwistFlavorType TwistFlavor() const { return twistFlavor; } 
+//!NDEGTM NEW:changed return type
+  QudaTwistFlavorType TwistFlavor() const { return twistFlavor; }  
   int Ndim() const { return nDim; }
   const int* X() const { return x; }
   int X(int d) const { return x[d]; }
   int RealLength() const { return real_length; }
   int Length() const { return length; }
+  int TotalLength() const { return total_length; }
   int Stride() const { return stride; }
   int Volume() const { return volume; }
+  int Pad() const { return pad; }
   size_t Bytes() const { return bytes; }
   size_t NormBytes() const { return norm_bytes; }
   void PrintDims() const { printf("dimensions=%d %d %d %d\n",
 				  x[0], x[1], x[2], x[3]);}
   
-  QudaFieldLocation FieldLocation() const { return fieldLocation; }
+  virtual QudaFieldLocation Location() const = 0;
   QudaSiteSubset SiteSubset() const { return siteSubset; }
   QudaSiteOrder SiteOrder() const { return siteOrder; }
   QudaFieldOrder FieldOrder() const { return fieldOrder; }
@@ -255,8 +260,10 @@ class cudaColorSpinorField : public ColorSpinorField {
   void *norm; // the normalization field
   bool alloc; // whether we allocated memory
   bool init;
+  bool reference; // whether the field is a reference or not
 
-  static void *buffer;// pinned memory
+  static void *buffer_h;// pinned memory
+  static void *buffer_d;// device_mapped pointer to buffer
   static bool bufferInit;
   static size_t bufferBytes;
 
@@ -270,6 +277,10 @@ class cudaColorSpinorField : public ColorSpinorField {
   void copy(const cudaColorSpinorField &);
 
   void zeroPad();
+  
+  void resizeBuffer(size_t bytes) const;
+  void loadSpinorField(const ColorSpinorField &src);
+  void saveSpinorField (ColorSpinorField &src) const;
 
  public:
   //cudaColorSpinorField();
@@ -279,11 +290,9 @@ class cudaColorSpinorField : public ColorSpinorField {
   cudaColorSpinorField(const ColorSpinorParam&);
   virtual ~cudaColorSpinorField();
 
+  ColorSpinorField& operator=(const ColorSpinorField &);
   cudaColorSpinorField& operator=(const cudaColorSpinorField&);
   cudaColorSpinorField& operator=(const cpuColorSpinorField&);
-
-  void loadCPUSpinorField(const cpuColorSpinorField &src);
-  void saveCPUSpinorField (cpuColorSpinorField &src) const;
 
   void allocateGhostBuffer(void);
   static void freeGhostBuffer(void);
@@ -305,6 +314,8 @@ class cudaColorSpinorField : public ColorSpinorField {
   static void freeBuffer();
 
   void zero();
+
+  QudaFieldLocation Location() const;
 
   friend std::ostream& operator<<(std::ostream &out, const cudaColorSpinorField &);
 };
@@ -335,7 +346,8 @@ class cpuColorSpinorField : public ColorSpinorField {
   void *v; // the field elements
   void *norm; // the normalization field
   bool init;
-  
+  bool reference; // whether the field is a reference or not
+
   void create(const QudaFieldCreate);
   void destroy();
 
@@ -350,6 +362,7 @@ class cpuColorSpinorField : public ColorSpinorField {
   cpuColorSpinorField(const ColorSpinorParam&);
   virtual ~cpuColorSpinorField();
 
+  ColorSpinorField& operator=(const ColorSpinorField &);
   cpuColorSpinorField& operator=(const cpuColorSpinorField&);
   cpuColorSpinorField& operator=(const cudaColorSpinorField&);
 
@@ -373,6 +386,8 @@ class cpuColorSpinorField : public ColorSpinorField {
 
   void copy(const cpuColorSpinorField&);
   void zero();
+
+  QudaFieldLocation Location() const;
 };
 
 

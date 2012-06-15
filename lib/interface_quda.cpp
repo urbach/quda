@@ -20,20 +20,20 @@
 #include <fat_force_quda.h>
 #include <hisq_links_quda.h>
 
-#ifdef QUDA_NUMA_SUPPORT
+#ifdef NUMA_AFFINITY
 #include <numa_affinity.h>
 #endif
 
 #include <cuda.h>
+
 #ifdef MULTI_GPU
 #ifdef MPI_COMMS
 #include <mpi.h>
 #endif
-
 #ifdef QMP_COMMS
 #include <qmp.h>
 #endif
-#endif
+#endif // MULTI_GPU
 
 #ifdef GPU_GAUGE_FORCE
 #include <gauge_force_quda.h>
@@ -64,8 +64,6 @@
 #ifdef QMP_COMMS
 int rank_QMP;
 int num_QMP;
-extern bool qudaPt0;
-extern bool qudaPtNm1;
 #endif
 
 #include "face_quda.h"
@@ -77,9 +75,10 @@ cudaGaugeField *gaugePrecise = NULL;
 cudaGaugeField *gaugeSloppy = NULL;
 cudaGaugeField *gaugePrecondition = NULL;
 
-cudaGaugeField *gaugeFatPrecise = NULL;
-cudaGaugeField *gaugeFatSloppy = NULL;
-cudaGaugeField *gaugeFatPrecondition = NULL;
+// It's important that these alias the above so that constants are set correctly in Dirac::Dirac()
+cudaGaugeField *&gaugeFatPrecise = gaugePrecise;
+cudaGaugeField *&gaugeFatSloppy = gaugeSloppy;
+cudaGaugeField *&gaugeFatPrecondition = gaugePrecondition;
 
 cudaGaugeField *gaugeLongPrecise = NULL;
 cudaGaugeField *gaugeLongSloppy = NULL;
@@ -92,6 +91,7 @@ cudaCloverField *cloverPrecondition = NULL;
 cudaDeviceProp deviceProp;
 cudaStream_t *streams;
 
+
 int getGpuCount()
 {
   int count;
@@ -100,18 +100,27 @@ int getGpuCount()
     errorQuda("No devices supporting CUDA");
   }
   if(count > MAX_GPU_NUM_PER_NODE){
-    errorQuda("gpu count(%d) is larger than limit\n", count);
+    errorQuda("GPU count (%d) is larger than limit\n", count);
   }
   return count;
 }
 
+
+void setVerbosityQuda(QudaVerbosity verbosity, const char prefix[], FILE *outfile)
+{
+  setVerbosity(verbosity);
+  setOutputPrefix(prefix);
+  setOutputFile(outfile);
+}
+
+
 void initQuda(int dev)
 {
-  static int initialized = 0;
+  static bool initialized = false;
   if (initialized) {
     return;
   }
-  initialized = 1;
+  initialized = true;
 
 #if defined(GPU_DIRECT) && defined(MULTI_GPU) && (CUDA_VERSION == 4000)
   //check if CUDA_NIC_INTEROP is set to 1 in the enviroment
@@ -135,8 +144,15 @@ void initQuda(int dev)
   for(int i=0; i<deviceCount; i++) {
     cudaDeviceProp deviceProp;
     cudaGetDeviceProperties(&deviceProp, i);
-    printfQuda("QUDA: Found device %d: %s\n", i, deviceProp.name);
+    checkCudaErrorNoSync(); // "NoSync" for correctness in HOST_DEBUG mode
+    if (getVerbosity() >= QUDA_SUMMARIZE) {
+      printfQuda("Found device %d: %s\n", i, deviceProp.name);
+    }
   }
+
+#ifdef MULTI_GPU
+  comm_init();
+#endif
 
 #ifdef QMP_COMMS
   int ndim;
@@ -154,7 +170,6 @@ void initQuda(int dev)
   ndim = QMP_get_logical_number_of_dimensions();
   dim = QMP_get_logical_dimensions();
 #elif defined(MPI_COMMS)
-  comm_init();
   if (dev < 0) {
     dev=comm_gpuid();
   }
@@ -162,31 +177,28 @@ void initQuda(int dev)
   if (dev < 0) errorQuda("Invalid device number");
 #endif
   
-  // Used for applying the gauge field boundary condition
-  if( commCoords(3) == 0 ) qudaPt0=true;
-  else qudaPt0=false;
-
-  if( commCoords(3) == commDim(3)-1 ) qudaPtNm1=true;
-  else qudaPtNm1=false;
-
   cudaGetDeviceProperties(&deviceProp, dev);
+  checkCudaErrorNoSync(); // "NoSync" for correctness in HOST_DEBUG mode
   if (deviceProp.major < 1) {
     errorQuda("Device %d does not support CUDA", dev);
   }
   
-  printfQuda("QUDA: Using device %d: %s\n", dev, deviceProp.name);
-
+  if (getVerbosity() >= QUDA_SUMMARIZE) {
+    printfQuda("Using device %d: %s\n", dev, deviceProp.name);
+  }
   cudaSetDevice(dev);
+  checkCudaErrorNoSync(); // "NoSync" for correctness in HOST_DEBUG mode
 
-#ifdef QUDA_NUMA_SUPPORT
+#ifdef NUMA_AFFINITY
   if(numa_affinity_enabled){
     setNumaAffinity(dev);
   }
 #endif
   // if the device supports host-mapped memory, then enable this
   if(deviceProp.canMapHostMemory) cudaSetDeviceFlags(cudaDeviceMapHost);
+  checkCudaError();
 
-  initCache();
+  cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
   //cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
   cudaGetDeviceProperties(&deviceProp, dev);
 
@@ -194,12 +206,13 @@ void initQuda(int dev)
   for (int i=0; i<Nstream; i++) {
     cudaStreamCreate(&streams[i]);
   }
+  checkCudaError();
+  createDslashEvents();
 
   quda::initBlas();
 
-  loadTuneCache(QUDA_VERBOSE);
+  loadTuneCache(getVerbosity());
 }
-
 
 
 void loadGaugeQuda(void *h_gauge, QudaGaugeParam *param)
@@ -417,6 +430,7 @@ void freeGaugeQuda(void)
   gaugeFatPrecise = NULL;
 }
 
+
 void freeCloverQuda(void)
 {
   if (cloverPrecondition != cloverSloppy && cloverPrecondition) delete cloverPrecondition;
@@ -427,6 +441,7 @@ void freeCloverQuda(void)
   cloverSloppy = NULL;
   cloverPrecise = NULL;
 }
+
 
 void endQuda(void)
 {
@@ -443,8 +458,9 @@ void endQuda(void)
     delete []streams;
     streams = NULL;
   }
+  destroyDslashEvents();
 
-  saveTuneCache(QUDA_VERBOSE);
+  saveTuneCache(getVerbosity());
 }
 
 
@@ -471,10 +487,10 @@ void setDiracParam(DiracParam &diracParam, QudaInvertParam *inv_param, const boo
   case QUDA_ASQTAD_DSLASH:
     diracParam.type = pc ? QUDA_ASQTADPC_DIRAC : QUDA_ASQTAD_DIRAC;
     break;
-//!NEW
+//!NDEGTM NEW
   case QUDA_TWISTED_MASS_DSLASH:
     diracParam.type = pc ? QUDA_TWISTED_MASSPC_DIRAC : QUDA_TWISTED_MASS_DIRAC;
-    if (inv_param->twist_flavor != QUDA_TWIST_DUPLET)  
+    if (inv_param->twist_flavor == QUDA_TWIST_MINUS || inv_param->twist_flavor == QUDA_TWIST_PLUS)  
     {
        diracParam.Nf = 1;
        diracParam.epsilon = 0.0;
@@ -482,11 +498,11 @@ void setDiracParam(DiracParam &diracParam, QudaInvertParam *inv_param, const boo
     else 
     {
        diracParam.Nf = 2;
-       diracParam.epsilon = inv_param->epsilon;
+       diracParam.epsilon = inv_param->twist_flavor == QUDA_TWIST_NONDEG_DOUBLET ? inv_param->epsilon : 0.0;
     } 
     break;
   default:
-    errorQuda("Unsupported dslash_type");
+    errorQuda("Unsupported dslash_type %d", inv_param->dslash_type);
   }
 
   diracParam.matpcType = inv_param->matpc_type;
@@ -643,15 +659,19 @@ static void massRescaleCoeff(QudaDslashType dslash_type, double &kappa, QudaSolu
   if (verbosity >= QUDA_DEBUG_VERBOSE) printfQuda("Mass rescale done\n");   
 }
 
+/*void QUDA_DiracField(QUDA_DiracParam *param) {
+  
+  }*/
 
 void dslashQuda(void *h_out, void *h_in, QudaInvertParam *inv_param, QudaParity parity)
 {
-  ColorSpinorParam cpuParam(h_in, *inv_param, gaugePrecise->X(), 1);
+  ColorSpinorParam cpuParam(h_in, inv_param->input_location, *inv_param, gaugePrecise->X(), 1);
+
+  ColorSpinorField *in_h = (inv_param->input_location == QUDA_CPU_FIELD_LOCATION) ?
+    static_cast<ColorSpinorField*>(new cpuColorSpinorField(cpuParam)) : static_cast<ColorSpinorField*>(new cudaColorSpinorField(cpuParam));
+
   ColorSpinorParam cudaParam(cpuParam, *inv_param);
-
-  cpuColorSpinorField hIn(cpuParam);
-
-  cudaColorSpinorField in(hIn, cudaParam);
+  cudaColorSpinorField in(*in_h, cudaParam);
 
   cudaParam.create = QUDA_NULL_FIELD_CREATE;
   cudaColorSpinorField out(in, cudaParam);
@@ -674,8 +694,13 @@ void dslashQuda(void *h_out, void *h_in, QudaInvertParam *inv_param, QudaParity 
   delete dirac; // clean up
 
   cpuParam.v = h_out;
-  cpuColorSpinorField hOut(cpuParam);
-  out.saveCPUSpinorField(hOut); // since this is a reference, this won't work: hOut = out;
+
+  ColorSpinorField *out_h = (inv_param->output_location == QUDA_CPU_FIELD_LOCATION) ?
+    static_cast<ColorSpinorField*>(new cpuColorSpinorField(cpuParam)) : static_cast<ColorSpinorField*>(new cudaColorSpinorField(cpuParam));
+  *out_h = out;
+  
+  delete out_h;
+  delete in_h;
 }
 
 
@@ -684,12 +709,13 @@ void MatQuda(void *h_out, void *h_in, QudaInvertParam *inv_param)
   bool pc = (inv_param->solution_type == QUDA_MATPC_SOLUTION ||
 	     inv_param->solution_type == QUDA_MATPCDAG_MATPC_SOLUTION);
 
-  ColorSpinorParam cpuParam(h_in, *inv_param, gaugePrecise->X(), pc);
+  ColorSpinorParam cpuParam(h_in, inv_param->input_location, *inv_param, gaugePrecise->X(), pc);
+  ColorSpinorField *in_h = (inv_param->input_location == QUDA_CPU_FIELD_LOCATION) ?
+    static_cast<ColorSpinorField*>(new cpuColorSpinorField(cpuParam)) : static_cast<ColorSpinorField*>(new cudaColorSpinorField(cpuParam));
 
   ColorSpinorParam cudaParam(cpuParam, *inv_param);
+  cudaColorSpinorField in(*in_h, cudaParam);
 
-  cpuColorSpinorField hIn(cpuParam);
-  cudaColorSpinorField in(hIn, cudaParam);
   cudaParam.create = QUDA_NULL_FIELD_CREATE;
   cudaColorSpinorField out(in, cudaParam);
 
@@ -715,8 +741,13 @@ void MatQuda(void *h_out, void *h_in, QudaInvertParam *inv_param)
   }
 
   cpuParam.v = h_out;
-  cpuColorSpinorField hOut(cpuParam);
-  out.saveCPUSpinorField(hOut); // since this is a reference, this won't work: hOut = out;
+
+  ColorSpinorField *out_h = (inv_param->output_location == QUDA_CPU_FIELD_LOCATION) ?
+    static_cast<ColorSpinorField*>(new cpuColorSpinorField(cpuParam)) : static_cast<ColorSpinorField*>(new cudaColorSpinorField(cpuParam));
+  *out_h = out;
+
+  delete out_h;
+  delete in_h;
 }
 
 
@@ -725,11 +756,13 @@ void MatDagMatQuda(void *h_out, void *h_in, QudaInvertParam *inv_param)
   bool pc = (inv_param->solution_type == QUDA_MATPC_SOLUTION ||
 	     inv_param->solution_type == QUDA_MATPCDAG_MATPC_SOLUTION);
 
-  ColorSpinorParam cpuParam(h_in, *inv_param, gaugePrecise->X(), pc);
-  ColorSpinorParam cudaParam(cpuParam, *inv_param);
+  ColorSpinorParam cpuParam(h_in, inv_param->input_location, *inv_param, gaugePrecise->X(), pc);
+  ColorSpinorField *in_h = (inv_param->input_location == QUDA_CPU_FIELD_LOCATION) ?
+    static_cast<ColorSpinorField*>(new cpuColorSpinorField(cpuParam)) : static_cast<ColorSpinorField*>(new cudaColorSpinorField(cpuParam));
 
-  cpuColorSpinorField hIn(cpuParam);
-  cudaColorSpinorField in(hIn, cudaParam);
+  ColorSpinorParam cudaParam(cpuParam, *inv_param);
+  cudaColorSpinorField in(*in_h, cudaParam);
+  
   cudaParam.create = QUDA_NULL_FIELD_CREATE;
   cudaColorSpinorField out(in, cudaParam);
 
@@ -758,8 +791,13 @@ void MatDagMatQuda(void *h_out, void *h_in, QudaInvertParam *inv_param)
   }
 
   cpuParam.v = h_out;
-  cpuColorSpinorField hOut(cpuParam);
-  out.saveCPUSpinorField(hOut); // since this is a reference, this won't work: hOut = out;
+
+  ColorSpinorField *out_h = (inv_param->output_location == QUDA_CPU_FIELD_LOCATION) ?
+    static_cast<ColorSpinorField*>(new cpuColorSpinorField(cpuParam)) : static_cast<ColorSpinorField*>(new cudaColorSpinorField(cpuParam));
+  *out_h = out;
+
+  delete out_h;
+  delete in_h;
 }
 
 void createDirac(Dirac *&d, Dirac *&dSloppy, Dirac *&dPre, QudaInvertParam &param, const bool pc_solve)
@@ -835,8 +873,6 @@ void invertQuda(void *hp_x, void *hp_b, QudaInvertParam *param)
   Dirac &diracSloppy = *dSloppy;
   Dirac &diracPre = *dPre;
 
-  cpuColorSpinorField *h_b = NULL;
-  cpuColorSpinorField *h_x = NULL;
   cudaColorSpinorField *b = NULL;
   cudaColorSpinorField *x = NULL;
   cudaColorSpinorField *in = NULL;
@@ -845,15 +881,20 @@ void invertQuda(void *hp_x, void *hp_b, QudaInvertParam *param)
   const int *X = cudaGauge->X();
 
   // wrap CPU host side pointers
-  ColorSpinorParam cpuParam(hp_b, *param, X, pc_solution);
-  h_b = new cpuColorSpinorField(cpuParam);
+  ColorSpinorParam cpuParam(hp_b, param->input_location, *param, X, pc_solution);
+  ColorSpinorField *h_b = (param->input_location == QUDA_CPU_FIELD_LOCATION) ?
+    static_cast<ColorSpinorField*>(new cpuColorSpinorField(cpuParam)) : static_cast<ColorSpinorField*>(new cudaColorSpinorField(cpuParam));
+
   cpuParam.v = hp_x;
-  h_x = new cpuColorSpinorField(cpuParam);
+  ColorSpinorField *h_x = (param->input_location == QUDA_CPU_FIELD_LOCATION) ?
+    static_cast<ColorSpinorField*>(new cpuColorSpinorField(cpuParam)) : static_cast<ColorSpinorField*>(new cudaColorSpinorField(cpuParam));
+
     
   // download source
   ColorSpinorParam cudaParam(cpuParam, *param);     
   cudaParam.create = QUDA_COPY_FIELD_CREATE;
   b = new cudaColorSpinorField(*h_b, cudaParam); 
+
 
   if (param->use_init_guess == QUDA_USE_INIT_GUESS_YES) { // download initial guess
     x = new cudaColorSpinorField(*h_x, cudaParam); // solution  
@@ -933,7 +974,7 @@ void invertQuda(void *hp_x, void *hp_b, QudaInvertParam *param)
   }
   dirac.reconstruct(*x, *b, param->solution_type);
   
-  x->saveCPUSpinorField(*h_x); // since this is a reference, this won't work: h_x = x;
+  *h_x = *x;
   
   if (param->verbosity >= QUDA_VERBOSE){
     double nx = norm2(*x);
@@ -945,8 +986,13 @@ void invertQuda(void *hp_x, void *hp_b, QudaInvertParam *param)
   delete h_x;
   delete b;
   delete x;
-  
-  return;
+
+  delete d;
+  delete dSloppy;
+  delete dPre;
+
+  // FIXME: added temporarily so that the cache is written out even if a long benchmarking job gets interrupted
+  saveTuneCache(getVerbosity());
 }
 
 
@@ -1074,7 +1120,7 @@ void invertMultiShiftQuda(void **_hp_x, void *_hp_b, QudaInvertParam *param,
   // the definitions in param, the dimensions X, and whether the solution is on 
   // a checkerboard instruction or not. These can then be used as 'instructions' 
   // to create the actual colorSpinorField
-  ColorSpinorParam cpuParam(hp_b, *param, X, pc_solution);
+  ColorSpinorParam cpuParam(hp_b, QUDA_CPU_FIELD_LOCATION, *param, X, pc_solution);
   h_b = new cpuColorSpinorField(cpuParam);
 
   h_x = new cpuColorSpinorField* [ param->num_offset ]; // DYNAMIC ALLOCATION
@@ -1127,7 +1173,7 @@ void invertMultiShiftQuda(void **_hp_x, void *_hp_b, QudaInvertParam *param,
   delete [] unscaled_shifts;
 
   for(int i=0; i < param->num_offset; i++) { 
-    x[i]->saveCPUSpinorField(*h_x[i]);
+    *h_x[i] = *x[i];
   }
 
   for(int i=0; i < param->num_offset; i++){ 
@@ -1143,7 +1189,12 @@ void invertMultiShiftQuda(void **_hp_x, void *_hp_b, QudaInvertParam *param,
 
   delete [] hp_x;
 
-  return;
+  delete d;
+  delete dSloppy;
+  delete dPre;
+  
+  // FIXME: added temporarily so that the cache is written out even if a long benchmarking job gets interrupted
+  saveTuneCache(getVerbosity());
 }
 
 /************************************** Ugly Mixed precision multishift CG solver ****************************/
@@ -1201,22 +1252,27 @@ do_create_precise_cuda_gauge(void)
   cudaGaugeField *tmp_fat_precondition = gaugeFatPrecondition;
   cudaGaugeField *tmp_long_precondition = gaugeLongPrecondition;
 
-  gaugeFatPrecise = gaugeFatSloppy = gaugeFatPrecondition = NULL;
-  gaugeLongPrecise = gaugeLongSloppy = gaugeLongPrecondition = NULL;
   
   //create precise links
-  gauge_param->cuda_prec = gauge_param->cuda_prec_sloppy = gauge_param->cuda_prec_precondition = prec;
-  gauge_param->type = QUDA_ASQTAD_FAT_LINKS;
-  gauge_param->ga_pad = fatlink_pad;
-  gauge_param->reconstruct = gauge_param->reconstruct_sloppy = QUDA_RECONSTRUCT_NO;
-  loadGaugeQuda(fatlink, gauge_param);
+  if(gauge_param->cuda_prec != gauge_param->cuda_prec_sloppy){
+    gaugeFatPrecise = gaugeFatSloppy = gaugeFatPrecondition = NULL;
+    gaugeLongPrecise = gaugeLongSloppy = gaugeLongPrecondition = NULL;
+    gauge_param->cuda_prec = gauge_param->cuda_prec_sloppy = gauge_param->cuda_prec_precondition = prec;
+    gauge_param->type = QUDA_ASQTAD_FAT_LINKS;
+    gauge_param->ga_pad = fatlink_pad;
+    gauge_param->reconstruct = gauge_param->reconstruct_sloppy = QUDA_RECONSTRUCT_NO;
+    loadGaugeQuda(fatlink, gauge_param);
 
-  
-  gauge_param->type = QUDA_ASQTAD_LONG_LINKS;
-  gauge_param->ga_pad = longlink_pad;
-  gauge_param->reconstruct = longlink_recon;
-  gauge_param->reconstruct_sloppy = longlink_recon_sloppy;
-  loadGaugeQuda(longlink, gauge_param);
+    
+    gauge_param->type = QUDA_ASQTAD_LONG_LINKS;
+    gauge_param->ga_pad = longlink_pad;
+    gauge_param->reconstruct = longlink_recon;
+    gauge_param->reconstruct_sloppy = longlink_recon_sloppy;
+    loadGaugeQuda(longlink, gauge_param);
+  }else{
+    gaugeFatPrecise = gaugeFatSloppy;
+    gaugeLongPrecise = gaugeLongSloppy;
+  }
 
   //set prec/prec_sloppy it back
   gauge_param->cuda_prec = prec;
@@ -1383,10 +1439,11 @@ invertMultiShiftQudaMixed(void **_hp_x, void *_hp_b, QudaInvertParam *param,
     param->mass = sqrt(param->offset[0]/4);  
   }
   //FIXME: Dirty dirty hack
-  // At this moment, the precise fat gauge is not created (NULL)
+  // At this moment, the precise fat/long gauge is not created (NULL)
   // but we set it to be the same as sloppy to avoid segfault 
   // in creating the dirac since it is needed 
   gaugeFatPrecondition = gaugeFatPrecise = gaugeFatSloppy;
+  gaugeLongPrecondition = gaugeLongPrecise = gaugeLongSloppy;
 
   Dirac *d = NULL;
   Dirac *dSloppy = NULL;
@@ -1396,6 +1453,7 @@ invertMultiShiftQudaMixed(void **_hp_x, void *_hp_b, QudaInvertParam *param,
   createDirac(d, dSloppy, dPre, *param, pc_solve);
   // resetting to NULL
   gaugeFatPrecise = NULL; gaugeFatPrecondition = NULL;
+  gaugeLongPrecise = NULL; gaugeLongPrecondition = NULL;
 
   Dirac &diracSloppy = *dSloppy;
 
@@ -1413,7 +1471,7 @@ invertMultiShiftQudaMixed(void **_hp_x, void *_hp_b, QudaInvertParam *param,
   // the definitions in param, the dimensions X, and whether the solution is on 
   // a checkerboard instruction or not. These can then be used as 'instructions' 
   // to create the actual colorSpinorField
-  ColorSpinorParam cpuParam(hp_b, *param, X, pc_solution);
+  ColorSpinorParam cpuParam(hp_b, QUDA_CPU_FIELD_LOCATION, *param, X, pc_solution);
   h_b = new cpuColorSpinorField(cpuParam);
 
   h_x = new cpuColorSpinorField* [ param->num_offset ]; // DYNAMIC ALLOCATION
@@ -1480,15 +1538,17 @@ invertMultiShiftQudaMixed(void **_hp_x, void *_hp_b, QudaInvertParam *param,
   
   /*FIXME: to avoid setfault*/
   gaugeFatPrecondition =gaugeFatSloppy;
-
-  if (dPre && dPre != dSloppy) delete dPre;
-  if (dSloppy && dSloppy != d) delete dSloppy;
-  if (d) delete d;
-
+  gaugeLongPrecondition =gaugeLongSloppy;
+  
+  delete dPre;
+  delete dSloppy;
+  delete d;
+  
   // create the dirac operator
   createDirac(d, dSloppy, dPre, *param, pc_solve);
 
   gaugeFatPrecondition = NULL;
+  gaugeLongPrecondition = NULL;
   {
     Dirac& dirac2 = *d;
     Dirac& diracSloppy2 = *dSloppy;
@@ -1507,11 +1567,12 @@ invertMultiShiftQudaMixed(void **_hp_x, void *_hp_b, QudaInvertParam *param,
       total_iters += param->iter;
       total_secs  += param->secs;
       total_gflops += param->gflops;      
-      high_x->saveCPUSpinorField(*h_x[i]);      
+      *h_x[i] = *high_x;
     }
     
     param->iter = total_iters;
-    
+    param->secs = total_secs;
+    param->gflops = total_gflops;	
     delete high_x;
   }
   
@@ -1527,8 +1588,14 @@ invertMultiShiftQudaMixed(void **_hp_x, void *_hp_b, QudaInvertParam *param,
   delete [] x;
 
   delete [] hp_x;
+  
+  delete dPre;
+  delete dSloppy;
+  delete d;
 
-  return;
+
+  // FIXME: added temporarily so that the cache is written out even if a long benchmarking job gets interrupted
+  saveTuneCache(getVerbosity());
 }
 
 
@@ -1610,7 +1677,7 @@ void computeFatLinkCore(cudaGaugeField* cudaSiteLink, double* act_path_coeff,
     gParam.pad    = qudaGaugeParam->staple_pad;
     gParam.create = QUDA_NULL_FIELD_CREATE;
     gParam.reconstruct = QUDA_RECONSTRUCT_NO;
-    gParam.is_staple = 1; //these two condition means it is a staple instead of a normal gauge field      
+    gParam.geometry = QUDA_SCALAR_GEOMETRY; // only require a scalar matrix field for the staple
     cudaStapleField  = new cudaGaugeField(gParam);
     cudaStapleField1 = new cudaGaugeField(gParam);
   }
@@ -1723,8 +1790,7 @@ computeFatLinkQuda(void* fatlink, void** sitelink, double* act_path_coeff,
     cudaSiteLink = new cudaGaugeField(gParam);
   }
   
-  initCommonConstants(*cudaFatLink);
-  
+  initLatticeConstants(*cudaFatLink);  
   
   if(method == QUDA_COMPUTE_FAT_STANDARD){
     llfat_init_cuda(qudaGaugeParam);
@@ -1741,7 +1807,8 @@ computeFatLinkQuda(void* fatlink, void** sitelink, double* act_path_coeff,
   }else{
     llfat_init_cuda_ex(qudaGaugeParam_ex);
 #ifdef MULTI_GPU
-    exchange_cpu_sitelink_ex(qudaGaugeParam->X, (void**)cpuSiteLink->Gauge_p(), 
+    int R[4] = {2, 2, 2, 2}; // radius of the extended region in each dimension / direction
+    exchange_cpu_sitelink_ex(qudaGaugeParam->X, R, (void**)cpuSiteLink->Gauge_p(), 
 			     cpuSiteLink->Order(),qudaGaugeParam->cpu_prec, 0);
 #endif
     gettimeofday(&t7, NULL);
@@ -1849,11 +1916,12 @@ computeGaugeForceQuda(void* mom, void* sitelink,  int*** input_path_buf, int* pa
   qudaGaugeParam->mom_ga_pad = gParamMom.pad; //need to record this value
   
   
-  initCommonConstants(*cudaMom);
+  initLatticeConstants(*cudaMom);
   gauge_force_init_cuda(qudaGaugeParam, max_length); 
   
 #ifdef MULTI_GPU
-  exchange_cpu_sitelink_ex(qudaGaugeParam->X, (void**)cpuSiteLink->Gauge_p(), 
+  int R[4] = {2, 2, 2, 2}; // radius of the extended region in each dimension / direction
+  exchange_cpu_sitelink_ex(qudaGaugeParam->X, R, (void**)cpuSiteLink->Gauge_p(), 
 			   cpuSiteLink->Order(), qudaGaugeParam->cpu_prec, 1);
   loadLinkToGPU_ex(cudaSiteLink, cpuSiteLink);
 #else  
@@ -1891,7 +1959,7 @@ computeGaugeForceQuda(void* mom, void* sitelink,  int*** input_path_buf, int* pa
 #endif
 
 
-void initCommsQuda(int argc, char **argv, const int *X, const int nDim) {
+void initCommsQuda(int argc, char **argv, const int *X, int nDim) {
 
   if (nDim != 4) errorQuda("Comms dimensions %d != 4", nDim);
 

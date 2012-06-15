@@ -40,7 +40,8 @@ class FaceBuffer {
   int faceVolume[QUDA_MAX_DIM];
   int faceVolumeCB[QUDA_MAX_DIM];
   int X[QUDA_MAX_DIM];
-  int nDim;
+  int nDim; // the actual number of space-time communications
+  int nDimComms; // the number of dimensions in which we communicate
   int nFace;
 
   size_t nbytes[QUDA_MAX_DIM];
@@ -152,7 +153,7 @@ extern "C" {
   void exchange_cpu_sitelink(int* X,void** sitelink, void** ghost_sitelink,
 			     void** ghost_sitelink_diag, 
 			     QudaPrecision gPrecision, QudaGaugeParam* param, int optflag); 
-  void exchange_cpu_sitelink_ex(int* X, void** sitelink, QudaGaugeFieldOrder cpu_order,
+  void exchange_cpu_sitelink_ex(int* X, int *R, void** sitelink, QudaGaugeFieldOrder cpu_order,
                                 QudaPrecision gPrecision, int optflag);
   void exchange_gpu_staple_start(int* X, void* _cudaStaple, int dir, int whichway,  cudaStream_t * stream);
   void exchange_gpu_staple_comms(int* X, void* _cudaStaple, int dir, int whichway, cudaStream_t * stream);
@@ -181,11 +182,17 @@ extern "C" {
   void reduceDouble(double &);
   void reduceDoubleArray(double *, const int len);
 
+#ifdef MULTI_GPU
   int commDim(int);
   int commCoords(int);
   int commDimPartitioned(int dir);
   void commDimPartitionedSet(int dir);
-  void commBarrier();
+#else
+  static inline int commDim(int dir) { return 1; }
+  static inline int commCoords(int dir) { return 0; }
+  static inline int commDimPartitioned(int dir) { return 0; }
+  static inline void commDimPartitionedSet(int dir) { }
+#endif
 
 #ifdef __cplusplus
 }

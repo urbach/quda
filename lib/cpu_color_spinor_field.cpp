@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <iostream>
+#include <typeinfo>
 #include <color_spinor_field.h>
 #include <color_spinor_field_order.h>
 
@@ -35,7 +36,7 @@ void* cpuColorSpinorField::fwdGhostFaceSendBuffer[QUDA_MAX_DIM];
 void* cpuColorSpinorField::backGhostFaceSendBuffer[QUDA_MAX_DIM];
 
 cpuColorSpinorField::cpuColorSpinorField(const ColorSpinorParam &param) :
-  ColorSpinorField(param), init(false), order_double(NULL), order_single(NULL) {
+  ColorSpinorField(param), init(false), reference(false), order_double(NULL), order_single(NULL) {
   create(param.create);
   if (param.create == QUDA_NULL_FIELD_CREATE) {
     // do nothing
@@ -43,65 +44,82 @@ cpuColorSpinorField::cpuColorSpinorField(const ColorSpinorParam &param) :
     zero();
   } else if (param.create == QUDA_REFERENCE_FIELD_CREATE) {
     v = param.v;
+    reference = true;
   } else {
     errorQuda("Creation type %d not supported", param.create);
   }
-
-  if (fieldLocation != QUDA_CPU_FIELD_LOCATION) 
-    errorQuda("Location incorrectly set");
 }
 
 cpuColorSpinorField::cpuColorSpinorField(const cpuColorSpinorField &src) : 
-  ColorSpinorField(src), init(false), order_double(NULL), order_single(NULL) {
+  ColorSpinorField(src), init(false), reference(false), order_double(NULL), order_single(NULL) {
   create(QUDA_COPY_FIELD_CREATE);
   memcpy(v,src.v,bytes);
-
-  if (fieldLocation != QUDA_CPU_FIELD_LOCATION) 
-    errorQuda("Location incorrectly set");
 }
 
 cpuColorSpinorField::cpuColorSpinorField(const ColorSpinorField &src) : 
-  ColorSpinorField(src), init(false), order_double(NULL), order_single(NULL) {
+  ColorSpinorField(src), init(false), reference(false), order_double(NULL), order_single(NULL) {
   create(QUDA_COPY_FIELD_CREATE);
-  if (src.FieldLocation() == QUDA_CPU_FIELD_LOCATION) {
+  if (typeid(src) == typeid(cpuColorSpinorField)) {
     memcpy(v, dynamic_cast<const cpuColorSpinorField&>(src).v, bytes);
-  } else if (src.FieldLocation() == QUDA_CUDA_FIELD_LOCATION) {
-    dynamic_cast<const cudaColorSpinorField&>(src).saveCPUSpinorField(*this);
+  } else if (typeid(src) == typeid(cudaColorSpinorField)) {
+    dynamic_cast<const cudaColorSpinorField&>(src).saveSpinorField(*this);
   } else {
-    errorQuda("FieldType not supported");
+    errorQuda("Unknown input ColorSpinorField %s", typeid(src).name());
   }
-
-  if (fieldLocation != QUDA_CPU_FIELD_LOCATION) 
-    errorQuda("Location incorrectly set");
 }
 
 cpuColorSpinorField::~cpuColorSpinorField() {
   destroy();
 }
 
+ColorSpinorField& cpuColorSpinorField::operator=(const ColorSpinorField &src) {
+  if (typeid(src) == typeid(cudaColorSpinorField)) {
+   *this = (dynamic_cast<const cudaColorSpinorField&>(src));
+  } else if (typeid(src) == typeid(cpuColorSpinorField)) {
+   *this = (dynamic_cast<const cpuColorSpinorField&>(src));
+  } else {
+    errorQuda("Unknown input ColorSpinorField %s", typeid(src).name());
+  }
+  return *this;
+}
+
 cpuColorSpinorField& cpuColorSpinorField::operator=(const cpuColorSpinorField &src) {
   if (&src != this) {
-    destroy();
-    // keep current attributes unless unset
-    if (!ColorSpinorField::init) ColorSpinorField::operator=(src);
-    fieldLocation = QUDA_CPU_FIELD_LOCATION;
-    create(QUDA_COPY_FIELD_CREATE);
+    if (!reference) {
+      destroy();
+      // keep current attributes unless unset
+      if (!ColorSpinorField::init) ColorSpinorField::operator=(src);
+      create(QUDA_COPY_FIELD_CREATE);
+    }
     copy(src);
   }
   return *this;
 }
 
 cpuColorSpinorField& cpuColorSpinorField::operator=(const cudaColorSpinorField &src) {
-  destroy();
-  // keep current attributes unless unset
-  if (!ColorSpinorField::init) ColorSpinorField::operator=(src);
-  fieldLocation = QUDA_CPU_FIELD_LOCATION;
-  create(QUDA_COPY_FIELD_CREATE);
-  src.saveCPUSpinorField(*this);
+  if (!reference) { // if the field is a reference, then we must maintain the current state
+    destroy();
+    // keep current attributes unless unset
+    if (!ColorSpinorField::init) ColorSpinorField::operator=(src);
+    create(QUDA_COPY_FIELD_CREATE);
+  }
+  src.saveSpinorField(*this);
   return *this;
 }
 
 void cpuColorSpinorField::create(const QudaFieldCreate create) {
+  // these need to be reset to ensure no ghost zones for the cpu
+  // fields since we can't determine during the parent's constructor
+  // whether the field is a cpu or cuda field
+  ghost_length = 0;
+  ghost_norm_length = 0;
+  total_length = length;
+  total_norm_length = (siteSubset == QUDA_FULL_SITE_SUBSET) ? 2*stride : stride;
+  bytes = total_length * precision; // includes pads and ghost zones
+  bytes = ALIGNMENT_ADJUST(bytes);
+  norm_bytes = total_norm_length * sizeof(float);
+  norm_bytes = ALIGNMENT_ADJUST(norm_bytes);
+
   if (pad != 0) {
     errorQuda("Non-zero pad not supported");
   }
@@ -124,8 +142,8 @@ void cpuColorSpinorField::create(const QudaFieldCreate create) {
       for (int i=0; i<Ls; i++) ((void**)v)[i] = (void*)malloc(bytes / Ls);
     } else {
       v = (void*)malloc(bytes);
-      init = true;
     }
+    init = true;
   }
  
   createOrder(); // need to do this for references?
@@ -459,8 +477,6 @@ void cpuColorSpinorField::packGhost(void* ghost_spinor, const int dim,
     int x1odd = (x2 + x3 + x4 + x5 + oddBit) & 1;
 //END NEW
     int x1 = 2*x1h + x1odd;
-    int X = 2*sid + x1odd; 
-
 
     int ghost_face_idx ;
     
@@ -535,4 +551,9 @@ void cpuColorSpinorField::unpackGhost(void* ghost_spinor, const int dim,
   if (this->siteSubset == QUDA_FULL_SITE_SUBSET){
     errorQuda("Full spinor is not supported in unpackGhost for cpu");
   }
+}
+
+// Return the location of the field
+QudaFieldLocation cpuColorSpinorField::Location() const { 
+  return QUDA_CPU_FIELD_LOCATION;
 }

@@ -13,14 +13,17 @@ extern "C" {
   //
 
   typedef enum QudaLinkType_s {
-    QUDA_WILSON_LINKS, // used by wilson, clover, twisted mass, and domain wall
-    QUDA_ASQTAD_FAT_LINKS,
-    QUDA_ASQTAD_LONG_LINKS,
-    QUDA_ASQTAD_MOM_LINKS,
+    QUDA_SU3_LINKS,
+    QUDA_GENERAL_LINKS,
+    QUDA_THREE_LINKS,
+    QUDA_MOMENTUM,
+    QUDA_WILSON_LINKS = QUDA_SU3_LINKS, // used by wilson, clover, twisted mass, and domain wall
+    QUDA_ASQTAD_FAT_LINKS = QUDA_GENERAL_LINKS,
+    QUDA_ASQTAD_LONG_LINKS = QUDA_THREE_LINKS,
+    QUDA_ASQTAD_MOM_LINKS  = QUDA_MOMENTUM,
+    QUDA_ASQTAD_GENERAL_LINKS = QUDA_GENERAL_LINKS,
     QUDA_INVALID_LINKS = QUDA_INVALID_ENUM
   } QudaLinkType;
-
-  
 
   typedef enum QudaGaugeFieldOrder_s {
     QUDA_FLOAT_GAUGE_ORDER = 1,
@@ -63,14 +66,12 @@ extern "C" {
   // Types used in QudaInvertParam
   //
 
-//!NEW
   typedef enum QudaDslashType_s {
     QUDA_WILSON_DSLASH,
     QUDA_CLOVER_WILSON_DSLASH,
     QUDA_DOMAIN_WALL_DSLASH,
     QUDA_ASQTAD_DSLASH,
     QUDA_TWISTED_MASS_DSLASH,
-    QUDA_NDEGTWISTED_MASS_DSLASH,
     QUDA_INVALID_DSLASH = QUDA_INVALID_ENUM
   } QudaDslashType;
 
@@ -97,6 +98,12 @@ extern "C" {
     QUDA_NORMEQ_PC_SOLVE,
     QUDA_INVALID_SOLVE = QUDA_INVALID_ENUM
   } QudaSolveType;
+
+  typedef enum QudaSchwarzType_s {
+    QUDA_ADDITIVE_SCHWARZ,
+    QUDA_MULTIPLICATIVE_SCHWARZ,
+    QUDA_INVALID_SCHWARZ
+  } QudaSchwarzType;
 
   // Whether the preconditioned matrix is (1-k^2 Deo Doe) or (1-k^2 Doe Deo)
   //
@@ -135,6 +142,7 @@ extern "C" {
   } QudaPreserveSource;
 
   typedef enum QudaDiracFieldOrder_s {
+    QUDA_INTERNAL_DIRAC_ORDER,   // internal dirac order used by QUDA, varies depending on precision and dslash type
     QUDA_DIRAC_ORDER,            // even-odd, color inside spin
     QUDA_QDP_DIRAC_ORDER,        // even-odd, spin inside color
     QUDA_CPS_WILSON_DIRAC_ORDER, // odd-even, color inside spin
@@ -182,7 +190,6 @@ extern "C" {
   // Types used only internally
   //
 
-//!NEW
   typedef enum QudaDiracType_s {
     QUDA_WILSON_DIRAC,
     QUDA_WILSONPC_DIRAC,
@@ -194,8 +201,6 @@ extern "C" {
     QUDA_ASQTADPC_DIRAC,
     QUDA_TWISTED_MASS_DIRAC,
     QUDA_TWISTED_MASSPC_DIRAC,
-    QUDA_NDEGTWISTED_MASS_DIRAC,
-    QUDA_NDEGTWISTED_MASSPC_DIRAC,    
     QUDA_INVALID_DIRAC = QUDA_INVALID_ENUM
   } QudaDiracType;
 
@@ -251,12 +256,13 @@ extern "C" {
     QUDA_RANDOM_SOURCE,
     QUDA_INVALID_SOURCE = QUDA_INVALID_ENUM
   } QudaSourceType;
- 
-//!NEW 
+  
+//!NDEGTM NEW:  
   typedef enum QudaTwistFlavorType_s {
     QUDA_TWIST_MINUS = -1,
     QUDA_TWIST_PLUS = +1,
-    QUDA_TWIST_DUPLET = 2,
+    QUDA_TWIST_NONDEG_DOUBLET = +2,
+    QUDA_TWIST_DEG_DOUBLET = -2,    
     QUDA_TWIST_NO  = 0,
     QUDA_TWIST_INVALID = QUDA_INVALID_ENUM
   } QudaTwistFlavorType;  
@@ -290,6 +296,13 @@ extern "C" {
 
     QUDA_FAT_PRESERVE_COMM_MEM=4,
   }QudaFatLinkFlag;
+
+  typedef enum QudaFieldGeometry_s {
+    QUDA_SCALAR_GEOMETRY,
+    QUDA_VECTOR_GEOMETRY,
+    QUDA_TENSOR_GEOMETRY,
+    QUDA_INVALID_GEOMETRY
+  } QudaFieldGeometry;
 
 #ifdef __cplusplus
 }

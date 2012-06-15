@@ -26,11 +26,10 @@ void DiracDomainWall::Dslash(cudaColorSpinorField &out, const cudaColorSpinorFie
 			     const QudaParity parity) const
 {
   if ( in.Ndim() != 5 || out.Ndim() != 5) errorQuda("Wrong number of dimensions\n");
-  if (!initDslash) initDslashConstants(gauge, in.Stride());
-  if (!initDomainWall) initDomainWallConstants(in.X(4));
   checkParitySpinor(in, out);
   checkSpinorAlias(in, out);
  
+  initSpinorConstants(in);
   setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda  
   domainWallDslashCuda(&out, gauge, &in, parity, dagger, 0, mass, 0, commDim);   
 
@@ -46,11 +45,10 @@ void DiracDomainWall::DslashXpay(cudaColorSpinorField &out, const cudaColorSpino
 				 const double &k) const
 {
   if ( in.Ndim() != 5 || out.Ndim() != 5) errorQuda("Wrong number of dimensions\n");
-  if (!initDslash) initDslashConstants(gauge, in.Stride());
-  if (!initDomainWall) initDomainWallConstants(in.X(4));
   checkParitySpinor(in, out);
   checkSpinorAlias(in, out);
 
+  initSpinorConstants(in);
   setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda  
   domainWallDslashCuda(&out, gauge, &in, parity, dagger, &x, mass, k, commDim);
 
@@ -146,8 +144,15 @@ void DiracDomainWallPC::M(cudaColorSpinorField &out, const cudaColorSpinorField 
 
 void DiracDomainWallPC::MdagM(cudaColorSpinorField &out, const cudaColorSpinorField &in) const
 {
+#ifdef MULTI_GPU
+  bool reset = newTmp(&tmp2, in);
+  M(*tmp2, in);
+  Mdag(out, *tmp2);
+  deleteTmp(&tmp2, reset);
+#else
   M(out, in);
   Mdag(out, out);
+#endif
 }
 
 void DiracDomainWallPC::prepare(cudaColorSpinorField* &src, cudaColorSpinorField* &sol,

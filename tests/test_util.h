@@ -14,6 +14,8 @@ extern "C" {
 
   int neighborIndex(int i, int oddBit, int dx4, int dx3, int dx2, int dx1);
   int neighborIndexFullLattice(int i, int dx4, int dx3, int dx2, int dx1) ;
+  int neighborIndex_mg(int i, int oddBit, int dx4, int dx3, int dx2, int dx1);
+  int neighborIndexFullLattice_mg(int i, int dx4, int dx3, int dx2, int dx1);
 
   void printSpinorElement(void *spinor, int X, QudaPrecision precision);
   void printGaugeElement(void *gauge, int X, QudaPrecision precision);
@@ -25,7 +27,7 @@ extern "C" {
     void construct_fat_long_gauge_field(void **fatlink, void** longlink, int type, QudaPrecision precision, QudaGaugeParam*);
     void construct_clover_field(void *clover, double norm, double diag, QudaPrecision precision);
   void construct_spinor_field(void *spinor, int type, int i0, int s0, int c0, QudaPrecision precision);
-  void createSiteLinkCPU(void* link,  QudaPrecision precision, int phase) ;
+  void createSiteLinkCPU(void** link,  QudaPrecision precision, int phase) ;
 
   void su3_construct(void *mat, QudaReconstructType reconstruct, QudaPrecision precision);
   void su3_reconstruct(void *mat, int dir, int ga_idx, QudaReconstructType reconstruct, QudaPrecision precision, QudaGaugeParam *param);
@@ -38,12 +40,14 @@ extern "C" {
 
   void check_gauge(void **, void **, double epsilon, QudaPrecision precision);
 
-  void strong_check_link(void * linkA, void *linkB, int len, QudaPrecision prec);
-  void strong_check_mom(void * momA, void *momB, int len, QudaPrecision prec);
+  int strong_check_link(void ** linkA, const char* msgA,  void **linkB, const char* msgB, int len, QudaPrecision prec);
+  int strong_check_mom(void * momA, void *momB, int len, QudaPrecision prec);
   
   void createMomCPU(void* mom,  QudaPrecision precision);
   void createHwCPU(void* hw,  QudaPrecision precision);
   
+  //used by link fattening code
+  int x4_from_full_index(int i);
   // ---------- gauge_read.cpp ----------
   
   //void readGaugeField(char *filename, float *gauge[], int argc, char *argv[]);
@@ -51,10 +55,7 @@ extern "C" {
   // additions for dw (quickly hacked on)
   int fullLatticeIndex_4d(int i, int oddBit);
   int fullLatticeIndex_5d(int i, int oddBit);
-  
-  //Read ILDG configurations:
-  void readILDGconfig(void** gauge, char *file_path, QudaGaugeParam *param);  
-
+  int process_command_line_option(int argc, char** argv, int* idx);
  
 #ifdef __cplusplus
 }

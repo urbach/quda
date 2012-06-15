@@ -9,6 +9,8 @@
 
 #include <face_quda.h>
 
+#include <typeinfo>
+
 // Params for Dirac operator
 class DiracParam {
 
@@ -25,23 +27,22 @@ class DiracParam {
   cudaGaugeField *longGauge; // used by staggered only
   cudaCloverField *clover;
   
-  double mu;      //1st tm parameter (used by twisted mass only)
-//!NEW
+  double mu; // used by twisted mass only
+//!NDEGTM NEW
   double epsilon; //2nd tm parameter (used by twisted mass only)
-  int    Nf;      //number of flavors (used by twisted mass only)
-
+  int    Nf;      //number of flavors (used by twisted mass only)  
 
   cudaColorSpinorField *tmp1;
-  cudaColorSpinorField *tmp2; // used only by Clover and TM
+  cudaColorSpinorField *tmp2; // used by Wilson-like kernels only
 
   QudaVerbosity verbose;
 
   int commDim[QUDA_MAX_DIM]; // whether to do comms or not
 
-//!NEW
+//!NDEGTM NEW:
   DiracParam() 
     : type(QUDA_INVALID_DIRAC), kappa(0.0), m5(0.0), matpcType(QUDA_MATPC_INVALID),
-    dagger(QUDA_DAG_INVALID), gauge(0), clover(0), mu(0.0), epsilon(0.0), Nf(1),
+    dagger(QUDA_DAG_INVALID), gauge(0), clover(0), mu(0.0), epsilon(0.0), Nf(1), 
     tmp1(0), tmp2(0), verbose(QUDA_SILENT)
   {
 
@@ -66,7 +67,7 @@ class Dirac {
   friend class DiracMdagM;
   friend class DiracMdag;
 
-  protected:
+ protected:
   cudaGaugeField &gauge;
   double kappa;
   double mass;
@@ -182,6 +183,8 @@ class DiracClover : public DiracWilson {
   DiracClover& operator=(const DiracClover &dirac);
 
   void Clover(cudaColorSpinorField &out, const cudaColorSpinorField &in, const QudaParity parity) const;
+  virtual void DslashXpay(cudaColorSpinorField &out, const cudaColorSpinorField &in, const QudaParity parity,
+			  const cudaColorSpinorField &x, const double &k) const;
   virtual void M(cudaColorSpinorField &out, const cudaColorSpinorField &in) const;
   virtual void MdagM(cudaColorSpinorField &out, const cudaColorSpinorField &in) const;
 
@@ -273,10 +276,10 @@ class DiracTwistedMass : public DiracWilson {
 
  protected:
   double mu;
-//!NEW
+//!NDEGTM NEW
   double epsilon;
-  int    Nf;//Do we need this?
-
+  int    Nf;
+  
   void twistedApply(cudaColorSpinorField &out, const cudaColorSpinorField &in, 
 		    const QudaTwistGamma5Type twistType) const;
 
@@ -327,8 +330,8 @@ class DiracTwistedMassPC : public DiracTwistedMass {
 class DiracStaggered : public Dirac {
 
  protected:
-  cudaGaugeField *fatGauge;
-  cudaGaugeField *longGauge;
+  cudaGaugeField &fatGauge;
+  cudaGaugeField &longGauge;
   FaceBuffer face; // multi-gpu communication buffers
 
  public:
@@ -392,6 +395,8 @@ class DiracMatrix {
 			  cudaColorSpinorField &Tmp1, cudaColorSpinorField &Tmp2) const = 0;
 
   unsigned long long flops() const { return dirac->Flops(); }
+
+  std::string Type() const { return typeid(*dirac).name(); }
 };
 
 inline DiracMatrix::~DiracMatrix()
