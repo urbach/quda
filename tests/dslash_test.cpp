@@ -113,7 +113,8 @@ void init(int argc, char **argv) {
 
   inv_param.Ls = Ls;
   
-  inv_param.matpc_type = QUDA_MATPC_EVEN_EVEN;
+  //inv_param.matpc_type = QUDA_MATPC_EVEN_EVEN_ASYMMETRIC;
+  inv_param.matpc_type = QUDA_MATPC_EVEN_EVEN;  
   inv_param.dagger = dagger;
 
   inv_param.cpu_prec = cpu_prec;
@@ -137,7 +138,7 @@ void init(int argc, char **argv) {
   pad_size = MAX(pad_size, t_face_size);
   gauge_param.ga_pad = pad_size;    
 #endif
-  inv_param.sp_pad = 0;
+  inv_param.sp_pad = 16*16*16;
   inv_param.cl_pad = 0;
 
   //inv_param.sp_pad = 24*24*24;
@@ -445,6 +446,16 @@ void dslashRef() {
     case 1:
       if(inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS)      
 	tm_matpc(spinorRef->V(), hostGauge, spinor->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor, inv_param.matpc_type, dagger, inv_param.cpu_prec, gauge_param);
+      else
+      {
+	void *ref1 = spinorRef->V();
+	void *ref2 = cpu_prec == sizeof(double) ? (void*)((double*)ref1 + flv_offset): (void*)((float*)ref1 + flv_offset);
+    
+	void *flv1 = spinor->V();
+	void *flv2 = cpu_prec == sizeof(double) ? (void*)((double*)flv1 + flv_offset): (void*)((float*)flv1 + flv_offset);
+    
+	tm_ndeg_matpc(ref1, ref2, hostGauge, flv1, flv2, inv_param.kappa, inv_param.mu, inv_param.epsilon, inv_param.matpc_type, dagger, inv_param.cpu_prec, gauge_param);	
+      }	
       break;
     case 2:
       if(inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS)      

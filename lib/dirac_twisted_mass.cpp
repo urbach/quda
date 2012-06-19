@@ -264,7 +264,7 @@ void DiracTwistedMassPC::DslashXpay(cudaColorSpinorField &out, const cudaColorSp
     initTwistedMassConstants(flv_stride);    
 		
     if (!dagger) {	
-      c *= (-kappa * kappa);	  
+      c *= k;//(-kappa*kappa)	  
       //setFace(face); 
       twistedMassDslashCuda(&out, gauge, &in, parity, dagger, &x, /*'kappa' = */a, /*mu = */b, /*epsilon = */c, commDim);//need to set 2km 2ke and c 
       flops += (1320+96+24)*in.Volume();
@@ -276,8 +276,8 @@ void DiracTwistedMassPC::DslashXpay(cudaColorSpinorField &out, const cudaColorSp
       a *= -1.0;
       twistGamma5Cuda(doubletTmp, &in, dagger, a, b, c, QUDA_TWIST_GAMMA5_INVERSE);//Inverse!      	  
   
-      c = (-kappa * kappa);	  
-      twistedMassDslashCuda(&out, gauge, doubletTmp, parity, dagger, 0, /*kappa = */0.0, /*mu = */0.0, /*epsilon = */c, commDim);      
+      c = k;	  
+      twistedMassDslashCuda(&out, gauge, doubletTmp, parity, dagger, &x, /*kappa = */0.0, /*mu = */0.0, /*epsilon = */c, commDim);      
 
       flops += (1320+96+24)*in.Volume();
 
@@ -316,10 +316,10 @@ void DiracTwistedMassPC::M(cudaColorSpinorField &out, const cudaColorSpinorField
   else{
     if (matpcType == QUDA_MATPC_EVEN_EVEN) {
       Dslash(*tmp1, in, QUDA_ODD_PARITY); // fused kernel
-      DslashXpay(out, *tmp1, QUDA_EVEN_PARITY, in, 0.0); // safe since out is not read after writing
+      DslashXpay(out, *tmp1, QUDA_EVEN_PARITY, in, kappa2); // safe since out is not read after writing
     } else if (matpcType == QUDA_MATPC_ODD_ODD){
       Dslash(*tmp1, in, QUDA_EVEN_PARITY); // fused kernel
-      DslashXpay(out, *tmp1, QUDA_ODD_PARITY, in, 0.0);
+      DslashXpay(out, *tmp1, QUDA_ODD_PARITY, in, kappa2);
     } 
     else {// asymmetric preconditioning
     //Parameter for invert twist (note the implemented operator: c*(1 - i *a * gamma_5 tau_3 + b * tau_1)):
@@ -328,7 +328,7 @@ void DiracTwistedMassPC::M(cudaColorSpinorField &out, const cudaColorSpinorField
       double c = 1.0;
       if (matpcType == QUDA_MATPC_EVEN_EVEN_ASYMMETRIC) {
 	 Dslash(*tmp1, in, QUDA_ODD_PARITY); // fused kernel
-	 twistGamma5Cuda(&out, &in, dagger, a, b, c, QUDA_TWIST_GAMMA5_DIRECT);//temporal hack!               
+	 twistGamma5Cuda(&out, &in, dagger, a, b, c, QUDA_TWIST_GAMMA5_DIRECT);//it's already direct due to 'c' and 'b'!               
 ///emulate wilson dslash:	 
 	 twistedMassDslashCuda(&out, gauge, tmp1, QUDA_EVEN_PARITY, dagger, &out, /*kappa = */0.0, /*mu = */0.0, /*epsilon = */kappa2, commDim); 	 
       } else if (matpcType == QUDA_MATPC_ODD_ODD_ASYMMETRIC) {
