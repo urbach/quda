@@ -90,9 +90,9 @@ class Tunable {
 
   virtual bool advanceBlockDim(TuneParam &param) const
   {
-    const unsigned int max_threads = 512; // FIXME: use deviceProp.maxThreadsDim[0];
+    const unsigned int max_threads = deviceProp.maxThreadsDim[0];
     const unsigned int max_shared = 16384; // FIXME: use deviceProp.sharedMemPerBlock;
-    const int step = 32; // FIXME: use deviceProp.warpSize;
+    const int step = deviceProp.warpSize;
     param.block.x += step;
     if (param.block.x > max_threads || sharedBytesPerThread()*param.block.x > max_shared) {
       param.block.x = step;
@@ -113,7 +113,7 @@ class Tunable {
   virtual bool advanceSharedBytes(TuneParam &param) const
   {
     const int max_shared = 16384; // FIXME: use deviceProp.sharedMemPerBlock;
-    const int max_blocks_per_sm = 16; // FIXME: derive from deviceProp
+    const int max_blocks_per_sm = 8; // FIXME: derive from deviceProp
     int blocks_per_sm = max_shared / (param.shared_bytes ? param.shared_bytes : 1);
     if (blocks_per_sm > max_blocks_per_sm) blocks_per_sm = max_blocks_per_sm;
     param.shared_bytes = max_shared / blocks_per_sm + 1;
@@ -176,6 +176,37 @@ class Tunable {
   virtual bool advanceTuneParam(TuneParam &param) const
   {
     return advanceSharedBytes(param) || advanceBlockDim(param) || advanceGridDim(param);
+  }
+
+  /**
+   * Check the launch parameters of the kernel to ensure that they are
+   * valid for the current device.
+   */
+  void checkLaunchParam(TuneParam &param) {
+    
+    if (param.block.x > (unsigned int)deviceProp.maxThreadsDim[0])
+      errorQuda("Requested X-dimension block size %d greater than hardware limit %d", 
+		param.block.x, deviceProp.maxThreadsDim[0]);
+      
+    if (param.block.y > (unsigned int)deviceProp.maxThreadsDim[1])
+      errorQuda("Requested Y-dimension block size %d greater than hardware limit %d", 
+		param.block.y, deviceProp.maxThreadsDim[1]);
+	
+    if (param.block.z > (unsigned int)deviceProp.maxThreadsDim[2])
+      errorQuda("Requested Z-dimension block size %d greater than hardware limit %d", 
+		param.block.z, deviceProp.maxThreadsDim[2]);
+	  
+    if (param.grid.x > (unsigned int)deviceProp.maxGridSize[0])
+      errorQuda("Requested X-dimension grid size %d greater than hardware limit %d", 
+		param.grid.x, deviceProp.maxGridSize[0]);
+    
+    if (param.grid.y > (unsigned int)deviceProp.maxGridSize[1])
+      errorQuda("Requested Y-dimension grid size %d greater than hardware limit %d", 
+		param.grid.y, deviceProp.maxGridSize[1]);
+    
+    if (param.grid.z > (unsigned int)deviceProp.maxGridSize[2])
+      errorQuda("Requested Z-dimension grid size %d greater than hardware limit %d", 
+		param.grid.z, deviceProp.maxGridSize[2]);
   }
 
 };
