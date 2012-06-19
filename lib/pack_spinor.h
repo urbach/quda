@@ -446,7 +446,7 @@ void packParitySpinor(FloatOut *dst, FloatIn *src, OutOrder &outOrder, const InO
 }
 
 
-template <int Nc, int Ns, int N, typename dstFloat, typename srcFloat>
+template <int Ns, int N, typename dstFloat, typename srcFloat>
 void packSpinor(dstFloat *Dst, srcFloat *Src, ColorSpinorField &dst, const ColorSpinorField &src, QudaFieldLocation location) {
 
   if (dst.Ndim() != src.Ndim()) {
@@ -464,6 +464,12 @@ void packSpinor(dstFloat *Dst, srcFloat *Src, ColorSpinorField &dst, const Color
   if (dst.SiteSubset() != src.SiteSubset()) {
     errorQuda("Subset types do not match %d %d", dst.SiteSubset(), src.SiteSubset());
   }
+
+  if (dst.Ncolor() != 3 || src.Ncolor() != 3) {
+    errorQuda("Nc != 3 not yet supported");
+  }
+
+  const int Nc = 3;
 
   int V = dst.Volume();
   QudaSiteSubset subset = dst.SiteSubset();
@@ -581,64 +587,6 @@ void packSpinor(dstFloat *Dst, srcFloat *Src, ColorSpinorField &dst, const Color
   } // parity or full
 
 }
-
-  /*template <int Nc, int Ns, int N, typename Float, typename FloatN>
-void unpackSpinor(Float *dst, FloatN *src, int V, int pad, const int x[], int dstLength, 
-		  int srcLength, QudaSiteSubset dstSubset, QudaSiteOrder siteOrder,  
-		  QudaGammaBasis dstBasis, QudaGammaBasis srcBasis, QudaFieldOrder dstOrder, 
-		  QudaFieldLocation location) {
-
-  if (dstSubset == QUDA_FULL_SITE_SUBSET) {
-    if (siteOrder == QUDA_LEXICOGRAPHIC_SITE_ORDER) {
-      errorQuda("Copying to full fields with lexicographical ordering is not currently supported");
-    } else {
-      // We are copying a parity ordered field
-      
-      // check what src parity ordering is
-      unsigned int evenOff, oddOff;
-      if (siteOrder == QUDA_EVEN_ODD_SITE_ORDER) {
-	evenOff = 0;
-	oddOff = srcLength/2;
-      } else {
-	oddOff = 0;
-	evenOff = srcLength/2;
-      }
-
-      int Vh = V/2;
-      if (dstOrder == QUDA_SPACE_SPIN_COLOR_FIELD_ORDER) {
-	{
-	  FloatNOrder<FloatN, Ns, Nc, N> inOrder(src+evenOff, Vh, Vh+pad);
-	  SpaceSpinorColorOrder<Float, Ns, Nc> outOrder(dst, Vh, Vh);
-	  packParitySpinor<Ns,Nc>(dst, src+evenOff, outOrder, inOrder, Vh, pad, dstBasis, srcBasis, location);
-	}
-	{
-	  FloatNOrder<FloatN, Ns, Nc, N> inOrder(src+oddOff, Vh, Vh+pad);
-	  SpaceSpinorColorOrder<Float, Ns, Nc> outOrder(dst + dstLength/2, Vh, Vh);
-	  packParitySpinor<Ns,Nc>(dst + dstLength/2, src+oddOff, outOrder, inOrder, Vh, pad, dstBasis, srcBasis, location);
-	}
-      } else if (dstOrder == QUDA_SPACE_COLOR_SPIN_FIELD_ORDER) {
-	{
-	  FloatNOrder<FloatN, Ns, Nc, N> inOrder(src+evenOff, Vh, Vh+pad);
-	  SpaceColorSpinorOrder<Float, Ns, Nc> outOrder(dst, Vh, Vh);
-	  packParitySpinor<Ns,Nc>(dst, src+evenOff, outOrder, inOrder, Vh, pad, dstBasis, srcBasis, location);
-	}
-	{	  
-	  FloatNOrder<FloatN, Ns, Nc, N> inOrder(src+oddOff, Vh, Vh+pad);
-	  SpaceColorSpinorOrder<Float, Ns, Nc> outOrder(dst + dstLength/2, Vh, Vh);
-	  packParitySpinor<Ns,Nc>(dst + dstLength/2, src+oddOff, outOrder, inOrder, Vh, pad, dstBasis, srcBasis, location);
-	}
-      } else {
-	errorQuda("Destination field order not supported");
-      }
-    }
-  } else {
-    // dst is defined on a single parity only
-
-  }
-
-  }*/
-
-
 
 /*
 template <int Nc, int Ns, int N, typename Float, typename FloatN>
