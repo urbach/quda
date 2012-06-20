@@ -80,11 +80,7 @@ cudaColorSpinorField::cudaColorSpinorField(const ColorSpinorField &src, const Co
   } else if (param.create == QUDA_ZERO_FIELD_CREATE) {
     zero();
   } else if (param.create == QUDA_COPY_FIELD_CREATE) {
-    if (src.FieldOrder() == fieldOrder && typeid(src) == typeid(cudaColorSpinorField)) {
-      copy(dynamic_cast<const cudaColorSpinorField&>(src));
-    } else {
-      loadSpinorField(src);
-    }
+    copySpinorField(src);
   } else if (param.create == QUDA_REFERENCE_FIELD_CREATE) {
     if (typeid(src) == typeid(cudaColorSpinorField)) {
       v = (dynamic_cast<const cudaColorSpinorField&>(src)).v;
@@ -101,13 +97,7 @@ cudaColorSpinorField::cudaColorSpinorField(const ColorSpinorField &src, const Co
 cudaColorSpinorField::cudaColorSpinorField(const ColorSpinorField &src) 
   : ColorSpinorField(src), alloc(false), init(true) {
   create(QUDA_COPY_FIELD_CREATE);
-  if (typeid(src) == typeid(cudaColorSpinorField) && src.FieldOrder() == fieldOrder) {
-    copy(dynamic_cast<const cudaColorSpinorField&>(src));
-  } else if (typeid(src) == typeid(cpuColorSpinorField) || typeid(src) == typeid(cudaColorSpinorField)) {
-    loadSpinorField(src);
-  } else {
-    errorQuda("Unknown input ColorSpinorField %s", typeid(src).name());
-  }
+  copySpinorField(src);
 }
 
 ColorSpinorField& cudaColorSpinorField::operator=(const ColorSpinorField &src) {
@@ -129,7 +119,7 @@ cudaColorSpinorField& cudaColorSpinorField::operator=(const cudaColorSpinorField
       ColorSpinorField::operator=(src);
       create(QUDA_COPY_FIELD_CREATE);
     }
-    copy(src);
+    copySpinorField(src);
   }
   return *this;
 }
@@ -293,29 +283,35 @@ void cudaColorSpinorField::copy(const cudaColorSpinorField &src) {
   if ((dst).Precision() == QUDA_DOUBLE_PRECISION) {			\
     if ((src).Precision() == QUDA_DOUBLE_PRECISION) {			\
       if (fieldOrder == QUDA_FLOAT_FIELD_ORDER) {			\
-	packSpinor<myNs,1>((double*)DST, (double*)SRC, dst, src, loc); \
+	packSpinor<myNs,1>((double*)DST, (double*)SRC, dst, src, loc);	\
       } else if (fieldOrder == QUDA_FLOAT2_FIELD_ORDER) {		\
-	packSpinor<myNs,2>((double*)DST, (double*)SRC, dst, src, loc); \
+	packSpinor<myNs,2>((double*)DST, (double*)SRC, dst, src, loc);	\
       } else if (fieldOrder == QUDA_FLOAT4_FIELD_ORDER) {		\
-	packSpinor<myNs,4>((double*)DST, (double*)SRC, dst, src, loc); \
+	packSpinor<myNs,4>((double*)DST, (double*)SRC, dst, src, loc);	\
+      }	else {								\
+	packSpinor<myNs,0>((double*)DST, (double*)SRC, dst, src, loc);	\
       }									\
     } else {								\
       if (fieldOrder == QUDA_FLOAT_FIELD_ORDER) {			\
-	packSpinor<myNs,1>((double*)DST, (float*)SRC, dst, src, loc); \
+	packSpinor<myNs,1>((double*)DST, (float*)SRC, dst, src, loc);	\
       } else if (fieldOrder == QUDA_FLOAT2_FIELD_ORDER) {		\
-	packSpinor<myNs,2>((double*)DST, (float*)SRC, dst, src, loc); \
+	packSpinor<myNs,2>((double*)DST, (float*)SRC, dst, src, loc);	\
       } else if (fieldOrder == QUDA_FLOAT4_FIELD_ORDER) {		\
-	packSpinor<myNs,4>((double*)DST, (float*)SRC, dst, src, loc); \
+	packSpinor<myNs,4>((double*)DST, (float*)SRC, dst, src, loc);	\
+      } else  {								\
+	packSpinor<myNs,0>((double*)DST, (float*)SRC, dst, src, loc);	\
       }									\
     }									\
   } else {								\
     if ((src).Precision() == QUDA_DOUBLE_PRECISION) {			\
       if (fieldOrder == QUDA_FLOAT_FIELD_ORDER) {			\
-	packSpinor<myNs,1>((float*)DST, (double*)SRC, dst, src, loc); \
+	packSpinor<myNs,1>((float*)DST, (double*)SRC, dst, src, loc);	\
       } else if (fieldOrder == QUDA_FLOAT2_FIELD_ORDER) {		\
-	packSpinor<myNs,2>((float*)DST, (double*)SRC, dst, src, loc); \
+	packSpinor<myNs,2>((float*)DST, (double*)SRC, dst, src, loc);	\
       } else if (fieldOrder == QUDA_FLOAT4_FIELD_ORDER) {		\
-	packSpinor<myNs,4>((float*)DST, (double*)SRC, dst, src, loc); \
+	packSpinor<myNs,4>((float*)DST, (double*)SRC, dst, src, loc);	\
+      } else  {								\
+	packSpinor<myNs,0>((float*)DST, (double*)SRC, dst, src, loc);	\
       }									\
     } else {								\
       if (fieldOrder == QUDA_FLOAT_FIELD_ORDER) {			\
@@ -324,6 +320,8 @@ void cudaColorSpinorField::copy(const cudaColorSpinorField &src) {
 	packSpinor<myNs,2>((float*)DST, (float*)SRC, dst, src, loc);	\
       } else if (fieldOrder == QUDA_FLOAT4_FIELD_ORDER) {		\
 	packSpinor<myNs,4>((float*)DST, (float*)SRC, dst, src, loc);	\
+      } else {								\
+	packSpinor<myNs,0>((float*)DST, (float*)SRC, dst, src, loc);	\
       }									\
     }									\
   }
@@ -348,6 +346,55 @@ void cudaColorSpinorField::resizeBuffer(size_t bytes) const {
     cudaHostAlloc(&buffer_h, bytes, 0);
   }
 }
+
+/**
+   This function returns true if the field is stored in an internal
+   field order, given the precision and the length of the spin
+   dimension.
+ */
+bool isInternal(const ColorSpinorField &v) {
+  QudaFieldOrder order = v.FieldOrder();
+  int Nspin = v.Nspin();
+  QudaPrecision precision = v.Precision();
+
+  if ( (order == QUDA_FLOAT4_FIELD_ORDER && Nspin == 4 && precision == QUDA_HALF_PRECISION) ||
+       (order == QUDA_FLOAT4_FIELD_ORDER && Nspin == 4 && precision == QUDA_SINGLE_PRECISION) ||
+       (order == QUDA_FLOAT2_FIELD_ORDER && Nspin == 4 && precision == QUDA_DOUBLE_PRECISION) ||
+       (order == QUDA_FLOAT2_FIELD_ORDER && Nspin == 2)) return true;
+
+  return false;
+}
+
+/**
+   This function is responsible for calling the correct copy kernel
+   given the nature of the source field and the desired destination.
+ */
+void cudaColorSpinorField::copySpinorField(const ColorSpinorField &src) {
+
+  if (typeid(src) == typeid(cudaColorSpinorField) && isInternal(*this) && isInternal(src)) {
+    // use the copy kernel if we are copying from one internal ordering to another
+    copy(dynamic_cast<const cudaColorSpinorField&>(src));
+
+    // here at least one of the src/dst fields is not in an internal order, but they are both cuda fields
+  } else if (typeid(src) == typeid(cudaColorSpinorField)) {
+    if (precision == QUDA_HALF_PRECISION || src.Precision() == QUDA_HALF_PRECISION) 
+      errorQuda("Half precision is not supported when copying to/from non-internal formats");
+    if (fieldOrder == QUDA_QOP_DOMAIN_WALL_FIELD_ORDER || src.FieldOrder() == QUDA_QOP_DOMAIN_WALL_FIELD_ORDER)
+      errorQuda("QUDA_QOP_DOMAIN_WALL_FIELD_ORDER not supported when copying to/from non-internal formats");      
+    REORDER_SPINOR_FIELD(dynamic_cast<const cudaColorSpinorField&>(*this).V(),
+			 dynamic_cast<const cudaColorSpinorField&>(src).V(), 
+			 *this, src, nSpin, QUDA_CUDA_FIELD_LOCATION);
+
+    // here the src is on the host
+  } else if (typeid(src) == typeid(cpuColorSpinorField)) {
+    loadSpinorField(src);
+
+  } else {
+    errorQuda("Unknown input ColorSpinorField %s", typeid(src).name());
+  }
+
+}
+
 
 void cudaColorSpinorField::loadSpinorField(const ColorSpinorField &src) {
 

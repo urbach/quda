@@ -273,6 +273,7 @@ class cudaColorSpinorField : public ColorSpinorField {
   void zeroPad();
   
   void resizeBuffer(size_t bytes) const;
+  void copySpinorField(const ColorSpinorField &src);
   void loadSpinorField(const ColorSpinorField &src);
   void saveSpinorField (ColorSpinorField &src) const;
 
