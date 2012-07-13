@@ -492,12 +492,12 @@ void setDiracParam(DiracParam &diracParam, QudaInvertParam *inv_param, const boo
     diracParam.type = pc ? QUDA_TWISTED_MASSPC_DIRAC : QUDA_TWISTED_MASS_DIRAC;
     if (inv_param->twist_flavor == QUDA_TWIST_MINUS || inv_param->twist_flavor == QUDA_TWIST_PLUS)  
     {
-       diracParam.Nf = 1;
+       diracParam.Ls = 1;
        diracParam.epsilon = 0.0;
     }
     else 
     {
-       diracParam.Nf = 2;
+       diracParam.Ls = 2;
        diracParam.epsilon = inv_param->twist_flavor == QUDA_TWIST_NONDEG_DOUBLET ? inv_param->epsilon : 0.0;
     } 
     break;

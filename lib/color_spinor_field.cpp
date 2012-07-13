@@ -54,7 +54,7 @@ void ColorSpinorField::createGhostZone() {
 //BEGIN NEW:  
 //temporal hack
   int dims = nDim == 5 ? (nDim - 1) : nDim;
-  int x5   = nDim == 5 ? x[4] : 1; ///includes DW ghosts
+  int x5   = nDim == 5 ? x[4] : 1; ///includes DW and nondeg TM ghosts
   for (int i=0; i<dims; i++) {
     ghostFace[i] = 0;
     if (commDimPartitioned(i)) {
@@ -63,7 +63,7 @@ void ColorSpinorField::createGhostZone() {
 	if (i==j) continue;
 	ghostFace[i] *= x[j];
       }
-      ghostFace[i] *= x5; ///temporal hack : extra dimension for DW ghosts
+      ghostFace[i] *= x5; ///temporal hack : extra dimension for DW and nondeg TM ghosts
       if (i==0 && siteSubset != QUDA_FULL_SITE_SUBSET) ghostFace[i] /= 2;
       if (siteSubset == QUDA_FULL_SITE_SUBSET) ghostFace[i] /= 2;
       ghostVolume += ghostFace[i];

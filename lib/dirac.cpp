@@ -154,11 +154,15 @@ Dirac* Dirac::create(const DiracParam &param)
     return new DiracStaggeredPC(param);    
   } else if (param.type == QUDA_TWISTED_MASS_DIRAC) {
 //!NDEGTM NEW:    
-    if (param.verbose >= QUDA_VERBOSE) printfQuda("Creating a DiracTwistedMass operator (for %d flavor(s))\n", param.Nf);
-    return new DiracTwistedMass(param);
+    if (param.verbose >= QUDA_VERBOSE) printfQuda("Creating a DiracTwistedMass operator (for %d flavor(s))\n", param.Ls);
+    //a bit ugly hack (the second argument is total dimension of the spinor field)
+    if (param.Ls == 1) return new DiracTwistedMass(param, 4);
+    else return new DiracTwistedMass(param, 5);
   } else if (param.type == QUDA_TWISTED_MASSPC_DIRAC) {
-    if (param.verbose >= QUDA_VERBOSE) printfQuda("Creating a DiracTwistedMassPC operator (for %d flavor(s))\n", param.Nf);
-    return new DiracTwistedMassPC(param);    
+    if (param.verbose >= QUDA_VERBOSE) printfQuda("Creating a DiracTwistedMassPC operator (for %d flavor(s))\n", param.Ls);
+    //a bit ugly hack    
+    if (param.Ls == 1) return new DiracTwistedMassPC(param, 4);
+    else return new DiracTwistedMassPC(param, 5);
   } else {
     return 0;
   }

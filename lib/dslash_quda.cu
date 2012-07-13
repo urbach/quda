@@ -1586,9 +1586,9 @@ void twistedMassDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &gaug
 			   const double &epsilon, const int *commOverride)
 {
   inSpinor = (cudaColorSpinorField*)in; // EVIL
-#ifdef MULTI_GPU
-  if(in->TwistFlavor() != QUDA_TWIST_PLUS || in->TwistFlavor() != QUDA_TWIST_MINUS) errorQuda("Multi-GPU non-degenerate twisted mass is not implemented\n");
-#endif
+//#ifdef MULTI_GPU
+  //if(in->TwistFlavor() != QUDA_TWIST_PLUS || in->TwistFlavor() != QUDA_TWIST_MINUS) errorQuda("Multi-GPU non-degenerate twisted mass is not implemented\n");
+//#endif
 
 #ifdef GPU_TWISTED_MASS_DIRAC
   int Npad = (in->Ncolor()*in->Nspin()*2)/in->FieldOrder(); // SPINOR_HOP in old code

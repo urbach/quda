@@ -26,12 +26,12 @@ namespace quda {
       int ghostDim[4];
     }hisq_kernel_param_t;
 
-    
     texture<int4, 1> newOprod0TexDouble;
     texture<int4, 1> newOprod1TexDouble;
     texture<float2, 1, cudaReadModeElementType>  newOprod0TexSingle;
     texture<float2, 1, cudaReadModeElementType> newOprod1TexSingle;
-    
+
+
     void hisqForceInitCuda(QudaGaugeParam* param)
     {
       static int hisq_force_init_cuda_flag = 0; 
@@ -509,7 +509,7 @@ namespace quda {
 
 #define NEWOPROD_EVEN_TEX newOprod0TexDouble
 #define NEWOPROD_ODD_TEX newOprod1TexDouble
-#ifdef HISQ_NEW_OPROD_LOAD_TEX
+#if (HISQ_NEW_OPROD_LOAD_TEX == 1)
 #define LOAD_TEX_ENTRY(tex, field, idx)  READ_DOUBLE2_TEXTURE(tex, field, idx)
 #else
 #define LOAD_TEX_ENTRY(tex, field, idx) field[idx]
@@ -556,7 +556,7 @@ namespace quda {
 #define NEWOPROD_EVEN_TEX newOprod0TexSingle
 #define NEWOPROD_ODD_TEX newOprod1TexSingle
 
-#ifdef HISQ_NEW_OPROD_LOAD_TEX
+#if (HISQ_NEW_OPROD_LOAD_TEX==1)
 #define LOAD_TEX_ENTRY(tex, field, idx)  tex1Dfetch(tex,idx)
 #else
 #define LOAD_TEX_ENTRY(tex, field, idx) field[idx]
@@ -624,10 +624,26 @@ namespace quda {
 
       // don't tune the grid dimension
       bool advanceGridDim(TuneParam &param) const { return false; }
-      bool advanceBlockDim(TuneParam &param) const {
-	bool rtn = Tunable::advanceBlockDim(param);
+
+      // generalize Tunable::advanceBlockDim() to also set gridDim, with extra checking to ensure that gridDim isn't too large for the device
+      bool advanceBlockDim(TuneParam &param) const
+      {
+	const unsigned int max_threads = deviceProp.maxThreadsDim[0];
+	const unsigned int max_blocks = deviceProp.maxGridSize[0];
+	const unsigned int max_shared = 16384; // FIXME: use deviceProp.sharedMemPerBlock;
+	const int step = deviceProp.warpSize;
+	bool ret;
+	param.block.x += step;
+	if (param.block.x > max_threads || sharedBytesPerThread()*param.block.x > max_shared) {
+	  param.block = dim3((kparam.threads+max_blocks-1)/max_blocks, 1, 1); // ensure the blockDim is large enough, given the limit on gridDim
+	  param.block.x = ((param.block.x+step-1) / step) * step; // round up to the nearest "step"
+	  if (param.block.x > max_threads) errorQuda("Local lattice volume is too large for device");
+	  ret = false;
+	} else {
+	  ret = true;
+	}
 	param.grid = dim3((kparam.threads+param.block.x-1)/param.block.x, 1, 1);
-	return rtn;
+	return ret;
       }
 
     public:
@@ -761,18 +777,22 @@ namespace quda {
 	newOprod.restore();
       }
 
-      void initTuneParam(TuneParam &param) const
+      virtual void initTuneParam(TuneParam &param) const
       {
-	Tunable::initTuneParam(param);
+	const unsigned int max_threads = deviceProp.maxThreadsDim[0];
+	const unsigned int max_blocks = deviceProp.maxGridSize[0];
+	const int step = deviceProp.warpSize;
+	param.block = dim3((kparam.threads+max_blocks-1)/max_blocks, 1, 1); // ensure the blockDim is large enough, given the limit on gridDim
+	param.block.x = ((param.block.x+step-1) / step) * step; // round up to the nearest "step"
+	if (param.block.x > max_threads) errorQuda("Local lattice volume is too large for device");
 	param.grid = dim3((kparam.threads+param.block.x-1)/param.block.x, 1, 1);
+	param.shared_bytes = sharedBytesPerThread()*param.block.x > sharedBytesPerBlock(param) ?
+	  sharedBytesPerThread()*param.block.x : sharedBytesPerBlock(param);
       }
-
       
       /** sets default values for when tuning is disabled */
-      void defaultTuneParam(TuneParam &param) const
-      {
-	Tunable::defaultTuneParam(param);
-	param.grid = dim3((kparam.threads+param.block.x-1)/param.block.x, 1, 1);
+      void defaultTuneParam(TuneParam &param) const {
+	initTuneParam(param);
       }
 
       long long flops() const { return 0; }
@@ -1729,7 +1749,8 @@ namespace quda {
       FiveSt  = act_path_coeff.five; mFiveSt  = -FiveSt;
       SevenSt = act_path_coeff.seven; 
       Lepage  = act_path_coeff.lepage; mLepage  = -Lepage;
-	
+
+
       for(int sig=0; sig<8; ++sig){
 	if(GOES_FORWARDS(sig)){
 	  OneLinkTerm<RealA, RealB> oneLink(oprod, sig, OneLink, 0.0, newOprod, param.X);
@@ -1738,7 +1759,7 @@ namespace quda {
 	} // GOES_FORWARDS(sig)
       }
       
-      
+
       int ghostDim[4]={
 	commDimPartitioned(0),
 	commDimPartitioned(1),
@@ -1791,9 +1812,6 @@ namespace quda {
       kparam_2g = kparam_1g = kparam;
       
 #endif
-      dim3 gridDim_1g((kparam_1g.threads+blockDim.x-1)/blockDim.x, 1, 1);
-      dim3 gridDim_2g((kparam_2g.threads+blockDim.x-1)/blockDim.x, 1, 1);
-      
       for(int sig=0; sig<8; sig++){
 	for(int mu=0; mu<8; mu++){
 	  if ( (mu == sig) || (mu == OPP_DIR(sig))){
@@ -1814,7 +1832,6 @@ namespace quda {
 		|| nu == mu || nu == OPP_DIR(mu)){
 	      continue;
 	    }
-
 	    //5-link: middle link
 	    //Kernel B
 	    MiddleLink<RealA,RealB> middleLink( link, Pmu, Qmu, // read only
@@ -1837,6 +1854,7 @@ namespace quda {
 					   P5, newOprod, kparam_1g);
 
 	      allLink.apply(0);
+
 	      checkCudaError();
 	      //return;
 	    }//rho  		
@@ -1851,7 +1869,6 @@ namespace quda {
 	    checkCudaError();
 
 	  } //nu 
-
 
             //lepage
 	  if(Lepage != 0.){

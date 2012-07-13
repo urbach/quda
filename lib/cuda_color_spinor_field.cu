@@ -535,7 +535,10 @@ void cudaColorSpinorField::packGhost(const int dim, const QudaParity parity, con
   if (dim !=3 || kernelPackT) { // use kernels to pack into contiguous buffers then a single cudaMemcpy
     void* gpu_buf = this->backGhostFaceBuffer[dim];
     if(this->nDim == 5)//!For DW fermions
-      packFaceDW(gpu_buf, *this, dim, dagger, parity, *stream);
+      if(this->TwistFlavor() == QUDA_TWIST_INVALID)//DW field
+	packFaceDW(gpu_buf, *this, dim, dagger, parity, *stream);
+      else if(this->TwistFlavor() == QUDA_TWIST_NONDEG_DOUBLET)
+	packFaceNdegTM(gpu_buf, *this, dim, dagger, parity, *stream);	
     else	
       packFace(gpu_buf, *this, dim, dagger, parity, *stream); 
   }

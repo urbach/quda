@@ -435,8 +435,6 @@ void ndegTwistGamma5(sFloat *out1, sFloat *out2, sFloat *in1, sFloat *in2, const
 
   if (dagger) a *= -1.0;
   
-printf("\nCPU parameters: a = %le, b = %le, c = %le\n", a, b, d);  
-
   for(int i = 0; i < V; i++) {
     sFloat tmp1[24];
     sFloat tmp2[24];    
@@ -454,29 +452,27 @@ printf("\nCPU parameters: a = %le, b = %le, c = %le\n", a, b, d);
 }
 
 //Note that dagger version computes R{dagger}*Dslash{dagger}
-void tm_ndeg_dslash(void *res1, void *res2, void **gaugeFull, void *spinorField1, void *spinorField2, double kappa, double mu, 
+void tm_ndeg_dslash(void *res1, void *res2, void **gauge, void *spinorField1, void *spinorField2, double kappa, double mu, 
 	           double epsilon, int oddBit, int daggerBit, QudaMatPCType matpc_type, QudaPrecision precision, QudaGaugeParam &gauge_param) 
 {
-  
-#ifdef MULTI_GPU  
-    errorQuda("ERROR: Multi-gpu currently not supported in function %s", __FUNCTION__);
-#endif  
 
     void *tmp1 = malloc(24 * Vh * precision);
     void *tmp2 = malloc(24 * Vh * precision);
+    
+#ifndef MULTI_GPU  
 
     if(!daggerBit)
     {
       if (precision == QUDA_DOUBLE_PRECISION) 
       {
-	  dslashReference((double*)tmp1, (double**)gaugeFull, (double*)spinorField1, oddBit, daggerBit);
-	  dslashReference((double*)tmp2, (double**)gaugeFull, (double*)spinorField2, oddBit, daggerBit);	
+	  dslashReference((double*)tmp1, (double**)gauge, (double*)spinorField1, oddBit, daggerBit);
+	  dslashReference((double*)tmp2, (double**)gauge, (double*)spinorField2, oddBit, daggerBit);	
 	  ndegTwistGamma5((double*)res1, (double*)res2, (double*)tmp1, (double*)tmp2, daggerBit, kappa, mu, epsilon, Vh, QUDA_TWIST_GAMMA5_INVERSE);
       } 
       else //single precision dslash
       {
-	  dslashReference((float*)tmp1, (float**)gaugeFull, (float*)spinorField1, oddBit, daggerBit);
-	  dslashReference((float*)tmp2, (float**)gaugeFull, (float*)spinorField2, oddBit, daggerBit);	
+	  dslashReference((float*)tmp1, (float**)gauge, (float*)spinorField1, oddBit, daggerBit);
+	  dslashReference((float*)tmp2, (float**)gauge, (float*)spinorField2, oddBit, daggerBit);	
 	  ndegTwistGamma5((float*)res1, (float*)res2, (float*)tmp1, (float*)tmp2, daggerBit, (float)kappa, (float)mu, (float)epsilon, Vh, QUDA_TWIST_GAMMA5_INVERSE);
       }
     }
@@ -487,13 +483,13 @@ void tm_ndeg_dslash(void *res1, void *res2, void **gaugeFull, void *spinorField1
           if(matpc_type == QUDA_MATPC_EVEN_EVEN || matpc_type == QUDA_MATPC_ODD_ODD)
 	  {
 	    ndegTwistGamma5((double*)tmp1, (double*)tmp2, (double*)spinorField1, (double*)spinorField2, daggerBit, kappa, mu, epsilon, Vh, QUDA_TWIST_GAMMA5_INVERSE);	
-	    dslashReference((double*)res1, (double**)gaugeFull, (double*)tmp1, oddBit, daggerBit);
-	    dslashReference((double*)res2, (double**)gaugeFull, (double*)tmp2, oddBit, daggerBit);	
+	    dslashReference((double*)res1, (double**)gauge, (double*)tmp1, oddBit, daggerBit);
+	    dslashReference((double*)res2, (double**)gauge, (double*)tmp2, oddBit, daggerBit);	
 	  }
 	  else
 	  {
-	    dslashReference((double*)tmp1, (double**)gaugeFull, (double*)spinorField1, oddBit, daggerBit);
-	    dslashReference((double*)tmp2, (double**)gaugeFull, (double*)spinorField2, oddBit, daggerBit);	
+	    dslashReference((double*)tmp1, (double**)gauge, (double*)spinorField1, oddBit, daggerBit);
+	    dslashReference((double*)tmp2, (double**)gauge, (double*)spinorField2, oddBit, daggerBit);	
 	    ndegTwistGamma5((double*)res1, (double*)res2, (double*)tmp1, (double*)tmp2, daggerBit, kappa, mu, epsilon, Vh, QUDA_TWIST_GAMMA5_INVERSE);
 	  }
 
@@ -503,17 +499,118 @@ void tm_ndeg_dslash(void *res1, void *res2, void **gaugeFull, void *spinorField1
           if(matpc_type == QUDA_MATPC_EVEN_EVEN || matpc_type == QUDA_MATPC_ODD_ODD)
 	  {
 	    ndegTwistGamma5((float*)tmp1, (float*)tmp2, (float*)spinorField1, (float*)spinorField2, daggerBit, (float)kappa, (float)mu, (float)epsilon, Vh, QUDA_TWIST_GAMMA5_INVERSE);	
-	    dslashReference((float*)res1, (float**)gaugeFull, (float*)tmp1, oddBit, daggerBit);
-	    dslashReference((float*)res2, (float**)gaugeFull, (float*)tmp2, oddBit, daggerBit);	
+	    dslashReference((float*)res1, (float**)gauge, (float*)tmp1, oddBit, daggerBit);
+	    dslashReference((float*)res2, (float**)gauge, (float*)tmp2, oddBit, daggerBit);	
 	  }
 	  else
 	  {
-	    dslashReference((float*)tmp1, (float**)gaugeFull, (float*)spinorField1, oddBit, daggerBit);
-	    dslashReference((float*)tmp2, (float**)gaugeFull, (float*)spinorField2, oddBit, daggerBit);	
+	    dslashReference((float*)tmp1, (float**)gauge, (float*)spinorField1, oddBit, daggerBit);
+	    dslashReference((float*)tmp2, (float**)gauge, (float*)spinorField2, oddBit, daggerBit);	
 	    ndegTwistGamma5((float*)res1, (float*)res2, (float*)tmp1, (float*)tmp2, daggerBit, (float)kappa, (float)mu, (float)epsilon, Vh, QUDA_TWIST_GAMMA5_INVERSE);
 	  }
       }
     }
+   
+#else
+
+  GaugeFieldParam gauge_field_param(gauge, gauge_param);
+  cpuGaugeField cpu(gauge_field_param);
+  cpu.exchangeGhost();
+  void **ghostGauge = (void**)cpu.Ghost();
+
+  // Get spinor ghost fields
+  // First wrap the input spinor into a ColorSpinorField
+  ColorSpinorParam csParam;
+  csParam.nColor = 3;
+  csParam.nSpin = 4;
+  csParam.nDim = 4;
+  for (int d=0; d<4; d++) csParam.x[d] = Z[d];
+  csParam.precision = precision;
+  csParam.pad = 0;
+  csParam.siteSubset = QUDA_PARITY_SITE_SUBSET;
+  csParam.x[0] /= 2;
+  csParam.siteOrder = QUDA_EVEN_ODD_SITE_ORDER;
+  csParam.fieldOrder = QUDA_SPACE_SPIN_COLOR_FIELD_ORDER;
+  csParam.gammaBasis = QUDA_DEGRAND_ROSSI_GAMMA_BASIS;
+  csParam.create = QUDA_REFERENCE_FIELD_CREATE;
+
+  csParam.v = spinorField1;  
+  cpuColorSpinorField inField1(csParam);
+
+  csParam.v = spinorField2;  
+  cpuColorSpinorField inField2(csParam);
+  
+  {  // Now do the exchange
+    QudaParity otherParity = QUDA_INVALID_PARITY;
+    if (oddBit == QUDA_EVEN_PARITY) otherParity = QUDA_ODD_PARITY;
+    else if (oddBit == QUDA_ODD_PARITY) otherParity = QUDA_EVEN_PARITY;
+    else errorQuda("ERROR: full parity not supported in function %s", __FUNCTION__);
+
+    int nFace = 1;
+    FaceBuffer faceBuf1(Z, 4, mySpinorSiteSize, nFace, precision);
+    faceBuf1.exchangeCpuSpinor(inField1, otherParity, daggerBit); 
+    
+    FaceBuffer faceBuf2(Z, 4, mySpinorSiteSize, nFace, precision);
+    faceBuf2.exchangeCpuSpinor(inField2, otherParity, daggerBit); 
+  }
+  void** fwd_nbr_spinor1 = inField1.fwdGhostFaceBuffer;
+  void** back_nbr_spinor1 = inField1.backGhostFaceBuffer;
+  
+  void** fwd_nbr_spinor2 = inField2.fwdGhostFaceBuffer;
+  void** back_nbr_spinor2 = inField2.backGhostFaceBuffer;
+  
+
+  if(!daggerBit)
+  {
+      if (precision == QUDA_DOUBLE_PRECISION) 
+      {
+	  dslashReference((double*)tmp1, (double**)gauge, (double**)ghostGauge, (double*)spinorField1, (double**)fwd_nbr_spinor1, (double**)back_nbr_spinor1, oddBit, daggerBit);
+	  dslashReference((double*)tmp2, (double**)gauge, (double**)ghostGauge, (double*)spinorField2, (double**)fwd_nbr_spinor2, (double**)back_nbr_spinor2, oddBit, daggerBit);	
+	  ndegTwistGamma5((double*)res1, (double*)res2, (double*)tmp1, (double*)tmp2, daggerBit, kappa, mu, epsilon, Vh, QUDA_TWIST_GAMMA5_INVERSE);
+      } 
+      else //single precision dslash
+      {
+	  dslashReference((float*)tmp1, (float**)gauge, (float**)ghostGauge, (float*)spinorField1, (float**)fwd_nbr_spinor1, (float**)back_nbr_spinor1, oddBit, daggerBit);
+	  dslashReference((float*)tmp2, (float**)gauge, (float**)ghostGauge, (float*)spinorField2, (float**)fwd_nbr_spinor2, (float**)back_nbr_spinor2, oddBit, daggerBit);	
+	  ndegTwistGamma5((float*)res1, (float*)res2, (float*)tmp1, (float*)tmp2, daggerBit, (float)kappa, (float)mu, (float)epsilon, Vh, QUDA_TWIST_GAMMA5_INVERSE);
+      }
+  }
+  else//dagger
+  {
+      if (precision == QUDA_DOUBLE_PRECISION) 
+      {
+          if(matpc_type == QUDA_MATPC_EVEN_EVEN || matpc_type == QUDA_MATPC_ODD_ODD)
+	  {
+	    ndegTwistGamma5((double*)tmp1, (double*)tmp2, (double*)spinorField1, (double*)spinorField2, daggerBit, kappa, mu, epsilon, Vh, QUDA_TWIST_GAMMA5_INVERSE);	
+	    dslashReference((double*)res1, (double**)gauge, (double**)ghostGauge, (double*)tmp1, (double**)fwd_nbr_spinor1, (double**)back_nbr_spinor1, oddBit, daggerBit);
+	    dslashReference((double*)res2, (double**)gauge, (double**)ghostGauge, (double*)tmp2, (double**)fwd_nbr_spinor2, (double**)back_nbr_spinor2, oddBit, daggerBit);	
+	  }
+	  else
+	  {
+	    dslashReference((double*)tmp1, (double**)gauge, (double**)ghostGauge, (double*)spinorField1, (double**)fwd_nbr_spinor1, (double**)back_nbr_spinor1, oddBit, daggerBit);
+	    dslashReference((double*)tmp2, (double**)gauge, (double**)ghostGauge, (double*)spinorField2, (double**)fwd_nbr_spinor2, (double**)back_nbr_spinor2, oddBit, daggerBit);	
+	    ndegTwistGamma5((double*)res1, (double*)res2, (double*)tmp1, (double*)tmp2, daggerBit, kappa, mu, epsilon, Vh, QUDA_TWIST_GAMMA5_INVERSE);
+	  }
+
+      } 
+      else //single precision dslash
+      {
+          if(matpc_type == QUDA_MATPC_EVEN_EVEN || matpc_type == QUDA_MATPC_ODD_ODD)
+	  {
+	    ndegTwistGamma5((float*)tmp1, (float*)tmp2, (float*)spinorField1, (float*)spinorField2, daggerBit, (float)kappa, (float)mu, (float)epsilon, Vh, QUDA_TWIST_GAMMA5_INVERSE);	
+	    dslashReference((float*)res1, (float**)gauge, (float**)ghostGauge, (float*)tmp1, (float**)fwd_nbr_spinor1, (float**)back_nbr_spinor1, oddBit, daggerBit);
+	    dslashReference((float*)res2, (float**)gauge, (float**)ghostGauge, (float*)tmp2, (float**)fwd_nbr_spinor2, (float**)back_nbr_spinor2, oddBit, daggerBit);	
+	  }
+	  else
+	  {
+	    dslashReference((float*)tmp1, (float**)gauge, (float**)ghostGauge, (float*)spinorField1, (float**)fwd_nbr_spinor1, (float**)back_nbr_spinor1, oddBit, daggerBit);
+	    dslashReference((float*)tmp2, (float**)gauge, (float**)ghostGauge, (float*)spinorField2, (float**)fwd_nbr_spinor2, (float**)back_nbr_spinor2, oddBit, daggerBit);	
+	    ndegTwistGamma5((float*)res1, (float*)res2, (float*)tmp1, (float*)tmp2, daggerBit, (float)kappa, (float)mu, (float)epsilon, Vh, QUDA_TWIST_GAMMA5_INVERSE);
+	  }
+      }
+  }
+
+#endif    
     free(tmp1);
     free(tmp2);
 }
@@ -604,7 +701,7 @@ void tmNdegMatAsymPC(sFloat *outEven1, sFloat *outEven2, gFloat **gauge, sFloat 
 
 void tm_ndeg_matpc(void *outEven1, void *outEven2, void **gauge, void *inEven1, void *inEven2, double kappa, double mu, double epsilon,
 	   QudaMatPCType matpc_type, int dagger_bit, QudaPrecision precision, QudaGaugeParam &gauge_param) {
-
+#ifndef MULTI_GPU
   if (matpc_type == QUDA_MATPC_EVEN_EVEN || matpc_type == QUDA_MATPC_ODD_ODD) {
     if (precision == QUDA_DOUBLE_PRECISION){
       tmNdegMatPC((double*)outEven1, (double*)outEven2, (double**)gauge, (double*)inEven1, (double*)inEven2, (double)kappa, (double)mu, (double)epsilon, dagger_bit, matpc_type);
@@ -621,9 +718,10 @@ void tm_ndeg_matpc(void *outEven1, void *outEven2, void **gauge, void *inEven1, 
       tmNdegMatAsymPC((float*)outEven1, (float*)outEven2, (float**)gauge, (float*)inEven1, (float*)inEven2, (float)kappa, (float)mu, (float) epsilon, dagger_bit, matpc_type);
     }
   }
+#endif  
 }
 
-
+/*
 template <typename sFloat, typename gFloat>
 void tmNdegMat(sFloat *out1, sFloat *out2, gFloat **gauge, sFloat *in1, sFloat *in2, sFloat kappa, sFloat mu,  sFloat epsilon, int daggerBit) {
 
@@ -665,5 +763,53 @@ void tm_ndeg_mat(void *out1, void* out2, void **gauge, void *in1, void *in2,  do
   else
       tmNdegMat((float*)out1, (float*)out2, (float**)gauge, (float*)in1, (float*)in2, (float)kappa, (float)mu, (float)epsilon, dagger_bit);
 }
+*/
+
+template <typename sFloat, typename gFloat>
+void tmNdegMat(sFloat *evenOut, sFloat *oddOut, gFloat **gauge, sFloat *evenIn, sFloat *oddIn, sFloat kappa, sFloat mu,  sFloat epsilon, int daggerBit) {
+
+  //V-4d volume and Vh=V/2
+  sFloat *inEven1   = evenIn;
+  sFloat *inEven2   = evenIn + Vh*spinorSiteSize;  
+  
+  sFloat *inOdd1    = oddIn;
+  sFloat *inOdd2    = oddIn + Vh*spinorSiteSize;  
+  
+  sFloat *outEven1  = evenOut;
+  sFloat *outEven2  = evenOut + Vh*spinorSiteSize;  
+  
+  sFloat *outOdd1   = oddOut;
+  sFloat *outOdd2   = oddOut + Vh*spinorSiteSize;  
+ 
+  sFloat *tmp1 = (sFloat*)malloc(V*spinorSiteSize*sizeof(sFloat));
+  sFloat *tmp2 = (sFloat*)malloc(V*spinorSiteSize*sizeof(sFloat));
+
+  // full dslash operator
+  dslashReference(outOdd1, gauge, inEven1, 1, daggerBit);
+  dslashReference(outOdd2, gauge, inEven2, 1, daggerBit);
+
+  dslashReference(outEven1, gauge, inOdd1, 0, daggerBit);
+  dslashReference(outEven2, gauge, inOdd2, 0, daggerBit);      
+
+  // apply the twist term
+  ndegTwistGamma5(tmp1, tmp2, evenIn, oddIn, daggerBit, kappa, mu, epsilon, V, QUDA_TWIST_GAMMA5_DIRECT);
+
+  // combine
+  xpay(tmp1, -kappa, evenOut, V*spinorSiteSize);
+  xpay(tmp2, -kappa, oddOut,  V*spinorSiteSize);
+
+  free(tmp1);
+  free(tmp2);
+}
+
+void tm_ndeg_mat(void *evenOut, void* oddOut, void **gauge, void *evenIn, void *oddIn,  double kappa, double mu, double epsilon, int dagger_bit, QudaPrecision precision, QudaGaugeParam &gauge_param) {
+#ifndef MULTI_GPU
+  if (precision == QUDA_DOUBLE_PRECISION)
+      tmNdegMat((double*)evenOut, (double*)oddOut, (double**)gauge, (double*)evenIn, (double*)oddIn, (double)kappa, (double)mu, (double)epsilon, dagger_bit);
+  else
+      tmNdegMat((float*)evenOut, (float*)oddOut, (float**)gauge, (float*)evenIn, (float*)oddIn, (float)kappa, (float)mu, (float)epsilon, dagger_bit);
+#endif  
+}
+
 
 //End of nondeg TM

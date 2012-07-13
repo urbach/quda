@@ -2,9 +2,12 @@
 #include <blas_quda.h>
 #include <iostream>
 
-DiracTwistedMass::DiracTwistedMass(const DiracParam &param) : DiracWilson(param), mu(param.mu), epsilon(param.epsilon), Nf(param.Nf) { }
+//DiracTwistedMass::DiracTwistedMass(const DiracParam &param) : DiracWilson(param), mu(param.mu), epsilon(param.epsilon), Nf(param.Nf) { }//!Do we need this constructor?
 
-DiracTwistedMass::DiracTwistedMass(const DiracTwistedMass &dirac) : DiracWilson(dirac), mu(dirac.mu), epsilon(dirac.epsilon), Nf(dirac.Nf) { }
+DiracTwistedMass::DiracTwistedMass(const DiracTwistedMass &dirac) : DiracWilson(dirac), mu(dirac.mu), epsilon(dirac.epsilon) { }
+
+//!NDEGTM NEW:
+DiracTwistedMass::DiracTwistedMass(const DiracParam &param, const int nDim) : DiracWilson(param, nDim), mu(param.mu), epsilon(param.epsilon) { }
 
 DiracTwistedMass::~DiracTwistedMass() { }
 
@@ -17,7 +20,7 @@ DiracTwistedMass& DiracTwistedMass::operator=(const DiracTwistedMass &dirac)
 }
 
 // Protected method for applying twist
-//!TMDEG NEW 
+//!NDEGTM NEW 
 void DiracTwistedMass::twistedApply(cudaColorSpinorField &out, const cudaColorSpinorField &in,
 				    const QudaTwistGamma5Type twistType) const
 {
@@ -85,7 +88,7 @@ void DiracTwistedMass::M(cudaColorSpinorField &out, const cudaColorSpinorField &
   else{
     errorQuda("Method is not implemented %d\n", in.TwistFlavor());    
     //DslashXpay(out.Odd(), in.Even(), QUDA_ODD_PARITY, *tmp, -kappa);
-    //DslashXpay(out.Even(), in.Odd(), QUDA_EVEN_PARITY, *tmp, -kappa);    
+    //DslashXpay(out.Even(), in.Odd(), QUDA_EVEN_PARITY, *tmp, -kappa);
   }
   deleteTmp(&tmp, reset);
 }
@@ -119,17 +122,14 @@ void DiracTwistedMass::reconstruct(cudaColorSpinorField &x, const cudaColorSpino
   // do nothing
 }
 
-DiracTwistedMassPC::DiracTwistedMassPC(const DiracParam &param) : DiracTwistedMass(param)
-{
-
-}
+//DiracTwistedMassPC::DiracTwistedMassPC(const DiracParam &param) : DiracTwistedMass(param){ }
 
 DiracTwistedMassPC::DiracTwistedMassPC(const DiracTwistedMassPC &dirac) : DiracTwistedMass(dirac) { }
 
-DiracTwistedMassPC::~DiracTwistedMassPC()
-{
+//!NDEGTM NEW:
+DiracTwistedMassPC::DiracTwistedMassPC(const DiracParam &param, const int nDim) : DiracTwistedMass(param, nDim){ }
 
-}
+DiracTwistedMassPC::~DiracTwistedMassPC(){}
 
 DiracTwistedMassPC& DiracTwistedMassPC::operator=(const DiracTwistedMassPC &dirac)
 {
@@ -157,7 +157,7 @@ void DiracTwistedMassPC::Dslash(cudaColorSpinorField &out, const cudaColorSpinor
     errorQuda("Twist flavors %d %d don't match", in.TwistFlavor(), out.TwistFlavor());
   if (in.TwistFlavor() == QUDA_TWIST_NO || in.TwistFlavor() == QUDA_TWIST_INVALID)
     errorQuda("Twist flavor not set %d\n", in.TwistFlavor());
-
+  
   if(in.TwistFlavor() == QUDA_TWIST_PLUS || in.TwistFlavor() == QUDA_TWIST_MINUS){
     if (!dagger || matpcType == QUDA_MATPC_EVEN_EVEN_ASYMMETRIC || matpcType == QUDA_MATPC_ODD_ODD_ASYMMETRIC) {
       double flavor_mu = in.TwistFlavor() * mu;
@@ -189,6 +189,9 @@ void DiracTwistedMassPC::Dslash(cudaColorSpinorField &out, const cudaColorSpinor
     double c = 1.0 / d;    
     
     initSpinorConstants(in);
+
+//!NDEGTM:  
+    setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda
     
     int flv_stride = in.Volume()/2;//if (in.SiteSubset() == QUDA_PARITY_SITE_SUBSET)
     initTwistedMassConstants(flv_stride);    
@@ -211,7 +214,6 @@ void DiracTwistedMassPC::Dslash(cudaColorSpinorField &out, const cudaColorSpinor
       deleteTmp(&doubletTmp, reset);
     }
   }
-
 }
 
 // xpay version of the above
@@ -226,7 +228,7 @@ void DiracTwistedMassPC::DslashXpay(cudaColorSpinorField &out, const cudaColorSp
     errorQuda("Twist flavors %d %d don't match", in.TwistFlavor(), out.TwistFlavor());
   if (in.TwistFlavor() == QUDA_TWIST_NO || in.TwistFlavor() == QUDA_TWIST_INVALID)
     errorQuda("Twist flavor not set %d\n", in.TwistFlavor());  
-
+  
   if(in.TwistFlavor() == QUDA_TWIST_PLUS || in.TwistFlavor() == QUDA_TWIST_MINUS){
     if (!dagger) {
       double flavor_mu = in.TwistFlavor() * mu;
@@ -259,6 +261,9 @@ void DiracTwistedMassPC::DslashXpay(cudaColorSpinorField &out, const cudaColorSp
     double c = 1.0 / d; 
 	
     initSpinorConstants(in);
+
+//!NDEGTM:
+    setFace(face); // FIXME: temporary hack maintain C linkage for dslashCuda  
     
     int flv_stride = in.Volume()/2;//if (in.SiteSubset() == QUDA_PARITY_SITE_SUBSET)
     initTwistedMassConstants(flv_stride);    

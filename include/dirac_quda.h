@@ -19,7 +19,7 @@ class DiracParam {
   double kappa;
   double mass;
   double m5; // used by domain wall only
-  int Ls;    //!NEW: used by domain wall only  
+  int Ls;    //!NEW: used by domain wall and twisted mass  
   MatPCType matpcType;
   DagType dagger;
   cudaGaugeField *gauge;
@@ -30,7 +30,6 @@ class DiracParam {
   double mu; // used by twisted mass only
 //!NDEGTM NEW
   double epsilon; //2nd tm parameter (used by twisted mass only)
-  int    Nf;      //number of flavors (used by twisted mass only)  
 
   cudaColorSpinorField *tmp1;
   cudaColorSpinorField *tmp2; // used by Wilson-like kernels only
@@ -42,7 +41,7 @@ class DiracParam {
 //!NDEGTM NEW:
   DiracParam() 
     : type(QUDA_INVALID_DIRAC), kappa(0.0), m5(0.0), matpcType(QUDA_MATPC_INVALID),
-    dagger(QUDA_DAG_INVALID), gauge(0), clover(0), mu(0.0), epsilon(0.0), Nf(1), 
+    dagger(QUDA_DAG_INVALID), gauge(0), clover(0), mu(0.0), epsilon(0.0),  
     tmp1(0), tmp2(0), verbose(QUDA_SILENT)
   {
 
@@ -128,7 +127,7 @@ class DiracWilson : public Dirac {
   DiracWilson(const DiracParam &param);
   DiracWilson(const DiracWilson &dirac);
 //BEGIN NEW
-  DiracWilson(const DiracParam &param, const int nDims);//to correctly adjust face for DW
+  DiracWilson(const DiracParam &param, const int nDims);//to correctly adjust face for DW and ndegTM
 //END NEW    
   
   virtual ~DiracWilson();
@@ -276,9 +275,8 @@ class DiracTwistedMass : public DiracWilson {
 
  protected:
   double mu;
-//!NDEGTM NEW
+//!NDEGTM NEW:
   double epsilon;
-  int    Nf;
   
   void twistedApply(cudaColorSpinorField &out, const cudaColorSpinorField &in, 
 		    const QudaTwistGamma5Type twistType) const;
@@ -286,6 +284,10 @@ class DiracTwistedMass : public DiracWilson {
  public:
   DiracTwistedMass(const DiracParam &param);
   DiracTwistedMass(const DiracTwistedMass &dirac);
+  
+//!NEW NDEGTM:  
+  DiracTwistedMass(const DiracParam &param, const int nDim);//Temporal hack (needed for nondegenerate twisted mass)
+  
   virtual ~DiracTwistedMass();
   DiracTwistedMass& operator=(const DiracTwistedMass &dirac);
 
@@ -307,6 +309,10 @@ class DiracTwistedMassPC : public DiracTwistedMass {
  public:
   DiracTwistedMassPC(const DiracParam &param);
   DiracTwistedMassPC(const DiracTwistedMassPC &dirac);
+  
+//!NEW NDEGTM:  
+  DiracTwistedMassPC(const DiracParam &param, const int nDim);//Temporal hack (needed for nondegenerate twisted mass)
+  
   virtual ~DiracTwistedMassPC();
   DiracTwistedMassPC& operator=(const DiracTwistedMassPC &dirac);
 

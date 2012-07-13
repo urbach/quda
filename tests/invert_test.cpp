@@ -142,8 +142,8 @@ int main(int argc, char **argv)
   if (dslash_type == QUDA_TWISTED_MASS_DSLASH) {
     inv_param.mu = 0.01;
     inv_param.epsilon = 0.001;
-    inv_param.twist_flavor = QUDA_TWIST_NONDEG_DOUBLET;
-    //inv_param.twist_flavor = QUDA_TWIST_PLUS;    
+    //inv_param.twist_flavor = QUDA_TWIST_NONDEG_DOUBLET;
+    inv_param.twist_flavor = QUDA_TWIST_PLUS;    
   }else if (dslash_type == QUDA_DOMAIN_WALL_DSLASH) {
     inv_param.mass = 0.02;
     inv_param.m5 = -1.8;
@@ -155,13 +155,13 @@ int main(int argc, char **argv)
   inv_param.dagger = QUDA_DAG_NO;
   inv_param.mass_normalization = QUDA_KAPPA_NORMALIZATION;
 
-  if (dslash_type == QUDA_DOMAIN_WALL_DSLASH || dslash_type == QUDA_TWISTED_MASS_DSLASH) {
+//  if (dslash_type == QUDA_DOMAIN_WALL_DSLASH || dslash_type == QUDA_TWISTED_MASS_DSLASH) {
     inv_param.solve_type = QUDA_NORMEQ_PC_SOLVE;
     inv_param.inv_type = QUDA_CG_INVERTER;
-  } else {
-    inv_param.solve_type = QUDA_DIRECT_PC_SOLVE;
-    inv_param.inv_type = QUDA_BICGSTAB_INVERTER;
-  }
+//  } else {
+//    inv_param.solve_type = QUDA_DIRECT_PC_SOLVE;
+//    inv_param.inv_type = QUDA_BICGSTAB_INVERTER;
+//  }
 
   inv_param.gcrNkrylov = 10;
   inv_param.tol = 5e-7;
@@ -339,6 +339,9 @@ int main(int argc, char **argv)
   if (dslash_type == QUDA_CLOVER_WILSON_DSLASH) printfQuda("   Clover: %f GiB\n", inv_param.cloverGiB);
   printfQuda("\nDone: %i iter / %g secs = %g Gflops, total time = %g secs\n", 
 	 inv_param.iter, inv_param.secs, inv_param.gflops/inv_param.secs, time0);
+
+  for(int i = 0; i < 24*V; i++)
+	  if(fabs(((double*)spinorOut)[i]) < 1e-3) printf("\nFound zero at %d\n", i);
 
   if (multi_shift) {
 

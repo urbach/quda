@@ -101,8 +101,8 @@ void init(int argc, char **argv) {
   inv_param.kappa = 0.1;
   
   if (dslash_type == QUDA_TWISTED_MASS_DSLASH) {
-    inv_param.mu = 0.1;
-    inv_param.epsilon = 0.01;    
+    inv_param.mu = 0.0;
+    inv_param.epsilon = 0.25;    
     inv_param.twist_flavor = QUDA_TWIST_NONDEG_DOUBLET;
     //inv_param.twist_flavor = QUDA_TWIST_PLUS;    
   }else if (dslash_type == QUDA_DOMAIN_WALL_DSLASH) {
@@ -426,7 +426,10 @@ void dslashRef() {
       exit(-1);
     }
   } else if (dslash_type == QUDA_TWISTED_MASS_DSLASH) {
-    int flv_offset = (inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS) ? 0 : 12*spinorRef->Volume();    
+    
+    //flavor offset for parity spinor (case 0, 1, 3) and parity offset for full spinor (case 2,4):
+    int tm_offset = (inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS) ? 0 : 12*spinorRef->Volume();    
+    
     switch (test_type) {
     case 0:
       if(inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS)
@@ -434,10 +437,10 @@ void dslashRef() {
       else
       {
 	void *ref1 = spinorRef->V();
-	void *ref2 = cpu_prec == sizeof(double) ? (void*)((double*)ref1 + flv_offset): (void*)((float*)ref1 + flv_offset);
+	void *ref2 = cpu_prec == sizeof(double) ? (void*)((double*)ref1 + tm_offset): (void*)((float*)ref1 + tm_offset);
     
 	void *flv1 = spinor->V();
-	void *flv2 = cpu_prec == sizeof(double) ? (void*)((double*)flv1 + flv_offset): (void*)((float*)flv1 + flv_offset);
+	void *flv2 = cpu_prec == sizeof(double) ? (void*)((double*)flv1 + tm_offset): (void*)((float*)flv1 + tm_offset);
     
 	tm_ndeg_dslash(ref1, ref2, hostGauge, flv1, flv2, inv_param.kappa, inv_param.mu, inv_param.epsilon, 
 	               parity, dagger, inv_param.matpc_type, inv_param.cpu_prec, gauge_param);	
@@ -449,10 +452,10 @@ void dslashRef() {
       else
       {
 	void *ref1 = spinorRef->V();
-	void *ref2 = cpu_prec == sizeof(double) ? (void*)((double*)ref1 + flv_offset): (void*)((float*)ref1 + flv_offset);
+	void *ref2 = cpu_prec == sizeof(double) ? (void*)((double*)ref1 + tm_offset): (void*)((float*)ref1 + tm_offset);
     
 	void *flv1 = spinor->V();
-	void *flv2 = cpu_prec == sizeof(double) ? (void*)((double*)flv1 + flv_offset): (void*)((float*)flv1 + flv_offset);
+	void *flv2 = cpu_prec == sizeof(double) ? (void*)((double*)flv1 + tm_offset): (void*)((float*)flv1 + tm_offset);
     
 	tm_ndeg_matpc(ref1, ref2, hostGauge, flv1, flv2, inv_param.kappa, inv_param.mu, inv_param.epsilon, inv_param.matpc_type, dagger, inv_param.cpu_prec, gauge_param);	
       }	
@@ -460,6 +463,16 @@ void dslashRef() {
     case 2:
       if(inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS)      
 	tm_mat(spinorRef->V(), hostGauge, spinor->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor, dagger, inv_param.cpu_prec, gauge_param);
+      else
+      {
+	void *evenOut = spinorRef->V();
+	void *oddOut  = cpu_prec == sizeof(double) ? (void*)((double*)evenOut + tm_offset): (void*)((float*)evenOut + tm_offset);
+    
+	void *evenIn = spinor->V();
+	void *oddIn  = cpu_prec == sizeof(double) ? (void*)((double*)evenIn + tm_offset): (void*)((float*)evenIn + tm_offset);
+    
+	tm_ndeg_mat(evenOut, oddOut, hostGauge, evenIn, oddIn, inv_param.kappa, inv_param.mu, inv_param.epsilon, dagger, inv_param.cpu_prec, gauge_param);	
+      }
       break;
     case 3:    
       if(inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS){      
@@ -468,6 +481,9 @@ void dslashRef() {
 	tm_matpc(spinorRef->V(), hostGauge, spinorTmp->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor,
 	       inv_param.matpc_type, QUDA_DAG_YES, inv_param.cpu_prec, gauge_param);
       }
+      else
+      {
+      }
       break;
     case 4:
       if(inv_param.twist_flavor == QUDA_TWIST_PLUS || inv_param.twist_flavor == QUDA_TWIST_MINUS){      
@@ -475,6 +491,9 @@ void dslashRef() {
 	     QUDA_DAG_NO, inv_param.cpu_prec, gauge_param);
 	tm_mat(spinorRef->V(), hostGauge, spinorTmp->V(), inv_param.kappa, inv_param.mu, inv_param.twist_flavor,
 	     QUDA_DAG_YES, inv_param.cpu_prec, gauge_param);
+      }
+      else
+      {
       }
       break;
     default:
@@ -605,7 +624,8 @@ int main(int argc, char **argv)
     }
     
     cpuColorSpinorField::Compare(*spinorRef, *spinorOut);
-  }    
+  } 
+  checkCudaError();
   end();
 
   endCommsQuda();

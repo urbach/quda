@@ -34,7 +34,7 @@ extern "C" {
   void tm_ndeg_matpc(void *outEven1, void *outEven2, void **gauge, void *inEven1, void *inEven2, double kappa, double mu, double epsilon,
 	   QudaMatPCType matpc_type, int dagger_bit, QudaPrecision precision, QudaGaugeParam &gauge_param);
 		      
-  void tm_ndeg_mat(void *out1, void* out2, void **gauge, void *in1, void *in2,  
+  void tm_ndeg_mat(void *evenOut, void* oddOut, void **gauge, void *evenIn, void *oddIn,  
 		   double kappa, double mu, double epsilon, int dagger_bit, QudaPrecision precision, QudaGaugeParam &gauge_param);		      
 
 #ifdef __cplusplus
