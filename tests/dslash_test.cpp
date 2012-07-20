@@ -138,7 +138,7 @@ void init(int argc, char **argv) {
   pad_size = MAX(pad_size, t_face_size);
   gauge_param.ga_pad = pad_size;    
 #endif
-  inv_param.sp_pad = 16*16*16;
+  inv_param.sp_pad = 0;//16*16*16;
   inv_param.cl_pad = 0;
 
   //inv_param.sp_pad = 24*24*24;
