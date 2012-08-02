@@ -570,7 +570,7 @@ def gen(dir, pack_only=False):
     #load_half += "const int sp_norm_idx = sid + param.ghostNormOffset[static_cast<int>(kernel_type)];\n"
     #load_half += "#endif\n"
 
-    if dir >= 6: load_half_cond += "const int t_proj_scale = TPROJSCALE;\n"
+    #if dir >= 6: load_half_cond += "const int t_proj_scale = TPROJSCALE;\n"
     load_half_cond += "\n"
 
     load_half_flv1 = "// read half spinor for the first flavor from device memory\n"
@@ -580,10 +580,11 @@ def gen(dir, pack_only=False):
     else: load_half_flv1 += "READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx);\n\n"
     
     load_half_flv2 = "// read half spinor for the second flavor from device memory\n"
+    load_half_flv2 += "const int fl_idx = sp_idx + ghostFace[static_cast<int>(kernel_type)];\n"
 # we have to use the same volume index for backwards and forwards gathers
 # instead of using READ_UP_SPINOR and READ_DOWN_SPINOR, just use READ_HALF_SPINOR with the appropriate shift
-    if (dir+1) % 2 == 0: load_half_flv2 += "READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx+ghostFace[static_cast<int>(kernel_type)], sp_norm_idx+ghostFace[static_cast<int>(kernel_type)]);\n\n"
-    else: load_half_flv2 += "READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx +ghostFace[static_cast<int>(kernel_type)] + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx + ghostFace[static_cast<int>(kernel_type)]);\n\n"
+    if (dir+1) % 2 == 0: load_half_flv2 += "READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, fl_idx, sp_norm_idx+ghostFace[static_cast<int>(kernel_type)]);\n\n"
+    else: load_half_flv2 += "READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, fl_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx + ghostFace[static_cast<int>(kernel_type)]);\n\n"
 
 
     project = "// project spinor into half spinors\n"
@@ -660,8 +661,11 @@ READ_SPINOR_SHARED(tx, threadIdx.y, tz);\n
     copy_half = ""
     for h in range(0, 2):
         for c in range(0, 3):
-            copy_half += h1_re(h,c)+" = "+("t_proj_scale*" if (dir >= 6) else "")+in_re(h,c)+";  "
-            copy_half += h1_im(h,c)+" = "+("t_proj_scale*" if (dir >= 6) else "")+in_im(h,c)+";\n"
+            #copy_half += h1_re(h,c)+" = "+("t_proj_scale*" if (dir >= 6) else "")+in_re(h,c)+";  "
+            #copy_half += h1_im(h,c)+" = "+("t_proj_scale*" if (dir >= 6) else "")+in_im(h,c)+";\n"
+            copy_half += h1_re(h,c)+" = "+in_re(h,c)+";  "
+            copy_half += h1_im(h,c)+" = "+in_im(h,c)+";\n"
+
     copy_half += "\n"
 
     prep_half_cond1 =  ""

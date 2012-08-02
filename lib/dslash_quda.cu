@@ -1592,11 +1592,19 @@ void twistedMassDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &gaug
 
 #ifdef GPU_TWISTED_MASS_DIRAC
   int Npad = (in->Ncolor()*in->Nspin()*2)/in->FieldOrder(); // SPINOR_HOP in old code
+  
+//!TMNDEG:
+  int ghost_threads[4] = {0};
+  int bulk_threads = ((in->TwistFlavor() == QUDA_TWIST_PLUS) || (in->TwistFlavor() == QUDA_TWIST_MINUS)) ? in->Volume() : in->Volume() / 2;
+  if (in->TwistFlavor() == QUDA_TWIST_NONDEG_DOUBLET) kernelPackT = true;
+  
   for(int i=0;i<4;i++){
     dslashParam.ghostDim[i] = commDimPartitioned(i); // determines whether to use regular or ghost indexing at boundary
     dslashParam.ghostOffset[i] = Npad*(in->GhostOffset(i) + in->Stride());
     dslashParam.ghostNormOffset[i] = in->GhostNormOffset(i) + in->Stride();
     dslashParam.commDim[i] = (!commOverride[i]) ? 0 : commDimPartitioned(i); // switch off comms if override = 0
+//!TMNDEG:
+    ghost_threads[i] = ((in->TwistFlavor() == QUDA_TWIST_PLUS) || (in->TwistFlavor() == QUDA_TWIST_MINUS)) ? in->GhostFace()[i] : in->GhostFace()[i] / 2;
   }
 
   void *gauge0, *gauge1;
@@ -1631,10 +1639,9 @@ void twistedMassDslashCuda(cudaColorSpinorField *out, const cudaGaugeField &gaug
 						  (short4*)xv, (float*)xn, kappa, mu, epsilon, dagger, in->Bytes(), in->NormBytes());
     
   }
-  if((in->TwistFlavor() == QUDA_TWIST_PLUS) || (in->TwistFlavor() == QUDA_TWIST_MINUS))
-    dslashCuda(*dslash, regSize, parity, dagger, in->Volume(), in->GhostFace());
-  else
-    dslashCuda(*dslash, regSize, parity, dagger, in->Volume() / 2, in->GhostFace());//NB: Volume includes 2 flavors, exe domain must be set w.r.t a single flavor
+
+//!TMNDEG:
+  dslashCuda(*dslash, regSize, parity, dagger, bulk_threads, ghost_threads);
 
   delete dslash;
   unbindGaugeTex(gauge);

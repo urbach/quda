@@ -1160,7 +1160,7 @@ void packFaceNdegTM(void *ghost_buf, cudaColorSpinorField &in, const int dim, co
 		    const int parity, const cudaStream_t &stream) {
   const int nFace = 1; // 1 face for Wilson
 
-  unsigned int threads = in.GhostFace()[dim]*nFace*2;//WARNING: this corresponds to a flavor duplet!
+  unsigned int threads = in.GhostFace()[dim]*nFace*2;//WARNING: this corresponds to a flavor doublet!
   dim3 blockDim(64, 1, 1); // TODO: make this a parameter for auto-tuning
   dim3 gridDim( (threads+blockDim.x-1) / blockDim.x, 1, 1);
 

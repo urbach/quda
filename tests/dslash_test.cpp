@@ -104,6 +104,10 @@ void init(int argc, char **argv) {
     inv_param.mu = 0.0;
     inv_param.epsilon = 0.25;    
     inv_param.twist_flavor = QUDA_TWIST_NONDEG_DOUBLET;
+//!    
+    kernelPackT == true;//
+    Ls = 2;
+//!    
     //inv_param.twist_flavor = QUDA_TWIST_PLUS;    
   }else if (dslash_type == QUDA_DOMAIN_WALL_DSLASH) {
     inv_param.mass = 0.01;

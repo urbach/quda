@@ -215,14 +215,19 @@ void cudaColorSpinorField::create(const QudaFieldCreate create) {
       (dynamic_cast<cudaColorSpinorField*>(odd))->norm = (void*)((unsigned long)norm + norm_bytes/2);
   }
 
-  if (siteSubset != QUDA_FULL_SITE_SUBSET) {
-    zeroPad();
-  } else {
-    (dynamic_cast<cudaColorSpinorField*>(even))->zeroPad();
-    (dynamic_cast<cudaColorSpinorField*>(odd))->zeroPad();
-  }
 
+  if (create != QUDA_REFERENCE_FIELD_CREATE) {
+    if (siteSubset != QUDA_FULL_SITE_SUBSET) {
+      zeroPad();
+    } else {
+      (dynamic_cast<cudaColorSpinorField*>(even))->zeroPad();
+      (dynamic_cast<cudaColorSpinorField*>(odd))->zeroPad();
+    }
+  }
+  
+  checkCudaError();
 }
+
 void cudaColorSpinorField::freeBuffer() {
   if (bufferInit) {
     cudaFreeHost(buffer_h);
