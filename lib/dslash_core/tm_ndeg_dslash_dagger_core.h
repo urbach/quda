@@ -365,7 +365,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[0] || x1<X1m1)) ||
   const int sp_stride_pad = 2*ghostFace[static_cast<int>(kernel_type)];
   
     // read half spinor for the first flavor from device memory
-    READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx);
+    READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx+ghostFace[static_cast<int>(kernel_type)]);
     
     a0_re = i00_re;  a0_im = i00_im;
     a1_re = i01_re;  a1_im = i01_im;
@@ -524,7 +524,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[0] || x1<X1m1)) ||
   
     // read half spinor for the second flavor from device memory
     const int fl_idx = sp_idx + ghostFace[static_cast<int>(kernel_type)];
-    READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, fl_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx + ghostFace[static_cast<int>(kernel_type)]);
+    READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, fl_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx+2*ghostFace[static_cast<int>(kernel_type)]);
     
     a0_re = i00_re;  a0_im = i00_im;
     a1_re = i01_re;  a1_im = i01_im;
@@ -1073,7 +1073,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[1] || x2<X2m1)) ||
   const int sp_stride_pad = 2*ghostFace[static_cast<int>(kernel_type)];
   
     // read half spinor for the first flavor from device memory
-    READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx);
+    READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx+ghostFace[static_cast<int>(kernel_type)]);
     
     a0_re = i00_re;  a0_im = i00_im;
     a1_re = i01_re;  a1_im = i01_im;
@@ -1232,7 +1232,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[1] || x2<X2m1)) ||
   
     // read half spinor for the second flavor from device memory
     const int fl_idx = sp_idx + ghostFace[static_cast<int>(kernel_type)];
-    READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, fl_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx + ghostFace[static_cast<int>(kernel_type)]);
+    READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, fl_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx+2*ghostFace[static_cast<int>(kernel_type)]);
     
     a0_re = i00_re;  a0_im = i00_im;
     a1_re = i01_re;  a1_im = i01_im;
@@ -1781,7 +1781,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[2] || x3<X3m1)) ||
   const int sp_stride_pad = 2*ghostFace[static_cast<int>(kernel_type)];
   
     // read half spinor for the first flavor from device memory
-    READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx);
+    READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx+ghostFace[static_cast<int>(kernel_type)]);
     
     a0_re = i00_re;  a0_im = i00_im;
     a1_re = i01_re;  a1_im = i01_im;
@@ -1940,7 +1940,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[2] || x3<X3m1)) ||
   
     // read half spinor for the second flavor from device memory
     const int fl_idx = sp_idx + ghostFace[static_cast<int>(kernel_type)];
-    READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, fl_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx + ghostFace[static_cast<int>(kernel_type)]);
+    READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, fl_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx+2*ghostFace[static_cast<int>(kernel_type)]);
     
     a0_re = i00_re;  a0_im = i00_im;
     a1_re = i01_re;  a1_im = i01_im;
@@ -2485,7 +2485,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4<X4m1)) ||
     const int sp_stride_pad = 2*ghostFace[static_cast<int>(kernel_type)];
     
       // read half spinor for the first flavor from device memory
-      READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx);
+      READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx+ghostFace[static_cast<int>(kernel_type)]);
       
       a0_re = i00_re;  a0_im = i00_im;
       a1_re = i01_re;  a1_im = i01_im;
@@ -2550,7 +2550,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4<X4m1)) ||
     
       // read half spinor for the second flavor from device memory
       const int fl_idx = sp_idx + ghostFace[static_cast<int>(kernel_type)];
-      READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, fl_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx + ghostFace[static_cast<int>(kernel_type)]);
+      READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, fl_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx+2*ghostFace[static_cast<int>(kernel_type)]);
       
       a0_re = i00_re;  a0_im = i00_im;
       a1_re = i01_re;  a1_im = i01_im;
@@ -2621,7 +2621,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4<X4m1)) ||
     const int sp_stride_pad = 2*ghostFace[static_cast<int>(kernel_type)];
     
       // read half spinor for the first flavor from device memory
-      READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx);
+      READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, sp_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx+ghostFace[static_cast<int>(kernel_type)]);
       
       a0_re = i00_re;  a0_im = i00_im;
       a1_re = i01_re;  a1_im = i01_im;
@@ -2768,7 +2768,7 @@ if ( (kernel_type == INTERIOR_KERNEL && (!param.ghostDim[3] || x4<X4m1)) ||
     
       // read half spinor for the second flavor from device memory
       const int fl_idx = sp_idx + ghostFace[static_cast<int>(kernel_type)];
-      READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, fl_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx + ghostFace[static_cast<int>(kernel_type)]);
+      READ_HALF_SPINOR(SPINORTEX, sp_stride_pad, fl_idx + (SPINOR_HOP/2)*sp_stride_pad, sp_norm_idx+2*ghostFace[static_cast<int>(kernel_type)]);
       
       a0_re = i00_re;  a0_im = i00_im;
       a1_re = i01_re;  a1_im = i01_im;

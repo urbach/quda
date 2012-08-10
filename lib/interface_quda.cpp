@@ -1043,7 +1043,8 @@ void invertMultiShiftQuda(void **_hp_x, void *_hp_b, QudaInvertParam *param,
     // CG-M needs 5 vectors for the smallest shift + 2 for each additional shift
     param->spinorGiB *= (5 + 2*(param->num_offset-1))/(double)(1<<30);
   }
-  else {
+  } else {
+    errorQuda("QUDA only currently supports multi-shift CG");
     // BiCGStab-M needs 7 for the original shift + 2 for each additional shift + 1 auxiliary
     // (Jegerlehner hep-lat/9612014 eq (3.13)
     param->spinorGiB *= (7 + 2*(param->num_offset-1))/(double)(1<<30);
