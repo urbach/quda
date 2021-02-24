@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernels/dslash_wilson_clover.cuh>
+#include <kernels/dslash_wilson.cuh>
 #include <clover_field_order.h>
 
 namespace quda
