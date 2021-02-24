@@ -80,9 +80,8 @@ namespace quda
             Ax0_chi += arg.c * x1_chi;
             tmp += Ax0_chi.chiral_reconstruct(chirality);
           }
-          
-          tmp.toNonRel(); // switch back to non-chiral basis
         } else {
+#pragma unroll
           for (int chirality = 0; chirality < 2; chirality++) {
             constexpr int n = Arg::nColor * Arg::nSpin / 2;
             HMatrix<real, n> A = arg.A(coord.x_cb, parity, chirality);
@@ -94,8 +93,8 @@ namespace quda
             Ax1_chi += arg.c * x0_chi;
             tmp += Ax1_chi.chiral_reconstruct(chirality);
           }
-          tmp.toNonRel(); // switch back to non-chiral basis
         }
+        tmp.toNonRel(); // switch back to non-chiral basis
         out = tmp + arg.a * out;
 
       } else if (active) {
