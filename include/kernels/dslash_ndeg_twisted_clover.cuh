@@ -8,7 +8,10 @@ namespace quda
 
   template <typename Float, int nColor, int nDim, QudaReconstructType reconstruct_>
     struct NdegTwistedCloverArg : WilsonArg<Float, nColor, nDim, reconstruct_> {
+
+    typedef typename clover_mapper<Float, length, true>::type C;
     typedef typename mapper<Float>::type real;
+
     const C A; /** the clover field */
     real a; /** this is the Wilson-dslash scale factor */
     real b; /** this is the chiral twist factor */
@@ -20,9 +23,12 @@ namespace quda
     WilsonArg<Float, nColor, nDim, reconstruct_>(out, in, U, C, a, x, parity, dagger, comm_override),
       A(A, false),
       a(a),
-      b(dagger ? -b : b), // if dagger flip the chiral twist
-      c(c)
+      // if dagger flip the chiral twist
+      b(dagger ? -0.5 * b : 0.5 * b) // factor of 1/2 comes from clover normalization we need to correct for, do we?
+      c(0.5*c)
       {
+        checkPrecision(U, A);
+        checkLocation(U, A);
       }
   };
 
@@ -34,8 +40,8 @@ namespace quda
     static constexpr const char *filename() { return KERNEL_FILE; } // this file name - used for run-time compilation
 
     /**
-       @brief Apply the twisted-mass dslash
-       out(x) = M*in = a * D * in + (1 + i*b*gamma_5*tau_3 + c*tau_1)*x
+       @brief Apply the non-degenerate twisted-clover dslash
+       out(x) = M*in = A(x)*in(x) + a * D * in + (1 + i*b*gamma_5*tau_3 + c*tau_1)*in
        Note this routine only exists in xpay form.
     */
     __device__ __host__ inline void operator()(int idx, int flavor, int parity)
